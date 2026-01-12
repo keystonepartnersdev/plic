@@ -1,0 +1,518 @@
+'use client';
+
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  FileText,
+  Clock,
+  Check,
+  AlertCircle,
+  X,
+  User,
+  Building,
+  CreditCard,
+  Calendar,
+  Download,
+  CheckCircle,
+  XCircle,
+  Pause,
+  RefreshCw,
+  File,
+  Users,
+} from 'lucide-react';
+import { useDealStore, useUserStore } from '@/stores';
+import { DealHelper } from '@/classes';
+import { IDeal, TDealStatus } from '@/types';
+import { cn } from '@/lib/utils';
+
+const statusColors: Record<string, string> = {
+  blue: 'bg-blue-100 text-blue-700',
+  yellow: 'bg-yellow-100 text-yellow-700',
+  orange: 'bg-orange-100 text-orange-700',
+  red: 'bg-red-100 text-red-700',
+  gray: 'bg-gray-100 text-gray-700',
+  green: 'bg-green-100 text-green-700',
+};
+
+// 샘플 거래 데이터 (page.tsx와 동일)
+const sampleDeals: IDeal[] = [];
+
+export default function AdminDealDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const did = params.did as string;
+
+  const { deals, updateDeal } = useDealStore();
+  const { users } = useUserStore();
+
+  // 스토어 또는 샘플 데이터에서 거래 찾기
+  const deal = deals.find(d => d.did === did) || sampleDeals.find(d => d.did === did);
+
+  // 거래를 생성한 사용자 정보 조회
+  const dealUser = deal ? users.find(u => u.uid === deal.uid) : null;
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [showRevisionConfirmModal, setShowRevisionConfirmModal] = useState(false);
+  const [selectedRevisionType, setSelectedRevisionType] = useState<'documents' | 'recipient' | null>(null);
+  const [revisionMemo, setRevisionMemo] = useState('');
+
+  if (!deal) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <AlertCircle className="w-16 h-16 text-gray-300 mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">거래를 찾을 수 없습니다</h2>
+        <p className="text-gray-500 mb-6">요청하신 거래 정보가 존재하지 않습니다.</p>
+        <Link
+          href="/admin/deals"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-400 text-white rounded-lg hover:bg-primary-500"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          거래 목록으로
+        </Link>
+      </div>
+    );
+  }
+
+  const statusConfig = DealHelper.getStatusConfig(deal.status);
+  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
+
+  const handleStatusChange = async (newStatus: TDealStatus) => {
+    // 보완 요청일 경우 모달 열기
+    if (newStatus === 'need_revision') {
+      setShowRevisionModal(true);
+      return;
+    }
+
+    setIsProcessing(true);
+    // 실제로는 API 호출
+    await new Promise(resolve => setTimeout(resolve, 500));
+    updateDeal(deal.did, { status: newStatus });
+    setIsProcessing(false);
+  };
+
+  // 보완 요청 유형 선택 시 (확인 모달 표시)
+  const handleRevisionTypeSelect = (revisionType: 'documents' | 'recipient') => {
+    setSelectedRevisionType(revisionType);
+    setShowRevisionModal(false);
+    setShowRevisionConfirmModal(true);
+    setRevisionMemo('');
+  };
+
+  // 확인 모달에서 확인 버튼 클릭 시 (실제 요청)
+  const handleRevisionConfirm = async () => {
+    if (!selectedRevisionType) return;
+
+    setIsProcessing(true);
+    // 실제로는 API 호출
+    await new Promise(resolve => setTimeout(resolve, 500));
+    updateDeal(deal.did, {
+      status: 'need_revision',
+      revisionType: selectedRevisionType,
+      revisionMemo: revisionMemo || undefined,
+      history: [
+        {
+          timestamp: new Date().toISOString(),
+          action: '보완 요청',
+          description: selectedRevisionType === 'documents'
+            ? '운영팀이 서류 보완을 요청했습니다.'
+            : '운영팀이 수취인 정보 보완을 요청했습니다.',
+          actor: 'admin',
+        },
+        ...deal.history,
+      ],
+    });
+    setIsProcessing(false);
+    setShowRevisionModal(false);
+    setSelectedRevisionType(null);
+  };
+
+  const StatusIcon = ({ status }: { status: TDealStatus }) => {
+    switch (status) {
+      case 'pending':
+      case 'reviewing':
+      case 'hold':
+        return <Clock className="w-4 h-4" />;
+      case 'completed':
+        return <Check className="w-4 h-4" />;
+      case 'need_revision':
+        return <AlertCircle className="w-4 h-4" />;
+      case 'cancelled':
+        return <X className="w-4 h-4" />;
+      default:
+        return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  return (
+    <div>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{deal.dealName}</h1>
+            <p className="text-gray-500 font-mono">{deal.did}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {deal.isPaid && (
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-100 text-red-700">
+              <Check className="w-4 h-4" />
+              결제완료
+            </span>
+          )}
+          <span className={cn(
+            'inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg',
+            statusColors[statusConfig.color]
+          )}>
+            <StatusIcon status={deal.status} />
+            {statusConfig.name}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 왼쪽: 거래 정보 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* 기본 정보 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">거래 정보</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">거래 유형</p>
+                <p className="font-medium text-gray-900">{typeConfig.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">신청자 UID</p>
+                <p className="font-medium text-gray-900 font-mono">{deal.uid}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">생성일</p>
+                <p className="font-medium text-gray-900">
+                  {new Date(deal.createdAt).toLocaleString('ko-KR')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 금액 정보 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">금액 정보</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-500">결제 금액</span>
+                <span className="font-medium text-gray-900">{deal.amount.toLocaleString()}원</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">수수료 ({deal.feeRate}%)</span>
+                <span className="font-medium text-gray-900">{deal.feeAmount.toLocaleString()}원</span>
+              </div>
+              <div className="flex justify-between font-semibold border-t border-gray-100 pt-3">
+                <span className="text-gray-900">소계</span>
+                <span className="text-gray-900">{deal.totalAmount.toLocaleString()}원</span>
+              </div>
+              {deal.discountAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-green-600">
+                    <span>할인 금액</span>
+                    <span>-{deal.discountAmount.toLocaleString()}원</span>
+                  </div>
+                  {deal.discountCode && (
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>적용 코드</span>
+                      <span className="font-mono bg-gray-100 px-2 py-1 rounded">{deal.discountCode}</span>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="border-t border-gray-100 pt-3 flex justify-between">
+                <span className="font-semibold text-gray-900">총 결제액</span>
+                <span className="text-2xl font-bold text-primary-400">
+                  {deal.finalAmount.toLocaleString()}원
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 수취인 정보 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">수취인 정보</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">은행</p>
+                <p className="font-medium text-gray-900">{deal.recipient.bank}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">예금주</p>
+                <p className="font-medium text-gray-900">{deal.recipient.accountHolder}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm text-gray-500">계좌번호</p>
+                <p className="font-medium text-gray-900 font-mono">{deal.recipient.accountNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">발송인</p>
+                <p className="font-medium text-gray-900">{deal.senderName || dealUser?.name || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">계좌 인증</p>
+                <p className={cn(
+                  'font-medium',
+                  deal.recipient.isVerified ? 'text-green-600' : 'text-red-500'
+                )}>
+                  {deal.recipient.isVerified ? '인증' : '미인증'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 첨부 서류 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">첨부 서류</h2>
+            {deal.attachments.length > 0 ? (
+              <div className="space-y-2">
+                {deal.attachments.map((url, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-700">첨부파일 {index + 1}</span>
+                    </div>
+                    <button className="text-primary-400 hover:text-primary-500">
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">첨부된 서류가 없습니다.</p>
+            )}
+          </div>
+        </div>
+
+        {/* 오른쪽: 상태 관리 및 히스토리 */}
+        <div className="space-y-6">
+          {/* 상태 관리 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">상태 관리</h2>
+            <div className="space-y-2">
+              {deal.status !== 'completed' && deal.status !== 'cancelled' && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange('completed')}
+                    disabled={isProcessing || !deal.isPaid}
+                    className="w-full flex items-center justify-center gap-2 h-10 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    거래 완료 처리
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('hold')}
+                    disabled={isProcessing}
+                    className="w-full flex items-center justify-center gap-2 h-10 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Pause className="w-4 h-4" />
+                    보류 처리
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('need_revision')}
+                    disabled={isProcessing}
+                    className="w-full flex items-center justify-center gap-2 h-10 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    보완 요청
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('cancelled')}
+                    disabled={isProcessing}
+                    className="w-full flex items-center justify-center gap-2 h-10 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    거래 취소
+                  </button>
+                </>
+              )}
+              {(deal.status === 'completed' || deal.status === 'cancelled') && (
+                <p className="text-center text-gray-500 py-4">
+                  {deal.status === 'completed' ? '완료된 거래입니다.' : '취소된 거래입니다.'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* 결제/송금 상태 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">처리 현황</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">결제 상태</span>
+                <span className={cn(
+                  'px-2 py-1 text-xs font-medium rounded',
+                  deal.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                )}>
+                  {deal.isPaid ? '결제완료' : '결제대기'}
+                </span>
+              </div>
+              {deal.isPaid && deal.paidAt && (
+                <div className="text-xs text-gray-500">
+                  결제일시: {new Date(deal.paidAt).toLocaleString('ko-KR')}
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">송금 상태</span>
+                <span className={cn(
+                  'px-2 py-1 text-xs font-medium rounded',
+                  deal.isTransferred ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                )}>
+                  {deal.isTransferred ? '송금완료' : '송금대기'}
+                </span>
+              </div>
+              {deal.isTransferred && deal.transferredAt && (
+                <div className="text-xs text-gray-500">
+                  송금일시: {new Date(deal.transferredAt).toLocaleString('ko-KR')}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 히스토리 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">처리 이력</h2>
+            {deal.history.length > 0 ? (
+              <div className="space-y-4">
+                {deal.history.map((item, index) => (
+                  <div key={index} className="flex gap-3">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-primary-400 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-gray-900">{item.action}</p>
+                      <p className="text-sm text-gray-500">{item.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(item.timestamp).toLocaleString('ko-KR')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">처리 이력이 없습니다.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 보완 요청 유형 선택 모달 */}
+      {showRevisionModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+            <h3 className="text-xl font-bold text-gray-900 mb-6">보완 요청 유형 선택</h3>
+            <p className="text-gray-500 mb-6">고객에게 어떤 항목의 보완을 요청하시겠습니까?</p>
+
+            <div className="space-y-3">
+              {/* 서류 보완 버튼 */}
+              <button
+                onClick={() => handleRevisionTypeSelect('documents')}
+                disabled={isProcessing}
+                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <File className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-gray-900">서류 보완</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      고객이 제출한 서류를 다시 확인하고 수정하도록 요청합니다.
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* 수취인 정보 보완 버튼 */}
+              <button
+                onClick={() => handleRevisionTypeSelect('recipient')}
+                disabled={isProcessing}
+                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <Users className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-gray-900">수취인 정보 보완</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      수취인 은행, 계좌번호, 예금주 정보를 다시 입력하도록 요청합니다.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* 취소 버튼 */}
+            <button
+              onClick={() => {
+                setShowRevisionModal(false);
+                setSelectedRevisionType(null);
+              }}
+              disabled={isProcessing}
+              className="w-full mt-4 h-11 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 보완 요청 확인 모달 - 메모 입력 */}
+      {showRevisionConfirmModal && selectedRevisionType && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              {selectedRevisionType === 'documents' ? '서류 보완' : '수취인 정보 보완'} 요청
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {selectedRevisionType === 'documents'
+                ? '고객에게 서류 보완을 요청합니다.'
+                : '고객에게 수취인 정보 보완을 요청합니다.'}
+            </p>
+
+            {/* 메모 입력 필드 */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">메모</label>
+              <textarea
+                value={revisionMemo}
+                onChange={(e) => setRevisionMemo(e.target.value)}
+                placeholder="고객에게 전달할 메모를 입력하세요 (선택사항)"
+                className="w-full h-20 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 resize-none"
+              />
+            </div>
+
+            {/* 버튼 */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowRevisionConfirmModal(false);
+                  setSelectedRevisionType(null);
+                  setRevisionMemo('');
+                }}
+                disabled={isProcessing}
+                className="flex-1 h-11 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleRevisionConfirm}
+                disabled={isProcessing}
+                className="flex-1 h-11 bg-primary-400 text-white font-medium rounded-xl hover:bg-primary-500 transition-colors disabled:opacity-50"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
