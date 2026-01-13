@@ -439,15 +439,62 @@ export default function DealDetailPage() {
   };
 
   // 수취인 정보 보완 - 계좌 인증
+  const validateAccountNumber = (bank: string, accountNumber: string): boolean => {
+    const digits = accountNumber.replace(/[^0-9]/g, '');
+    const bankFormats: Record<string, number[]> = {
+      '국민은행': [14],
+      '신한은행': [11, 12],
+      '우리은행': [13],
+      '하나은행': [14],
+      '농협은행': [13, 14],
+      'NH농협': [13, 14],
+      '기업은행': [14],
+      'IBK기업은행': [14],
+      '카카오뱅크': [13],
+      '토스뱅크': [12],
+      'SC제일은행': [11],
+      '씨티은행': [13],
+      '케이뱅크': [13],
+      '수협은행': [13, 14],
+      '대구은행': [13],
+      '부산은행': [13],
+      '광주은행': [13],
+      '경남은행': [13],
+      '전북은행': [13],
+      '제주은행': [13],
+      '새마을금고': [13, 14],
+      '신협': [13, 14],
+      '우체국': [14],
+    };
+    
+    const validLengths = bankFormats[bank];
+    if (!validLengths) return digits.length >= 10 && digits.length <= 16;
+    return validLengths.includes(digits.length);
+  };
+
   const handleRevisionVerifyAccount = async () => {
     setIsVerifying(true);
     setRevisionVerificationFailed(false);
 
-    // 1초 대기 (API 호출 시뮬레이션)
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // 계좌 정보 유효성 검사 (계좌번호 길이 확인)
-    if (revisionRecipient.accountNumber.length < 10) {
+    // 검증 1: 은행 선택 확인
+    if (!revisionRecipient.bank) {
+      setRevisionVerificationFailed(true);
+      setIsVerifying(false);
+      return;
+    }
+
+    // 검증 2: 계좌번호 형식
+    if (!validateAccountNumber(revisionRecipient.bank, revisionRecipient.accountNumber)) {
+      setRevisionVerificationFailed(true);
+      setIsVerifying(false);
+      return;
+    }
+
+    // 검증 3: 예금주명 (2자 이상 한글)
+    const nameRegex = /^[가-힣]{2,}$/;
+    if (!nameRegex.test(revisionRecipient.accountHolder)) {
       setRevisionVerificationFailed(true);
       setIsVerifying(false);
       return;
@@ -456,6 +503,7 @@ export default function DealDetailPage() {
     setRevisionRecipient({ ...revisionRecipient, isVerified: true });
     setIsVerifying(false);
   };
+
 
   // 보완 요청 - 수취인 정보 수정 (실제 저장)
   const handleRecipientRevisionConfirm = () => {

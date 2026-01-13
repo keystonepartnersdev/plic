@@ -2,30 +2,49 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useContentStore } from '@/stores';
+import { contentAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-export function BannerSlider() {
-  const { getVisibleBanners } = useContentStore();
-  const banners = getVisibleBanners();
+interface IBanner {
+  bannerId: string;
+  title: string;
+  imageUrl: string;
+  linkUrl?: string;
+  isVisible: boolean;
+  priority: number;
+}
 
+export function BannerSlider() {
+  const [banners, setBanners] = useState<IBanner[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [translateX, setTranslateX] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // store의 배너 데이터만 사용
-  const displayBanners = banners;
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const response = await contentAPI.getBanners();
+        setBanners(response.banners || []);
+      } catch (error) {
+        console.error('배너 로드 실패:', error);
+        setBanners([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBanners();
+  }, []);
 
   // priority 기준으로 정렬
-  const sortedBanners = [...displayBanners].sort((a, b) => a.priority - b.priority);
+  const sortedBanners = [...banners].sort((a, b) => a.priority - b.priority);
 
   const bannerWidth = 300;
   const bannerHeight = 250;
 
   const goToSlide = useCallback((index: number) => {
-    // 순환 처리
     if (index < 0) {
       setCurrentIndex(sortedBanners.length - 1);
     } else if (index >= sortedBanners.length) {
@@ -76,7 +95,6 @@ export function BannerSlider() {
     setTranslateX(0);
   };
 
-  // 마우스 이벤트
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     handleDragStart(e.clientX);
@@ -96,7 +114,6 @@ export function BannerSlider() {
     }
   };
 
-  // 터치 이벤트
   const handleTouchStart = (e: React.TouchEvent) => {
     handleDragStart(e.touches[0].clientX);
   };
@@ -109,15 +126,24 @@ export function BannerSlider() {
     handleDragEnd();
   };
 
+  if (loading) {
+    return (
+      <div className="w-full flex justify-center">
+        <div
+          className="rounded-xl bg-gray-200 animate-pulse"
+          style={{ width: bannerWidth, height: bannerHeight }}
+        />
+      </div>
+    );
+  }
+
   if (sortedBanners.length === 0) return null;
 
-  // 좌/우 배너 인덱스 계산
   const prevIndex = currentIndex === 0 ? sortedBanners.length - 1 : currentIndex - 1;
   const nextIndex = currentIndex === sortedBanners.length - 1 ? 0 : currentIndex + 1;
 
   return (
     <div className="w-full flex flex-col items-center">
-      {/* 배너 슬라이더 컨테이너 */}
       <div className="relative w-full flex justify-center overflow-hidden">
         {/* 좌측 미리보기 배너 */}
         <div className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-0">
@@ -223,7 +249,6 @@ export function BannerSlider() {
   );
 }
 
-// 배너 내용 컴포넌트
 function BannerContent({ banner }: { banner: { title: string; imageUrl: string; linkUrl?: string } }) {
   return (
     <div className="w-full h-full flex flex-col justify-center px-6 select-none bg-gradient-to-r from-primary-400 to-primary-500">

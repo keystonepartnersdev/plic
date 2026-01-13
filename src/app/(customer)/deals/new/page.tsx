@@ -368,11 +368,68 @@ function NewDealContent() {
     }
   };
 
+  // 은행별 계좌번호 자릿수 검증
+  const validateAccountNumber = (bank: string, accountNumber: string): boolean => {
+    const digits = accountNumber.replace(/[^0-9]/g, '');
+    const bankFormats: Record<string, number[]> = {
+      '국민은행': [14],
+      '신한은행': [11, 12],
+      '우리은행': [13],
+      '하나은행': [14],
+      '농협은행': [13, 14],
+      'NH농협': [13, 14],
+      '기업은행': [14],
+      'IBK기업은행': [14],
+      '카카오뱅크': [13],
+      '토스뱅크': [12],
+      'SC제일은행': [11],
+      '씨티은행': [13],
+      '케이뱅크': [13],
+      '수협은행': [13, 14],
+      '대구은행': [13],
+      '부산은행': [13],
+      '광주은행': [13],
+      '경남은행': [13],
+      '전북은행': [13],
+      '제주은행': [13],
+      '새마을금고': [13, 14],
+      '신협': [13, 14],
+      '우체국': [14],
+    };
+    
+    const validLengths = bankFormats[bank];
+    if (!validLengths) return digits.length >= 10 && digits.length <= 16;
+    return validLengths.includes(digits.length);
+  };
+
   const handleVerifyAccount = async () => {
     setIsLoading(true);
     setVerificationFailed(false);
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // 검증 1: 은행 선택 확인
+    if (!recipient.bank) {
+      setVerificationFailed(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // 검증 2: 계좌번호 형식
+    const accountDigits = recipient.accountNumber.replace(/[^0-9]/g, '');
+    if (!validateAccountNumber(recipient.bank, recipient.accountNumber)) {
+      setVerificationFailed(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // 검증 3: 예금주명 (2자 이상 한글)
+    const nameRegex = /^[가-힣]{2,}$/;
+    if (!nameRegex.test(recipient.accountHolder)) {
+      setVerificationFailed(true);
+      setIsLoading(false);
+      return;
+    }
 
     setRecipient({ ...recipient, isVerified: true, verifiedAt: new Date().toISOString() });
     setIsLoading(false);
