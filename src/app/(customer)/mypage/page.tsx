@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 export default function MyPage() {
   const router = useRouter();
   const { currentUser, isLoggedIn, logout, registeredCards } = useUserStore();
-  const { deals } = useDealStore();
+  const { deals, clearDeals } = useDealStore();
 
   const [mounted, setMounted] = useState(false);
 
@@ -55,6 +55,7 @@ export default function MyPage() {
   const handleLogout = () => {
     if (confirm('로그아웃 하시겠습니까?')) {
       logout();
+      clearDeals();
       router.replace('/');
     }
   };

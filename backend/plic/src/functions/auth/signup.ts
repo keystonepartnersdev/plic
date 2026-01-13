@@ -99,7 +99,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return error('이미 가입된 이메일입니다.');
     }
     if (err.name === 'InvalidPasswordException') {
-      return error('비밀번호는 8자 이상, 숫자와 소문자를 포함해야 합니다.');
+      return error('비밀번호는 8자 이상, 대문자, 소문자, 숫자를 포함해야 합니다.');
     }
     
     return serverError('회원가입 처리 중 오류가 발생했습니다.');

@@ -10,11 +10,13 @@ Globals:
       - x86_64
     LoggingConfig:
       LogFormat: JSON
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
 
 Resources:
-  # ============================================
-  # DynamoDB Tables
-  # ============================================
   UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -100,35 +102,6 @@ Resources:
           Projection:
             ProjectionType: ALL
 
-  DiscountsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: plic-discounts
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: code
-          AttributeType: S
-        - AttributeName: type
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: code-index
-          KeySchema:
-            - AttributeName: code
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: type-index
-          KeySchema:
-            - AttributeName: type
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-
   ContentsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -148,53 +121,58 @@ Resources:
   AttachmentsBucket:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName: !Sub plic-attachments-${AWS::AccountId}
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders: ['*']
-            AllowedMethods: [GET, PUT, POST, DELETE]
+            AllowedMethods: [GET, PUT, POST]
             AllowedOrigins: ['*']
             MaxAge: 3000
 
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: plic-user-pool
-      AutoVerifiedAttributes: [email]
-      UsernameAttributes: [email]
+      UserPoolName: plic-users
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
       Policies:
         PasswordPolicy:
           MinimumLength: 8
           RequireLowercase: true
           RequireNumbers: true
           RequireSymbols: false
-          RequireUppercase: false
+          RequireUppercase: true
 
   CognitoUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: plic-app-client
+      ClientName: plic-web
       UserPoolId: !Ref CognitoUserPool
-      GenerateSecret: false
       ExplicitAuthFlows:
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_USER_SRP_AUTH
+      GenerateSecret: false
 
-  # ============================================
-  # Auth Functions
-  # ============================================
   SignupFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/auth/signup.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:SignUp
+              Action:
+                - cognito-idp:SignUp
+                - cognito-idp:AdminCreateUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -208,20 +186,26 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/auth/signup.ts]
+        EntryPoints:
+          - functions/auth/signup.ts
 
   ConfirmFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/auth/confirm.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:ConfirmSignUp
+              Action:
+                - cognito-idp:ConfirmSignUp
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -235,20 +219,27 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/auth/confirm.ts]
+        EntryPoints:
+          - functions/auth/confirm.ts
 
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/auth/login.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:InitiateAuth
+              Action:
+                - cognito-idp:InitiateAuth
+                - cognito-idp:AdminGetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -262,18 +253,24 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/auth/login.ts]
+        EntryPoints:
+          - functions/auth/login.ts
 
   RefreshFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/auth/refresh.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
       Policies:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:InitiateAuth
+              Action:
+                - cognito-idp:InitiateAuth
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -287,18 +284,24 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/auth/refresh.ts]
+        EntryPoints:
+          - functions/auth/refresh.ts
 
   LogoutFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/auth/logout.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
       Policies:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GlobalSignOut
+              Action:
+                - cognito-idp:GlobalSignOut
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -312,23 +315,25 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/auth/logout.ts]
+        EntryPoints:
+          - functions/auth/logout.ts
 
-  # ============================================
-  # Users Functions
-  # ============================================
   GetMeFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/users/me.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -342,20 +347,25 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/users/me.ts]
+        EntryPoints:
+          - functions/users/me.ts
 
   UpdateMeFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/users/update.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -369,20 +379,26 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/users/update.ts]
+        EntryPoints:
+          - functions/users/update.ts
 
   WithdrawFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/users/withdraw.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminDeleteUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -396,20 +412,25 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/users/withdraw.ts]
+        EntryPoints:
+          - functions/users/withdraw.ts
 
   GetGradeFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/users/grade.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -423,25 +444,27 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/users/grade.ts]
+        EntryPoints:
+          - functions/users/grade.ts
 
-  # ============================================
-  # Deals Functions
-  # ============================================
   ListDealsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/deals/list.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -455,22 +478,27 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/deals/list.ts]
+        EntryPoints:
+          - functions/deals/list.ts
 
   GetDealFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/deals/get.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -484,22 +512,27 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/deals/get.ts]
+        EntryPoints:
+          - functions/deals/get.ts
 
   CreateDealFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/deals/create.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -513,22 +546,27 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/deals/create.ts]
+        EntryPoints:
+          - functions/deals/create.ts
 
   UpdateDealFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/deals/update.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -542,22 +580,27 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/deals/update.ts]
+        EntryPoints:
+          - functions/deals/update.ts
 
   CancelDealFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/deals/cancel.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -571,25 +614,28 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/deals/cancel.ts]
+        EntryPoints:
+          - functions/deals/cancel.ts
 
-  # ============================================
-  # Discounts Functions
-  # ============================================
   ValidateDiscountFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/discounts/validate.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
+            TableName: plic-discounts
         - DynamoDBCrudPolicy:
-            TableName: !Ref DiscountsTable
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -603,22 +649,28 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/discounts/validate.ts]
+        EntryPoints:
+          - functions/discounts/validate.ts
 
   GetCouponsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/discounts/coupons.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
+            TableName: plic-discounts
         - DynamoDBCrudPolicy:
-            TableName: !Ref DiscountsTable
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -632,24 +684,30 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/discounts/coupons.ts]
+        EntryPoints:
+          - functions/discounts/coupons.ts
 
   ApplyDiscountFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
       Handler: functions/discounts/apply.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref UsersTable
+            TableName: plic-discounts
         - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
         - DynamoDBCrudPolicy:
-            TableName: !Ref DiscountsTable
+            TableName: !Ref UsersTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
-              Action: cognito-idp:GetUser
+              Action:
+                - cognito-idp:GetUser
               Resource: !GetAtt CognitoUserPool.Arn
       Events:
         Api:
@@ -663,11 +721,9 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/discounts/apply.ts]
+        EntryPoints:
+          - functions/discounts/apply.ts
 
-  # ============================================
-  # Admin Functions
-  # ============================================
   AdminLoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -688,7 +744,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/login.ts]
+        EntryPoints:
+          - functions/admin/login.ts
 
   AdminUsersListFunction:
     Type: AWS::Serverless::Function
@@ -697,9 +754,9 @@ Resources:
       Handler: functions/admin/users-list.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -712,7 +769,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/users-list.ts]
+        EntryPoints:
+          - functions/admin/users-list.ts
 
   AdminUsersGetFunction:
     Type: AWS::Serverless::Function
@@ -721,11 +779,11 @@ Resources:
       Handler: functions/admin/users-get.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
         - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -738,7 +796,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/users-get.ts]
+        EntryPoints:
+          - functions/admin/users-get.ts
 
   AdminUsersStatusFunction:
     Type: AWS::Serverless::Function
@@ -747,9 +806,9 @@ Resources:
       Handler: functions/admin/users-status.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -762,7 +821,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/users-status.ts]
+        EntryPoints:
+          - functions/admin/users-status.ts
 
   AdminUsersGradeFunction:
     Type: AWS::Serverless::Function
@@ -771,9 +831,9 @@ Resources:
       Handler: functions/admin/users-grade.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -786,7 +846,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/users-grade.ts]
+        EntryPoints:
+          - functions/admin/users-grade.ts
 
   AdminDealsListFunction:
     Type: AWS::Serverless::Function
@@ -795,9 +856,9 @@ Resources:
       Handler: functions/admin/deals-list.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -810,7 +871,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/deals-list.ts]
+        EntryPoints:
+          - functions/admin/deals-list.ts
 
   AdminDealsGetFunction:
     Type: AWS::Serverless::Function
@@ -819,11 +881,11 @@ Resources:
       Handler: functions/admin/deals-get.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -836,7 +898,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/deals-get.ts]
+        EntryPoints:
+          - functions/admin/deals-get.ts
 
   AdminDealsStatusFunction:
     Type: AWS::Serverless::Function
@@ -845,9 +908,11 @@ Resources:
       Handler: functions/admin/deals-status.handler
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref AdminsTable
-        - DynamoDBCrudPolicy:
             TableName: !Ref DealsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AdminsTable
       Events:
         Api:
           Type: Api
@@ -860,11 +925,9 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/admin/deals-status.ts]
+        EntryPoints:
+          - functions/admin/deals-status.ts
 
-  # ============================================
-  # Content Functions
-  # ============================================
   GetBannersFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -885,7 +948,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/content/banners.ts]
+        EntryPoints:
+          - functions/content/banners.ts
 
   GetNoticesFunction:
     Type: AWS::Serverless::Function
@@ -907,7 +971,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/content/notices.ts]
+        EntryPoints:
+          - functions/content/notices.ts
 
   GetNoticeDetailFunction:
     Type: AWS::Serverless::Function
@@ -929,7 +994,8 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/content/notice-detail.ts]
+        EntryPoints:
+          - functions/content/notice-detail.ts
 
   GetFaqsFunction:
     Type: AWS::Serverless::Function
@@ -951,12 +1017,16 @@ Resources:
         Minify: true
         Target: es2020
         Sourcemap: true
-        EntryPoints: [functions/content/faqs.ts]
+        EntryPoints:
+          - functions/content/faqs.ts
 
 Outputs:
   ApiEndpoint:
+    Description: API Gateway endpoint URL
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
-  UserPoolId:
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
     Value: !Ref CognitoUserPool
-  UserPoolClientId:
+  CognitoClientId:
+    Description: Cognito Client ID
     Value: !Ref CognitoUserPoolClient

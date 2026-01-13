@@ -13,6 +13,8 @@ interface IDealState {
   getDealById: (did: string) => IDeal | undefined;
   getDealsByStatus: (status: string) => IDeal[];
   getDealsByUserId: (uid: string) => IDeal[];
+  setDeals: (deals: IDeal[]) => void;
+  clearDeals: () => void;
 }
 
 export const useDealStore = create(
@@ -41,6 +43,10 @@ export const useDealStore = create(
       getDealsByStatus: (status) => get().deals.filter((deal) => deal.status === status),
 
       getDealsByUserId: (uid) => get().deals.filter((deal) => deal.uid === uid),
+
+      setDeals: (deals) => set({ deals }),
+
+      clearDeals: () => set({ deals: [] }),
     }),
     {
       name: 'plic-deal-storage',
