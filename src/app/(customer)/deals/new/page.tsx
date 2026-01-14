@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Download, Eye, History } from 'lucide-react';
 import { Header, Modal } from '@/components/common';
+import { dealsAPI } from '@/lib/api';
 import { useUserStore, useDealStore, useDealDraftStore, useAdminUserStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
@@ -439,53 +440,34 @@ function NewDealContent() {
     if (!dealType) return;
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const now = new Date().toISOString();
-    const newDeal: IDeal = {
-      did: DealHelper.generateDID(),
-      uid: currentUser.uid,
-      dealName: `${selectedTypeConfig?.name} - ${recipient.accountHolder}`,
-      dealType,
-      status: 'awaiting_payment',
-      amount: numericAmount,
-      feeRate: currentUser.feeRate,
-      feeAmount,
-      totalAmount,
-      discountCode: discountCode || undefined,
-      discountAmount: 0,
-      finalAmount,
-      recipient,
-      senderName: senderName || currentUser.name,
-      attachments: attachments.map((a) => a.preview || a.name),
-      isPaid: false,
-      isTransferred: false,
-      history: [
-        {
-          timestamp: now,
-          action: '거래 신청',
-          description: '새로운 거래가 신청되었습니다.',
-          actor: 'user',
-          actorId: currentUser.uid,
+    try {
+      const response = await dealsAPI.create({
+        dealName: `${selectedTypeConfig?.name} - ${recipient.accountHolder}`,
+        dealType,
+        amount: numericAmount,
+        recipient: {
+          bank: recipient.bank,
+          accountNumber: recipient.accountNumber,
+          accountHolder: recipient.accountHolder,
         },
-      ],
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Draft 제출 완료 후 삭제
-    submitDraft();
-
-    addDeal(newDeal);
-
-    // 사용자의 월 사용 금액 업데이트
-    if (adminUser) {
-      updateUser(currentUser.uid, {
-        usedAmount: usedAmount + numericAmount,
+        senderName: senderName || currentUser.name,
+        attachments: attachments.map((a) => a.preview || a.name),
       });
-    }
 
-    router.replace(`/deals/${newDeal.did}`);
+      // Draft 제출 완료 후 삭제
+      submitDraft();
+
+      // store에도 추가 (로컬 캐시용)
+      addDeal(response.deal);
+
+      router.replace(`/deals/${response.deal.did}`);
+    } catch (error: any) {
+      console.error('거래 생성 실패:', error);
+      alert(error.message || '거래 생성에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const canProceedAmount = numericAmount > 0 && !isOverLimit;

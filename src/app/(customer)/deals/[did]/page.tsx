@@ -6,6 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, FileText, Clock, Check, AlertCircle, X, CreditCard, Download, Ticket, Tag, Trash2, Plus, Eye } from 'lucide-react';
 import { Header } from '@/components/common';
+import { dealsAPI } from '@/lib/api';
 import { useUserStore, useDealStore, useDiscountStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { IDeal, IDiscount } from '@/types';
@@ -109,30 +110,36 @@ export default function DealDetailPage() {
     }
 
     const foundDeal = deals.find((d) => d.did === did);
-    if (mounted && !foundDeal) {
-      router.replace('/deals');
-      return;
-    }
-
-    setDeal(foundDeal || null);
-
-    // 저장된 할인 코드가 있으면 복원
-    if (foundDeal && foundDeal.discountCode) {
-      const discountCodes = foundDeal.discountCode.split(', ').filter(code => code.trim());
-      const restoredDiscounts: IDiscount[] = [];
-
-      discountCodes.forEach(code => {
-        const discountData = getDiscountByCode(code) || availableCoupons.find(c => c.name === code);
-        if (discountData) {
-          restoredDiscounts.push(discountData);
+    
+    if (foundDeal) {
+      setDeal(foundDeal);
+      // 저장된 할인 코드가 있으면 복원
+      if (foundDeal.discountCode) {
+        const discountCodes = foundDeal.discountCode.split(', ').filter(code => code.trim());
+        const restoredDiscounts: IDiscount[] = [];
+        discountCodes.forEach(code => {
+          const discountData = getDiscountByCode(code) || availableCoupons.find(c => c.name === code);
+          if (discountData) {
+            restoredDiscounts.push(discountData);
+          }
+        });
+        if (restoredDiscounts.length > 0) {
+          setAppliedDiscounts(restoredDiscounts);
         }
-      });
-
-      if (restoredDiscounts.length > 0) {
-        setAppliedDiscounts(restoredDiscounts);
       }
+    } else if (mounted) {
+      // store에 없으면 API에서 가져오기
+      dealsAPI.get(did).then(response => {
+        if (response.deal) {
+          setDeal(response.deal);
+        } else {
+          router.replace('/deals');
+        }
+      }).catch(() => {
+        router.replace('/deals');
+      });
     }
-  }, [mounted, isLoggedIn, deals, did, router]);
+  }, [mounted, isLoggedIn, deals, did, router, getDiscountByCode, availableCoupons]);
 
   if (!mounted || !isLoggedIn || !deal) {
     return (
