@@ -74,7 +74,7 @@ export default function MyPage() {
   const completedDeals = userDeals.filter((d) => d.status === 'completed');
   const totalAmount = gradeInfo?.stats?.totalPaymentAmount || completedDeals.reduce((sum, d) => sum + d.amount, 0);
 
-  const gradeConfig = UserHelper.getGradeConfig(currentUser.grade);
+  const gradeConfig = currentUser ? UserHelper.getGradeConfig(currentUser.grade) : { name: '베이직', feeRate: 4.0, monthlyLimit: 10000000 };
   const remainingLimit = gradeInfo?.limit?.remaining ?? UserHelper.getRemainingLimit(currentUser);
   const usageRate = gradeInfo?.limit?.usagePercent ?? UserHelper.getUsageRate(currentUser);
 
