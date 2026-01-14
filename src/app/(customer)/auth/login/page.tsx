@@ -38,6 +38,11 @@ export default function LoginPage() {
     try {
       const result = await authAPI.login({ email, password });
       
+      // 토큰 저장
+      if (result.tokens?.accessToken && result.tokens?.refreshToken) {
+        tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
+      }
+      
       // 사용자 정보 저장
       setUser(result.user);
       
