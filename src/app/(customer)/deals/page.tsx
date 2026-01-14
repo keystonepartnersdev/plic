@@ -8,6 +8,7 @@ import { ArrowRight, FileText, ChevronRight } from 'lucide-react';
 import { Header, Modal } from '@/components/common';
 import { DraftDealCard } from '@/components/deal';
 import { useUserStore, useDealStore, useDealDraftStore } from '@/stores';
+import { dealsAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -15,7 +16,7 @@ import { cn } from '@/lib/utils';
 type TabType = 'progress' | 'revision' | 'completed';
 
 const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
-  { id: 'progress', label: '진행중', statuses: ['pending', 'reviewing', 'hold'] },
+  { id: 'progress', label: '진행중', statuses: ['pending', 'reviewing', 'hold', 'awaiting_payment'] },
   { id: 'revision', label: '보완필요', statuses: ['need_revision'] },
   { id: 'completed', label: '거래완료', statuses: ['completed', 'cancelled'] },
 ];
@@ -23,9 +24,11 @@ const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
 export default function DealsPage() {
   const router = useRouter();
   const { currentUser, isLoggedIn } = useUserStore();
-  const { deals } = useDealStore();
+  const { setDeals } = useDealStore();
   const { drafts, loadDraft, deleteDraft, clearCurrentDraft } = useDealDraftStore();
 
+  const [deals, setLocalDeals] = useState<IDeal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('progress');
   const [mounted, setMounted] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -33,9 +36,7 @@ export default function DealsPage() {
 
   useEffect(() => {
     setMounted(true);
-    // 거래내역 페이지 진입 시 currentDraft 클리어 (새로운 송금 시작을 위해)
     clearCurrentDraft();
-    // Portal 타겟 설정 - mobile-frame을 타겟으로 (스크롤되지 않음)
     setPortalTarget(document.getElementById('mobile-frame'));
   }, []);
 
@@ -45,6 +46,25 @@ export default function DealsPage() {
     }
   }, [mounted, isLoggedIn, router]);
 
+  useEffect(() => {
+    const fetchDeals = async () => {
+      if (!isLoggedIn) return;
+      try {
+        const response = await dealsAPI.list();
+        setLocalDeals(response.deals || []);
+        setDeals(response.deals || []);
+      } catch (error) {
+        console.error('거래 목록 로드 실패:', error);
+        setLocalDeals([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (mounted && isLoggedIn) {
+      fetchDeals();
+    }
+  }, [mounted, isLoggedIn, setDeals]);
+
   if (!mounted || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -53,24 +73,20 @@ export default function DealsPage() {
     );
   }
 
-  const userDeals = deals.filter((d) => d.uid === currentUser?.uid);
   const userDrafts = drafts.filter((d) => d.uid === currentUser?.uid && d.status === 'draft');
-  // 결제대기 상태 거래 (작성중 섹션에 표시)
-  const awaitingPaymentDeals = userDeals.filter((d) => d.status === 'awaiting_payment');
+  const awaitingPaymentDeals = deals.filter((d) => d.status === 'awaiting_payment');
   const activeTabConfig = tabs.find((t) => t.id === activeTab)!;
-  const filteredDeals = userDeals.filter((d) => activeTabConfig.statuses.includes(d.status));
+  const filteredDeals = deals.filter((d) => activeTabConfig.statuses.includes(d.status) && d.status !== 'awaiting_payment');
 
   const getTabCount = (tab: TabType) => {
     const tabConfig = tabs.find((t) => t.id === tab)!;
-    const dealCount = userDeals.filter((d) => tabConfig.statuses.includes(d.status)).length;
-    // 진행중 탭에는 작성중(draft) + 결제대기(awaiting_payment) 개수도 포함
+    const dealCount = deals.filter((d) => tabConfig.statuses.includes(d.status)).length;
     if (tab === 'progress') {
-      return dealCount + userDrafts.length + awaitingPaymentDeals.length;
+      return dealCount + userDrafts.length;
     }
     return dealCount;
   };
 
-  // 작성중 거래 클릭 핸들러
   const handleDraftClick = (draftId: string) => {
     if (currentUser?.status !== 'active') {
       setShowStatusModal(true);
@@ -84,7 +100,6 @@ export default function DealsPage() {
     <div className="relative bg-gray-50 pb-24">
       <Header title="거래내역" />
 
-      {/* 탭 - 스크롤 시 고정 */}
       <div className="bg-white border-b border-gray-100 px-5 sticky top-14 z-10">
         <div className="flex">
           {tabs.map((tab) => (
@@ -113,56 +128,57 @@ export default function DealsPage() {
         </div>
       </div>
 
-      {/* 거래 목록 */}
       <div className="p-5">
-        {/* 진행중 탭: 작성중(Draft) + 결제대기 섹션 */}
-        {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-3">작성중</h3>
-            <div className="space-y-3">
-              {/* 결제대기 거래 */}
-              {awaitingPaymentDeals.map((deal) => (
-                <DealCard key={deal.did} deal={deal} />
-              ))}
-              {/* 작성중 Draft */}
-              {userDrafts.map((draft) => (
-                <DraftDealCard
-                  key={draft.id}
-                  draft={draft}
-                  onClick={() => handleDraftClick(draft.id)}
-                  onDelete={() => deleteDraft(draft.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 진행중/완료 거래 목록 */}
-        {filteredDeals.length > 0 ? (
-          <div className="space-y-3">
-            {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
-              <h3 className="text-sm font-medium text-gray-500 mb-3">진행중</h3>
-            )}
-            {filteredDeals.map((deal) => (
-              <DealCard key={deal.did} deal={deal} />
-            ))}
+        {loading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400"></div>
           </div>
         ) : (
-          // 작성중도 없고 거래도 없을 때
-          (activeTab !== 'progress' || (userDrafts.length === 0 && awaitingPaymentDeals.length === 0)) && (
-            <div className="text-center py-16">
-              <FileText className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <p className="text-gray-500">
-                {activeTab === 'progress' && '진행중인 거래가 없습니다.'}
-                {activeTab === 'revision' && '보완이 필요한 거래가 없습니다.'}
-                {activeTab === 'completed' && '완료된 거래가 없습니다.'}
-              </p>
-            </div>
-          )
+          <>
+            {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-3">작성중</h3>
+                <div className="space-y-3">
+                  {awaitingPaymentDeals.map((deal) => (
+                    <DealCard key={deal.did} deal={deal} />
+                  ))}
+                  {userDrafts.map((draft) => (
+                    <DraftDealCard
+                      key={draft.id}
+                      draft={draft}
+                      onClick={() => handleDraftClick(draft.id)}
+                      onDelete={() => deleteDraft(draft.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredDeals.length > 0 ? (
+              <div className="space-y-3">
+                {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
+                  <h3 className="text-sm font-medium text-gray-500 mb-3">진행중</h3>
+                )}
+                {filteredDeals.map((deal) => (
+                  <DealCard key={deal.did} deal={deal} />
+                ))}
+              </div>
+            ) : (
+              (activeTab !== 'progress' || (userDrafts.length === 0 && awaitingPaymentDeals.length === 0)) && (
+                <div className="text-center py-16">
+                  <FileText className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    {activeTab === 'progress' && '진행중인 거래가 없습니다.'}
+                    {activeTab === 'revision' && '보완이 필요한 거래가 없습니다.'}
+                    {activeTab === 'completed' && '완료된 거래가 없습니다.'}
+                  </p>
+                </div>
+              )
+            )}
+          </>
         )}
       </div>
 
-      {/* 계정 상태 모달 */}
       <Modal
         isOpen={showStatusModal}
         onClose={() => setShowStatusModal(false)}
@@ -177,7 +193,6 @@ export default function DealsPage() {
         </p>
       </Modal>
 
-      {/* 송금 신청하기 버튼 - Portal로 mobile-frame에 고정 */}
       {portalTarget && createPortal(
         <div className="absolute bottom-[71px] left-0 right-0 px-5 z-20 pointer-events-none">
           <button
@@ -235,7 +250,6 @@ function DealCard({ deal }: { deal: IDeal }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            {/* 결제대기 상태인 경우 결제대기 태그만 표시 (중복 방지) */}
             {deal.status === 'awaiting_payment' && !deal.isPaid ? (
               <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
                 결제대기
