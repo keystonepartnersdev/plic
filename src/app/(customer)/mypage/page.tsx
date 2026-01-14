@@ -62,7 +62,7 @@ export default function MyPage() {
     }
   }, [mounted, isLoggedIn, setUser]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !isLoggedIn || !currentUser || loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
