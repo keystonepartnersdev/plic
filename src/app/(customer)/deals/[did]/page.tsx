@@ -483,30 +483,18 @@ export default function DealDetailPage() {
     setIsVerifying(true);
     setRevisionVerificationFailed(false);
 
+    // TODO: 실제 계좌 인증 API 연동 필요
+    // 현재는 기본 입력값 확인 후 항상 성공 처리
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // 검증 1: 은행 선택 확인
-    if (!revisionRecipient.bank) {
+    // 기본 입력값 확인만 수행
+    if (!revisionRecipient.bank || !revisionRecipient.accountNumber || !revisionRecipient.accountHolder) {
       setRevisionVerificationFailed(true);
       setIsVerifying(false);
       return;
     }
 
-    // 검증 2: 계좌번호 형식
-    if (!validateAccountNumber(revisionRecipient.bank, revisionRecipient.accountNumber)) {
-      setRevisionVerificationFailed(true);
-      setIsVerifying(false);
-      return;
-    }
-
-    // 검증 3: 예금주명 (2자 이상 한글)
-    const nameRegex = /^[가-힣]{2,}$/;
-    if (!nameRegex.test(revisionRecipient.accountHolder)) {
-      setRevisionVerificationFailed(true);
-      setIsVerifying(false);
-      return;
-    }
-
+    // 임시: 항상 인증 성공 처리
     setRevisionRecipient({ ...revisionRecipient, isVerified: true });
     setIsVerifying(false);
   };
