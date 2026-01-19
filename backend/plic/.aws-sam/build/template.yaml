@@ -1,0 +1,1202 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: PLIC Backend API
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs20.x
+    Architectures:
+    - x86_64
+    LoggingConfig:
+      LogFormat: JSON
+  Api:
+    Cors:
+      AllowMethods: '''GET,POST,PUT,DELETE,OPTIONS'''
+      AllowHeaders: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+      AllowOrigin: '''*'''
+Resources:
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: uid
+        AttributeType: S
+      - AttributeName: email
+        AttributeType: S
+      - AttributeName: phone
+        AttributeType: S
+      KeySchema:
+      - AttributeName: uid
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: email-index
+        KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+      - IndexName: phone-index
+        KeySchema:
+        - AttributeName: phone
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+  DealsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-deals
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: did
+        AttributeType: S
+      - AttributeName: uid
+        AttributeType: S
+      - AttributeName: status
+        AttributeType: S
+      - AttributeName: createdAt
+        AttributeType: S
+      KeySchema:
+      - AttributeName: did
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: uid-index
+        KeySchema:
+        - AttributeName: uid
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+      - IndexName: status-index
+        KeySchema:
+        - AttributeName: status
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+  AdminsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-admins
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: adminId
+        AttributeType: S
+      - AttributeName: email
+        AttributeType: S
+      KeySchema:
+      - AttributeName: adminId
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: email-index
+        KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+  ContentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-contents
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: pk
+        AttributeType: S
+      - AttributeName: sk
+        AttributeType: S
+      KeySchema:
+      - AttributeName: pk
+        KeyType: HASH
+      - AttributeName: sk
+        KeyType: RANGE
+  AttachmentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: plic-attachments-${AWS::AccountId}
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders:
+          - '*'
+          AllowedMethods:
+          - GET
+          - PUT
+          - POST
+          AllowedOrigins:
+          - '*'
+          MaxAge: 3000
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: plic-users
+      AutoVerifiedAttributes:
+      - email
+      UsernameAttributes:
+      - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: plic-web
+      UserPoolId:
+        Ref: CognitoUserPool
+      ExplicitAuthFlows:
+      - ALLOW_USER_PASSWORD_AUTH
+      - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+  SignupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: SignupFunction
+      Handler: signup.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:SignUp
+          - cognito-idp:AdminCreateUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/signup
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/signup.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: SignupFunction
+  ConfirmFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ConfirmFunction
+      Handler: confirm.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:ConfirmSignUp
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/confirm
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/confirm.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ConfirmFunction
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: LoginFunction
+      Handler: login.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:InitiateAuth
+          - cognito-idp:AdminGetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/login.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: LoginFunction
+  RefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: RefreshFunction
+      Handler: refresh.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:InitiateAuth
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/refresh
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/refresh.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: RefreshFunction
+  LogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: LogoutFunction
+      Handler: logout.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GlobalSignOut
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/logout
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/logout.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: LogoutFunction
+  GetMeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetMeFunction
+      Handler: me.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /users/me
+            Method: get
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/me.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetMeFunction
+  UpdateMeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: UpdateMeFunction
+      Handler: update.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /users/me
+            Method: put
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/update.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: UpdateMeFunction
+  WithdrawFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: WithdrawFunction
+      Handler: withdraw.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          - cognito-idp:AdminDeleteUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /users/me
+            Method: delete
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/withdraw.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: WithdrawFunction
+  GetGradeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetGradeFunction
+      Handler: grade.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /users/me/grade
+            Method: get
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/grade.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetGradeFunction
+  ListDealsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ListDealsFunction
+      Handler: list.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /deals
+            Method: get
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/list.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ListDealsFunction
+  GetDealFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetDealFunction
+      Handler: get.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /deals/{did}
+            Method: get
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/get.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetDealFunction
+  CreateDealFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CreateDealFunction
+      Handler: create.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /deals
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/create.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: CreateDealFunction
+  UpdateDealFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: UpdateDealFunction
+      Handler: update.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /deals/{did}
+            Method: put
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/update.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: UpdateDealFunction
+  CancelDealFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CancelDealFunction
+      Handler: cancel.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /deals/{did}
+            Method: delete
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/cancel.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: CancelDealFunction
+  ValidateDiscountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ValidateDiscountFunction
+      Handler: validate.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: plic-discounts
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /discounts/validate
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/discounts/validate.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ValidateDiscountFunction
+  GetCouponsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetCouponsFunction
+      Handler: coupons.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: plic-discounts
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /discounts/coupons
+            Method: get
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/discounts/coupons.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetCouponsFunction
+  ApplyDiscountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ApplyDiscountFunction
+      Handler: apply.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: plic-discounts
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /deals/{did}/discount
+            Method: post
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/discounts/apply.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ApplyDiscountFunction
+  AdminLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminLoginFunction
+      Handler: login.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/auth/login
+            Method: post
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/login.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminLoginFunction
+  AdminUsersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminUsersListFunction
+      Handler: users-list.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/users
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-list.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersListFunction
+  AdminUsersGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminUsersGetFunction
+      Handler: users-get.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/users/{uid}
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-get.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersGetFunction
+  AdminUsersStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminUsersStatusFunction
+      Handler: users-status.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/users/{uid}/status
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-status.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersStatusFunction
+  AdminUsersGradeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminUsersGradeFunction
+      Handler: users-grade.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/users/{uid}/grade
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-grade.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersGradeFunction
+  AdminDealsListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminDealsListFunction
+      Handler: deals-list.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/deals
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/deals-list.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminDealsListFunction
+  AdminDealsGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminDealsGetFunction
+      Handler: deals-get.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/deals/{did}
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/deals-get.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminDealsGetFunction
+  AdminDealsStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminDealsStatusFunction
+      Handler: deals-status.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/deals/{did}/status
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/deals-status.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminDealsStatusFunction
+  GetBannersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetBannersFunction
+      Handler: banners.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /content/banners
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/banners.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetBannersFunction
+  GetNoticesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetNoticesFunction
+      Handler: notices.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /content/notices
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/notices.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetNoticesFunction
+  GetNoticeDetailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetNoticeDetailFunction
+      Handler: notice-detail.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /content/notices/{id}
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/notice-detail.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetNoticeDetailFunction
+  GetFaqsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetFaqsFunction
+      Handler: faqs.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /content/faqs
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/faqs.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetFaqsFunction
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value:
+      Ref: CognitoUserPool
+  CognitoClientId:
+    Description: Cognito Client ID
+    Value:
+      Ref: CognitoUserPoolClient
