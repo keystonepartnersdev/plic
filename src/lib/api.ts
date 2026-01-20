@@ -127,8 +127,12 @@ const sendLog = (log: ApiLogEntry) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ logs: [log] }),
     keepalive: true,
-  }).catch(() => {
-    // 로그 전송 실패는 무시
+  }).then(res => {
+    if (!res.ok) {
+      console.error('[API Log] 전송 실패:', res.status, res.statusText);
+    }
+  }).catch((err) => {
+    console.error('[API Log] 전송 에러:', err);
   });
 };
 
