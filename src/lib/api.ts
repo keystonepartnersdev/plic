@@ -25,43 +25,28 @@ interface ApiLogEntry {
   userAgent?: string;
 }
 
-// 로그 큐 (배치 전송용)
-let logQueue: ApiLogEntry[] = [];
-let flushTimeout: NodeJS.Timeout | null = null;
-
-// 로그 전송 (배치)
-const flushLogs = async () => {
-  if (logQueue.length === 0) return;
-
-  const logsToSend = [...logQueue];
-  logQueue = [];
-
-  try {
-    await fetch(`${API_BASE_URL}/tracking/api-log`, {
+// 로그 즉시 전송 (비동기, fire-and-forget)
+const sendLog = (log: ApiLogEntry) => {
+  // navigator.sendBeacon 사용 (페이지 이동 시에도 전송 보장)
+  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+    const blob = new Blob([JSON.stringify({ logs: [log] })], { type: 'application/json' });
+    navigator.sendBeacon(`${API_BASE_URL}/tracking/api-log`, blob);
+  } else {
+    // fallback: fetch (fire-and-forget)
+    fetch(`${API_BASE_URL}/tracking/api-log`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ logs: logsToSend }),
+      body: JSON.stringify({ logs: [log] }),
+      keepalive: true, // 페이지 이동 시에도 전송 유지
+    }).catch(() => {
+      // 로그 전송 실패는 무시
     });
-  } catch (err) {
-    // 로그 전송 실패는 무시 (서비스에 영향 주지 않음)
-    console.warn('API 로그 전송 실패:', err);
   }
 };
 
-// 로그 큐에 추가
+// 로그 전송 (queueLog -> sendLog로 변경)
 const queueLog = (log: ApiLogEntry) => {
-  logQueue.push(log);
-
-  // 10개 이상이면 즉시 전송, 그렇지 않으면 5초 후 전송
-  if (logQueue.length >= 10) {
-    if (flushTimeout) clearTimeout(flushTimeout);
-    flushLogs();
-  } else if (!flushTimeout) {
-    flushTimeout = setTimeout(() => {
-      flushTimeout = null;
-      flushLogs();
-    }, 5000);
-  }
+  sendLog(log);
 };
 
 // 현재 사용자 ID 가져오기 (로그용)
