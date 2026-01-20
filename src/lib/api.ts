@@ -140,6 +140,7 @@ const sendLog = (log: ApiLogEntry) => {
 
 // 로그 전송 (action 설명 추가)
 const queueLog = (log: ApiLogEntry) => {
+  console.log('[API queueLog]', log.endpoint, log.method);
   const action = getActionDescription(log.endpoint, log.method);
   sendLog({ ...log, action });
 };
@@ -197,6 +198,7 @@ async function request<T>(
   options: RequestInit = {},
   skipLogging = false
 ): Promise<T> {
+  console.log('[API Request]', options.method || 'GET', endpoint);
   const url = `${API_BASE_URL}${endpoint}`;
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
