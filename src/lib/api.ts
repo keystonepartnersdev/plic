@@ -206,7 +206,6 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Correlation-ID': correlationId,
     ...((options.headers as Record<string, string>) || {}),
   };
 
@@ -821,7 +820,6 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Correlation-ID': correlationId,
     ...((options.headers as Record<string, string>) || {}),
   };
 
