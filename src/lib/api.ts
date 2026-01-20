@@ -119,21 +119,17 @@ const getActionDescription = (endpoint: string, method: string): string => {
 
 // 로그 즉시 전송 (비동기, fire-and-forget)
 const sendLog = (log: ApiLogEntry) => {
-  // navigator.sendBeacon 사용 (페이지 이동 시에도 전송 보장)
-  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-    const blob = new Blob([JSON.stringify({ logs: [log] })], { type: 'application/json' });
-    navigator.sendBeacon(`${API_BASE_URL}/tracking/api-log`, blob);
-  } else {
-    // fallback: fetch (fire-and-forget)
-    fetch(`${API_BASE_URL}/tracking/api-log`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ logs: [log] }),
-      keepalive: true, // 페이지 이동 시에도 전송 유지
-    }).catch(() => {
-      // 로그 전송 실패는 무시
-    });
-  }
+  if (typeof window === 'undefined') return;
+
+  // fetch 사용 (fire-and-forget)
+  fetch(`${API_BASE_URL}/tracking/api-log`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ logs: [log] }),
+    keepalive: true,
+  }).catch(() => {
+    // 로그 전송 실패는 무시
+  });
 };
 
 // 로그 전송 (action 설명 추가)
