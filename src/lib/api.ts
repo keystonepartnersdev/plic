@@ -121,6 +121,8 @@ const getActionDescription = (endpoint: string, method: string): string => {
 const sendLog = (log: ApiLogEntry) => {
   if (typeof window === 'undefined') return;
 
+  console.log('[API Log] 전송 시도:', log.endpoint, log.method, log.statusCode);
+
   // fetch 사용 (fire-and-forget)
   fetch(`${API_BASE_URL}/tracking/api-log`, {
     method: 'POST',
