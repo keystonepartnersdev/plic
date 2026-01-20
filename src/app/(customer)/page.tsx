@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 export default function HomePage() {
   const router = useRouter();
   const { currentUser, isLoggedIn } = useUserStore();
-  const { getVisibleBanners, getHomeFeaturedFAQs } = useContentStore();
+  const { getVisibleBanners, getHomeFeaturedFAQs, fetchBanners, fetchFaqs } = useContentStore();
   const { drafts, clearCurrentDraft } = useDealDraftStore();
   const { deals } = useDealStore();
   const [amount, setAmount] = useState('');
@@ -24,6 +24,9 @@ export default function HomePage() {
     setMounted(true);
     // 홈 페이지 진입 시 currentDraft 클리어 (새로운 송금 시작을 위해)
     clearCurrentDraft();
+    // 배너, FAQ 데이터 API에서 가져오기
+    fetchBanners();
+    fetchFaqs();
   }, []);
 
   // 강제 로그아웃 감지 (탈퇴 처리 등)
@@ -38,12 +41,12 @@ export default function HomePage() {
 
   // 현재 사용자의 작성중 송금
   const userDrafts = mounted && isLoggedIn && currentUser
-    ? drafts.filter((d) => d.uid === currentUser.uid && d.status === 'draft')
+    ? drafts.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'draft')
     : [];
 
   // 현재 사용자의 결제대기 송금
   const userAwaitingDeals = mounted && isLoggedIn && currentUser
-    ? deals.filter((d) => d.uid === currentUser.uid && d.status === 'awaiting_payment' && !d.isPaid)
+    ? deals.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'awaiting_payment' && !d.isPaid)
     : [];
 
   const banners = getVisibleBanners();
@@ -317,15 +320,27 @@ export default function HomePage() {
       <Modal
         isOpen={showStatusModal}
         onClose={() => setShowStatusModal(false)}
-        title="계정 상태 안내"
+        title={currentUser?.status === 'pending_verification' ? '사업자 인증 안내' : '계정 상태 안내'}
       >
-        <p>
-          죄송합니다. 현재 <strong className="text-gray-900">{currentUser?.name}</strong>님의 계정은{' '}
-          <strong className="text-gray-900">
-            {currentUser?.status === 'pending' ? '대기' : '정지'}
-          </strong>
-          {' '}처리되었습니다. 원활한 서비스 이용을 위하여 고객센터로 문의주시면 친절하게 답변드리겠습니다. 감사합니다.
-        </p>
+        {currentUser?.status === 'pending_verification' ? (
+          <p>
+            안녕하세요, <strong className="text-gray-900">{currentUser?.name}</strong>님!
+            <br /><br />
+            현재 회원님의 계정은 <strong className="text-primary-400">가승인</strong> 상태로,
+            사업자등록증 검수가 진행 중입니다.
+            <br /><br />
+            검수는 영업일 기준 1~2일 내에 완료되며, 승인 완료 시 바로 서비스 이용이 가능합니다.
+            빠르게 처리해 드리겠습니다. 감사합니다.
+          </p>
+        ) : (
+          <p>
+            죄송합니다. 현재 <strong className="text-gray-900">{currentUser?.name}</strong>님의 계정은{' '}
+            <strong className="text-gray-900">
+              {currentUser?.status === 'pending' ? '대기' : '정지'}
+            </strong>
+            {' '}처리되었습니다. 원활한 서비스 이용을 위하여 고객센터로 문의주시면 친절하게 답변드리겠습니다. 감사합니다.
+          </p>
+        )}
       </Modal>
     </div>
   );

@@ -94,7 +94,8 @@ export interface IDraftDocument {
   name: string;
   type: string;
   size: number;
-  base64Data?: string; // Base64 인코딩된 파일 데이터
+  base64Data?: string; // Base64 인코딩된 파일 데이터 (레거시)
+  fileKey?: string; // S3 파일 키
 }
 
 // 송금 임시저장 (작성중)

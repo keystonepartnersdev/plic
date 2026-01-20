@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search,
   Plus,
@@ -14,7 +14,9 @@ import {
   ShieldAlert,
   Eye,
   EyeOff,
+  RefreshCw,
 } from 'lucide-react';
+import { adminAPI } from '@/lib/api';
 import { useAdminStore } from '@/stores';
 import { IAdmin, TAdminRole, TAdminStatus } from '@/types';
 import { AdminHelper } from '@/classes';
@@ -45,13 +47,13 @@ const STATUS_COLORS: Record<TAdminStatus, string> = {
 };
 
 export default function AdminsManagePage() {
-  const {
-    adminList,
-    addAdmin,
-    updateAdmin,
-    deleteAdmin,
-    currentAdmin,
-  } = useAdminStore();
+  const { currentAdmin } = useAdminStore();
+
+  // API 데이터 상태
+  const [adminList, setAdminList] = useState<IAdmin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
@@ -59,6 +61,25 @@ export default function AdminsManagePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<IAdmin | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IAdmin | null>(null);
+
+  // API에서 관리자 목록 로드
+  const fetchAdmins = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getAdmins();
+      setAdminList(response.admins || []);
+    } catch (err: any) {
+      console.error('관리자 목록 로드 실패:', err);
+      setError(err.message || '관리자 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
 
   // 필터링된 관리자 목록
   const filteredAdmins = adminList.filter((admin) => {
@@ -80,31 +101,102 @@ export default function AdminsManagePage() {
     active: adminList.filter((a) => a.status === 'active').length,
   };
 
-  const handleDelete = (admin: IAdmin) => {
+  const handleDelete = async (admin: IAdmin) => {
     if (admin.isMaster) {
       alert('마스터 계정은 삭제할 수 없습니다.');
       return;
     }
-    deleteAdmin(admin.adminId);
-    setDeleteTarget(null);
+
+    setIsSaving(true);
+    try {
+      await adminAPI.deleteAdmin(admin.adminId);
+      await fetchAdmins();
+      setDeleteTarget(null);
+    } catch (err: any) {
+      console.error('관리자 삭제 실패:', err);
+      alert(err.message || '관리자 삭제에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleToggleStatus = (admin: IAdmin) => {
+  const handleToggleStatus = async (admin: IAdmin) => {
     if (admin.isMaster) {
       alert('마스터 계정의 상태는 변경할 수 없습니다.');
       return;
     }
-    const newStatus = admin.status === 'active' ? 'inactive' : 'active';
-    updateAdmin(admin.adminId, { status: newStatus });
+
+    setIsSaving(true);
+    try {
+      const newStatus = admin.status === 'active' ? 'inactive' : 'active';
+      await adminAPI.updateAdmin(admin.adminId, { status: newStatus });
+      await fetchAdmins();
+    } catch (err: any) {
+      console.error('관리자 상태 변경 실패:', err);
+      alert(err.message || '관리자 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleSave = async (data: Partial<IAdmin> & { password?: string }) => {
+    setIsSaving(true);
+    try {
+      if (editingAdmin) {
+        await adminAPI.updateAdmin(editingAdmin.adminId, data);
+      } else {
+        await adminAPI.createAdmin({
+          email: data.email || '',
+          name: data.name || '',
+          phone: data.phone,
+          role: data.role as TAdminRole,
+          password: data.password || 'temp1234!',
+        });
+      }
+      await fetchAdmins();
+      setShowCreateModal(false);
+      setEditingAdmin(null);
+    } catch (err: any) {
+      console.error('관리자 저장 실패:', err);
+      alert(err.message || '관리자 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 로딩 상태
+  if (loading && adminList.length === 0) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
 
   return (
     <div>
       {/* 페이지 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">어드민관리</h1>
-        <p className="text-gray-500 mt-1">관리자 계정을 관리합니다.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">어드민관리</h1>
+          <p className="text-gray-500 mt-1">관리자 계정을 관리합니다.</p>
+        </div>
+        <button
+          onClick={fetchAdmins}
+          disabled={loading || isSaving}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+        >
+          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          새로고침
+        </button>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -180,7 +272,8 @@ export default function AdminsManagePage() {
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center justify-center gap-2 h-10 px-4 bg-primary-400 hover:bg-primary-500 text-white font-medium rounded-lg transition-colors"
+            disabled={isSaving}
+            className="flex items-center justify-center gap-2 h-10 px-4 bg-primary-400 hover:bg-primary-500 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             <Plus className="w-5 h-5" />
             관리자 추가
@@ -238,11 +331,11 @@ export default function AdminsManagePage() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => handleToggleStatus(admin)}
-                          disabled={admin.isMaster}
+                          disabled={admin.isMaster || isSaving}
                           className={cn(
                             'inline-flex px-2 py-1 text-xs font-medium rounded transition-opacity',
                             STATUS_COLORS[admin.status],
-                            admin.isMaster && 'opacity-50 cursor-not-allowed'
+                            (admin.isMaster || isSaving) && 'opacity-50 cursor-not-allowed'
                           )}
                         >
                           {STATUS_LABELS[admin.status]}
@@ -260,14 +353,16 @@ export default function AdminsManagePage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setEditingAdmin(admin)}
-                            className="p-2 text-gray-400 hover:text-primary-400 hover:bg-primary-50 rounded-lg transition-colors"
+                            disabled={isSaving}
+                            className="p-2 text-gray-400 hover:text-primary-400 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           {!admin.isMaster && (
                             <button
                               onClick={() => setDeleteTarget(admin)}
-                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              disabled={isSaving}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -296,27 +391,12 @@ export default function AdminsManagePage() {
         <AdminModal
           admin={editingAdmin}
           currentAdminId={currentAdmin?.adminId || ''}
+          isSaving={isSaving}
           onClose={() => {
             setShowCreateModal(false);
             setEditingAdmin(null);
           }}
-          onSave={(data) => {
-            if (editingAdmin) {
-              updateAdmin(editingAdmin.adminId, data);
-            } else {
-              const newAdmin = AdminHelper.createNewAdmin(
-                data.email || '',
-                data.name || '',
-                data.role as TAdminRole,
-                data.password || 'temp1234!',
-                currentAdmin?.adminId || 'SYSTEM',
-                data.phone
-              );
-              addAdmin(newAdmin);
-            }
-            setShowCreateModal(false);
-            setEditingAdmin(null);
-          }}
+          onSave={handleSave}
         />
       )}
 
@@ -324,6 +404,7 @@ export default function AdminsManagePage() {
       {deleteTarget && (
         <DeleteConfirmModal
           admin={deleteTarget}
+          isSaving={isSaving}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => handleDelete(deleteTarget)}
         />
@@ -336,11 +417,13 @@ export default function AdminsManagePage() {
 function AdminModal({
   admin,
   currentAdminId,
+  isSaving,
   onClose,
   onSave,
 }: {
   admin: IAdmin | null;
   currentAdminId: string;
+  isSaving: boolean;
   onClose: () => void;
   onSave: (data: Partial<IAdmin> & { password?: string }) => void;
 }) {
@@ -553,15 +636,17 @@ function AdminModal({
         <div className="flex gap-3 p-4 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             취소
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 h-12 bg-primary-400 text-white font-medium rounded-xl hover:bg-primary-500 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 bg-primary-400 text-white font-medium rounded-xl hover:bg-primary-500 transition-colors disabled:opacity-50"
           >
-            {admin ? '수정하기' : '추가하기'}
+            {isSaving ? '저장 중...' : (admin ? '수정하기' : '추가하기')}
           </button>
         </div>
       </div>
@@ -572,10 +657,12 @@ function AdminModal({
 // 삭제 확인 모달
 function DeleteConfirmModal({
   admin,
+  isSaving,
   onClose,
   onConfirm,
 }: {
   admin: IAdmin;
+  isSaving: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -598,15 +685,17 @@ function DeleteConfirmModal({
         <div className="flex gap-3 p-4 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             취소
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-12 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
           >
-            삭제하기
+            {isSaving ? '삭제 중...' : '삭제하기'}
           </button>
         </div>
       </div>

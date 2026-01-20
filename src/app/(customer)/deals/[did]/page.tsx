@@ -25,7 +25,7 @@ export default function DealDetailPage() {
   const [previewAttachment, setPreviewAttachment] = useState<{ url: string; name: string; index: number; isNew?: boolean } | null>(null);
 
   // 할인 스토어에서 데이터 가져오기
-  const { getDiscountByCode, getActiveCodes, getActiveCoupons, markAsUsed } = useDiscountStore();
+  const { getDiscountByCode, getActiveCodes, getActiveCoupons, markAsUsed, fetchUserCoupons, validateDiscountCode } = useDiscountStore();
 
   // 할인코드 & 쿠폰 상태
   const [discountCodeInput, setDiscountCodeInput] = useState('');
@@ -140,6 +140,13 @@ export default function DealDetailPage() {
       });
     }
   }, [mounted, isLoggedIn, deals, did, router, getDiscountByCode, availableCoupons]);
+
+  // 결제대기 상태일 때 쿠폰 목록 API에서 가져오기
+  useEffect(() => {
+    if (deal?.status === 'awaiting_payment' && !deal?.isPaid) {
+      fetchUserCoupons();
+    }
+  }, [deal?.status, deal?.isPaid, fetchUserCoupons]);
 
   if (!mounted || !isLoggedIn || !deal) {
     return (
@@ -1064,7 +1071,7 @@ export default function DealDetailPage() {
       </div>
 
       {/* 거래 취소 버튼 */}
-      {['awaiting_payment', 'pending', 'reviewing', 'hold', 'need_revision'].includes(deal.status) && !deal.isPaid && (
+      {deal.status && ['awaiting_payment', 'pending', 'reviewing', 'hold', 'need_revision'].includes(deal.status) && !deal.isPaid && (
         <div className="px-5 mt-4">
           <button
             onClick={handleCancel}

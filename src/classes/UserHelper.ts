@@ -29,7 +29,7 @@ export class UserHelper {
 
   // 등급별 설정 반환
   static getGradeConfig(grade: TUserGrade): IGradeConfig {
-    return this.GRADE_CONFIG[grade];
+    return this.GRADE_CONFIG[grade] || this.GRADE_CONFIG['basic'];
   }
 
   // 잔여 한도 계산
@@ -47,7 +47,8 @@ export class UserHelper {
     name: string,
     phone: string,
     authType: 'direct' | 'social',
-    agreements: IUser['agreements']
+    agreements: IUser['agreements'],
+    userType: 'personal' | 'business' = 'personal'
   ): IUser {
     const gradeConfig = this.GRADE_CONFIG['basic'];
     const now = new Date().toISOString();
@@ -56,6 +57,7 @@ export class UserHelper {
       uid: this.generateUID(),
       name,
       phone,
+      userType,
       authType,
       socialProvider: null,
       isVerified: false,

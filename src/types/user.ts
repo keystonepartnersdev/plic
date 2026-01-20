@@ -1,7 +1,22 @@
 // src/types/user.ts
 
-export type TUserStatus = 'active' | 'suspended' | 'pending' | 'withdrawn';
+export type TUserStatus = 'active' | 'suspended' | 'pending' | 'pending_verification' | 'withdrawn';
 export type TUserGrade = 'basic' | 'platinum' | 'b2b' | 'employee';
+export type TUserType = 'personal' | 'business';
+export type TBusinessVerificationStatus = 'pending' | 'verified' | 'rejected';
+
+/**
+ * 사업자 정보
+ */
+export interface IBusinessInfo {
+  businessName: string;           // 상호
+  businessNumber: string;         // 사업자등록번호 (10자리)
+  representativeName: string;     // 대표자명
+  businessLicenseKey?: string;    // S3 사업자등록증 파일 키
+  verificationStatus: TBusinessVerificationStatus;
+  verificationMemo?: string;      // 인증 관련 메모 (거절 사유 등)
+  verifiedAt?: string;            // 인증 완료 일시
+}
 
 /**
  * 등급 변경 처리 결과
@@ -49,6 +64,10 @@ export interface IUser {
   name: string;
   phone: string;
   email?: string;
+
+  // 회원 유형 (개인/사업자)
+  userType: TUserType;
+  businessInfo?: IBusinessInfo;
 
   // 인증 관련
   authType: 'direct' | 'social';

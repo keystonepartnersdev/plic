@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Download, Eye, History } from 'lucide-react';
 import { Header, Modal } from '@/components/common';
 import { dealsAPI } from '@/lib/api';
+import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
 import { useUserStore, useDealStore, useDealDraftStore, useAdminUserStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
@@ -78,11 +79,15 @@ function NewDealContent() {
     name: string;
     type: string;
     preview: string; // 이미지의 경우 미리보기 URL
-    base64Data?: string; // Base64 인코딩된 데이터
+    base64Data?: string; // Base64 인코딩된 데이터 (레거시, 드래프트 복원용)
+    fileKey?: string; // S3 파일 키
+    uploadStatus: 'pending' | 'uploading' | 'completed' | 'error';
+    uploadProgress?: number;
   }
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [attachmentsRestored, setAttachmentsRestored] = useState(false);
   const [previewFile, setPreviewFile] = useState<AttachmentFile | null>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
 
   // 기존 거래 내역 조회
   interface PreviousAccount {
@@ -199,13 +204,16 @@ function NewDealContent() {
       setStep(currentDraft.currentStep);
     }
 
-    // 첨부파일 복원
+    // 첨부파일 복원 (base64Data 또는 fileKey가 있는 파일)
     if (currentDraft.documents && currentDraft.documents.length > 0 && !attachmentsRestored) {
       const restoredFiles: AttachmentFile[] = currentDraft.documents
-        .filter((doc) => doc.base64Data) // base64Data가 있는 파일만 복원
+        .filter((doc) => doc.base64Data || doc.fileKey) // base64Data 또는 fileKey가 있는 파일만 복원
         .map((doc) => {
-          const file = base64ToFile(doc.base64Data!, doc.name, doc.type);
-          const preview = doc.type.startsWith('image/') ? doc.base64Data! : '';
+          // base64Data가 있으면 File 객체 생성, 없으면 빈 Blob으로 대체
+          const file = doc.base64Data
+            ? base64ToFile(doc.base64Data, doc.name, doc.type)
+            : new File([new Blob()], doc.name, { type: doc.type });
+          const preview = doc.type.startsWith('image/') && doc.base64Data ? doc.base64Data : '';
           return {
             id: doc.id,
             file,
@@ -213,6 +221,8 @@ function NewDealContent() {
             type: doc.type,
             preview,
             base64Data: doc.base64Data,
+            fileKey: doc.fileKey,
+            uploadStatus: 'completed' as const, // 복원된 파일은 이미 업로드 완료 상태
           };
         });
       if (restoredFiles.length > 0) {
@@ -258,13 +268,16 @@ function NewDealContent() {
           isVerified: recipient.isVerified,
         },
         senderName: senderName || undefined,
-        documents: attachments.map((a) => ({
-          id: a.id,
-          name: a.name,
-          type: a.type,
-          size: a.file.size,
-          base64Data: a.base64Data,
-        })),
+        documents: attachments
+          .filter((a) => a.uploadStatus === 'completed')
+          .map((a) => ({
+            id: a.id,
+            name: a.name,
+            type: a.type,
+            size: a.file.size,
+            base64Data: a.base64Data,
+            fileKey: a.fileKey,
+          })),
       });
     }, 500);
 
@@ -317,41 +330,111 @@ function NewDealContent() {
     const files = e.target.files;
     if (!files) return;
 
-    const maxFileSize = 50 * 1024 * 1024; // 50MB
     const maxFiles = 10;
-    const newFiles: AttachmentFile[] = [];
+    const validFiles: { file: File; id: string; preview: string }[] = [];
 
     for (const file of Array.from(files)) {
       // 최대 파일 개수 검증
-      if (attachments.length + newFiles.length >= maxFiles) {
+      if (attachments.length + validFiles.length >= maxFiles) {
         alert(`최대 ${maxFiles}개까지만 첨부할 수 있습니다.`);
         break;
       }
 
-      // 파일 크기 검증
-      if (file.size > maxFileSize) {
-        alert(`파일 크기가 50MB를 초과합니다: ${file.name}`);
+      // 파일 검증 (타입 + 크기)
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        alert(`${file.name}: ${validation.error}`);
         continue;
       }
 
-      // Base64로 인코딩
-      const base64Data = await fileToBase64(file);
+      // 이미지 파일인 경우 미리보기 URL 생성
+      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
 
-      // 이미지 파일인 경우 미리보기로 Base64 사용
-      const preview = file.type.startsWith('image/') ? base64Data : '';
-
-      newFiles.push({
-        id: crypto.randomUUID(),
+      validFiles.push({
         file,
-        name: file.name,
-        type: file.type,
+        id: crypto.randomUUID(),
         preview,
-        base64Data,
       });
     }
 
-    setAttachments([...attachments, ...newFiles]);
+    // 파일 추가 (pending 상태로)
+    const newAttachments: AttachmentFile[] = validFiles.map(({ file, id, preview }) => ({
+      id,
+      file,
+      name: file.name,
+      type: file.type,
+      preview,
+      uploadStatus: 'pending' as const,
+    }));
+
+    setAttachments((prev) => [...prev, ...newAttachments]);
     e.target.value = '';
+
+    // S3에 업로드 시작 (백그라운드)
+    for (const attachment of newAttachments) {
+      uploadFileToS3(attachment);
+    }
+  };
+
+  // S3 업로드 함수
+  const uploadFileToS3 = async (attachment: AttachmentFile) => {
+    setUploadingCount((prev) => prev + 1);
+
+    // 상태를 uploading으로 변경
+    setAttachments((prev) =>
+      prev.map((a) =>
+        a.id === attachment.id ? { ...a, uploadStatus: 'uploading' as const, uploadProgress: 0 } : a
+      )
+    );
+
+    try {
+      const result = await uploadFile(
+        attachment.file,
+        'temp', // 임시 업로드, 거래 생성 시 실제 경로로 이동
+        undefined,
+        {
+          onProgress: (progress) => {
+            setAttachments((prev) =>
+              prev.map((a) =>
+                a.id === attachment.id ? { ...a, uploadProgress: progress.percentage } : a
+              )
+            );
+          },
+        }
+      );
+
+      // 업로드 성공
+      setAttachments((prev) =>
+        prev.map((a) =>
+          a.id === attachment.id
+            ? { ...a, uploadStatus: 'completed' as const, fileKey: result.fileKey, uploadProgress: 100 }
+            : a
+        )
+      );
+    } catch (error) {
+      console.error('파일 업로드 실패:', error);
+
+      // 업로드 실패 - Base64 폴백 시도
+      try {
+        const base64Data = await fileToBase64(attachment.file);
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === attachment.id
+              ? { ...a, uploadStatus: 'completed' as const, base64Data }
+              : a
+          )
+        );
+      } catch {
+        // Base64도 실패하면 에러 상태로
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === attachment.id ? { ...a, uploadStatus: 'error' as const } : a
+          )
+        );
+      }
+    } finally {
+      setUploadingCount((prev) => prev - 1);
+    }
   };
 
   const removeAttachment = (id: string) => {
@@ -426,9 +509,27 @@ function NewDealContent() {
   const handleSubmit = async () => {
     if (!dealType) return;
 
+    // 업로드 중인 파일이 있는지 확인
+    if (uploadingCount > 0) {
+      alert('파일 업로드가 완료될 때까지 기다려주세요.');
+      return;
+    }
+
+    // 업로드 실패한 파일이 있는지 확인
+    const failedUploads = attachments.filter((a) => a.uploadStatus === 'error');
+    if (failedUploads.length > 0) {
+      alert('업로드에 실패한 파일이 있습니다. 파일을 삭제하고 다시 시도해주세요.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // S3 파일 키 또는 Base64 데이터 수집
+      const attachmentData = attachments
+        .filter((a) => a.uploadStatus === 'completed')
+        .map((a) => a.fileKey || a.base64Data || a.name);
+
       const response = await dealsAPI.create({
         dealName: `${selectedTypeConfig?.name} - ${recipient.accountHolder}`,
         dealType,
@@ -439,7 +540,7 @@ function NewDealContent() {
           accountHolder: recipient.accountHolder,
         },
         senderName: senderName || currentUser.name,
-        attachments: attachments.map((a) => a.preview || a.name),
+        attachments: attachmentData,
       });
 
       // Draft 제출 완료 후 삭제
@@ -463,7 +564,9 @@ function NewDealContent() {
     recipient.accountNumber.length >= 10 &&
     recipient.accountHolder &&
     recipient.isVerified;
-  const canProceedDocs = attachments.length > 0;
+  const canProceedDocs = attachments.length > 0 &&
+    attachments.every((a) => a.uploadStatus === 'completed') &&
+    uploadingCount === 0;
 
   const getStepTitle = () => {
     switch (step) {
@@ -906,28 +1009,59 @@ function NewDealContent() {
                         </div>
                       )}
 
+                      {/* 업로드 진행률 오버레이 */}
+                      {(file.uploadStatus === 'uploading' || file.uploadStatus === 'pending') && (
+                        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-20">
+                          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          {file.uploadProgress !== undefined && (
+                            <span className="text-white text-xs mt-1">{file.uploadProgress}%</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 업로드 에러 오버레이 */}
+                      {file.uploadStatus === 'error' && (
+                        <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center z-20">
+                          <AlertCircle className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+
                       {/* 삭제 버튼 - 최상위 z-index */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           removeAttachment(file.id);
                         }}
-                        className="absolute top-1 right-1 w-5 h-5 bg-primary-400 hover:bg-primary-500 rounded-full flex items-center justify-center transition-colors z-10"
+                        className="absolute top-1 right-1 w-5 h-5 bg-primary-400 hover:bg-primary-500 rounded-full flex items-center justify-center transition-colors z-30"
                       >
                         <X className="w-3 h-3 text-white" />
                       </button>
 
-                      {/* 미리보기 아이콘 오버레이 */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors z-5">
-                        <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
+                      {/* 미리보기 아이콘 오버레이 (완료된 파일만) */}
+                      {file.uploadStatus === 'completed' && (
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors z-5">
+                          <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
-                {/* 파일 개수 안내 */}
-                <p className="text-xs text-gray-500 mt-2">
-                  {attachments.length}/10
-                </p>
+                {/* 파일 개수 및 업로드 상태 안내 */}
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-gray-500">
+                    {attachments.length}/10
+                  </p>
+                  {uploadingCount > 0 && (
+                    <p className="text-xs text-primary-500">
+                      {uploadingCount}개 파일 업로드 중...
+                    </p>
+                  )}
+                  {uploadingCount === 0 && attachments.some((a) => a.uploadStatus === 'error') && (
+                    <p className="text-xs text-red-500">
+                      업로드 실패한 파일이 있습니다
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

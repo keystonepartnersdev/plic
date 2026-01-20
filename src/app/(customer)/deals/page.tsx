@@ -73,14 +73,14 @@ export default function DealsPage() {
     );
   }
 
-  const userDrafts = drafts.filter((d) => d.uid === currentUser?.uid && d.status === 'draft');
-  const awaitingPaymentDeals = deals.filter((d) => d.status === 'awaiting_payment');
-  const activeTabConfig = tabs.find((t) => t.id === activeTab)!;
-  const filteredDeals = deals.filter((d) => activeTabConfig.statuses.includes(d.status) && d.status !== 'awaiting_payment');
+  const userDrafts = drafts.filter((d) => d.uid === currentUser?.uid && d.status && d.status === 'draft');
+  const awaitingPaymentDeals = deals.filter((d) => d.status && d.status === 'awaiting_payment');
+  const activeTabConfig = tabs.find((t) => t.id === activeTab) || tabs[0];
+  const filteredDeals = deals.filter((d) => d.status && activeTabConfig.statuses.includes(d.status) && d.status !== 'awaiting_payment');
 
   const getTabCount = (tab: TabType) => {
-    const tabConfig = tabs.find((t) => t.id === tab)!;
-    const dealCount = deals.filter((d) => tabConfig.statuses.includes(d.status)).length;
+    const tabConfig = tabs.find((t) => t.id === tab) || tabs[0];
+    const dealCount = deals.filter((d) => d.status && tabConfig.statuses.includes(d.status)).length;
     if (tab === 'progress') {
       return dealCount + userDrafts.length;
     }
@@ -182,15 +182,27 @@ export default function DealsPage() {
       <Modal
         isOpen={showStatusModal}
         onClose={() => setShowStatusModal(false)}
-        title="계정 상태 안내"
+        title={currentUser?.status === 'pending_verification' ? '사업자 인증 안내' : '계정 상태 안내'}
       >
-        <p>
-          죄송합니다. 현재 <strong className="text-gray-900">{currentUser?.name}</strong>님의 계정은{' '}
-          <strong className="text-gray-900">
-            {currentUser?.status === 'pending' ? '대기' : '정지'}
-          </strong>
-          {' '}처리되었습니다. 원활한 서비스 이용을 위하여 고객센터로 문의주시면 친절하게 답변드리겠습니다. 감사합니다.
-        </p>
+        {currentUser?.status === 'pending_verification' ? (
+          <p>
+            안녕하세요, <strong className="text-gray-900">{currentUser?.name}</strong>님!
+            <br /><br />
+            현재 회원님의 계정은 <strong className="text-primary-400">가승인</strong> 상태로,
+            사업자등록증 검수가 진행 중입니다.
+            <br /><br />
+            검수는 영업일 기준 1~2일 내에 완료되며, 승인 완료 시 바로 서비스 이용이 가능합니다.
+            빠르게 처리해 드리겠습니다. 감사합니다.
+          </p>
+        ) : (
+          <p>
+            죄송합니다. 현재 <strong className="text-gray-900">{currentUser?.name}</strong>님의 계정은{' '}
+            <strong className="text-gray-900">
+              {currentUser?.status === 'pending' ? '대기' : '정지'}
+            </strong>
+            {' '}처리되었습니다. 원활한 서비스 이용을 위하여 고객센터로 문의주시면 친절하게 답변드리겠습니다. 감사합니다.
+          </p>
+        )}
       </Modal>
 
       {portalTarget && createPortal(

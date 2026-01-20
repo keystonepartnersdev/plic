@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, CreditCard, Plus, ChevronRight, Star, Trash2 } from 'lucide-react';
+import { Check, CreditCard, Plus, ChevronRight, Star, Trash2, AlertCircle, Clock } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore, useDealStore, usePaymentStore } from '@/stores';
 import { PaymentHelper, DealHelper } from '@/classes';
@@ -89,6 +89,47 @@ export default function PaymentPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
+
+  // 사업자 인증 대기 상태 체크
+  if (currentUser.status === 'pending_verification') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header title="결제하기" showBack />
+        <div className="px-5 py-12">
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-8 h-8 text-yellow-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              사업자 인증 대기 중
+            </h2>
+            <p className="text-gray-500 mb-6">
+              사업자등록증 검토가 완료되면<br />
+              결제 및 송금이 가능합니다.
+            </p>
+            <div className="bg-yellow-50 rounded-xl p-4 text-left">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium mb-1">검토 진행 중</p>
+                  <p className="text-yellow-700">
+                    영업일 기준 1~2일 내에 검토가 완료됩니다.
+                    승인 완료 시 알림을 보내드립니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => router.back()}
+              className="mt-6 w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
+            >
+              돌아가기
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

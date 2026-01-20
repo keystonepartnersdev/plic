@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Plus,
@@ -16,11 +16,12 @@ import {
   Users,
   UserPlus,
   UserMinus,
+  RefreshCw,
 } from 'lucide-react';
-import { useDiscountStore, useAdminUserStore } from '@/stores';
-import { IDiscount, IDiscountCreateInput, TDiscountType, TDiscountValueType, TUserGrade, IUser } from '@/types';
+import { adminAPI } from '@/lib/api';
+import { useAdminUserStore } from '@/stores';
+import { IDiscount, IDiscountCreateInput, TDiscountType, TUserGrade, IUser } from '@/types';
 import { cn } from '@/lib/utils';
-import { UserHelper } from '@/classes';
 
 // 등급 라벨 맵
 const GRADE_LABELS: Record<TUserGrade, string> = {
@@ -35,20 +36,43 @@ const ALL_GRADES: TUserGrade[] = ['basic', 'platinum', 'b2b', 'employee'];
 type TabType = 'code' | 'coupon';
 
 export default function AdminCodesPage() {
-  const {
-    discounts,
-    addDiscount,
-    updateDiscount,
-    deleteDiscount,
-    toggleActive,
-    getDiscountsByType,
-  } = useDiscountStore();
+  const { users, searchUsers } = useAdminUserStore();
+
+  // API 데이터 상태
+  const [discounts, setDiscounts] = useState<IDiscount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabType>('code');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<IDiscount | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IDiscount | null>(null);
+
+  // API에서 할인 목록 로드
+  const fetchDiscounts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getDiscounts();
+      setDiscounts(response.discounts || []);
+    } catch (err: any) {
+      console.error('할인 목록 로드 실패:', err);
+      setError(err.message || '할인 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDiscounts();
+  }, []);
+
+  // 타입별 필터링
+  const getDiscountsByType = (type: TDiscountType) => {
+    return discounts.filter(d => d.type === type);
+  };
 
   // 현재 탭에 맞는 데이터
   const filteredDiscounts = getDiscountsByType(activeTab).filter((d) => {
@@ -70,18 +94,85 @@ export default function AdminCodesPage() {
     active: getDiscountsByType('coupon').filter((d) => d.isActive).length,
   };
 
-  const handleDelete = (discount: IDiscount) => {
-    deleteDiscount(discount.id);
-    setDeleteTarget(null);
+  const handleDelete = async (discount: IDiscount) => {
+    setIsSaving(true);
+    try {
+      await adminAPI.deleteDiscount(discount.id);
+      await fetchDiscounts();
+      setDeleteTarget(null);
+    } catch (err: any) {
+      console.error('할인 삭제 실패:', err);
+      alert(err.message || '할인 삭제에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleToggle = async (discount: IDiscount) => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updateDiscount(discount.id, { isActive: !discount.isActive });
+      await fetchDiscounts();
+    } catch (err: any) {
+      console.error('할인 상태 변경 실패:', err);
+      alert(err.message || '할인 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSave = async (data: IDiscountCreateInput) => {
+    setIsSaving(true);
+    try {
+      if (editingDiscount) {
+        await adminAPI.updateDiscount(editingDiscount.id, data);
+      } else {
+        await adminAPI.createDiscount(data);
+      }
+      await fetchDiscounts();
+      setShowCreateModal(false);
+      setEditingDiscount(null);
+    } catch (err: any) {
+      console.error('할인 저장 실패:', err);
+      alert(err.message || '할인 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 로딩 상태
+  if (loading && discounts.length === 0) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
 
   return (
     <div>
       {/* 페이지 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">코드관리</h1>
-        <p className="text-gray-500 mt-1">할인코드 및 쿠폰을 관리합니다.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">코드관리</h1>
+          <p className="text-gray-500 mt-1">할인코드 및 쿠폰을 관리합니다.</p>
+        </div>
+        <button
+          onClick={fetchDiscounts}
+          disabled={loading || isSaving}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+        >
+          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          새로고침
+        </button>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -170,7 +261,8 @@ export default function AdminCodesPage() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center justify-center gap-2 h-10 px-4 bg-primary-400 hover:bg-primary-500 text-white font-medium rounded-lg transition-colors"
+            disabled={isSaving}
+            className="flex items-center justify-center gap-2 h-10 px-4 bg-primary-400 hover:bg-primary-500 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             <Plus className="w-5 h-5" />
             {activeTab === 'code' ? '할인코드 추가' : '쿠폰 추가'}
@@ -204,9 +296,10 @@ export default function AdminCodesPage() {
                   <DiscountRow
                     key={discount.id}
                     discount={discount}
+                    isSaving={isSaving}
                     onEdit={() => setEditingDiscount(discount)}
                     onDelete={() => setDeleteTarget(discount)}
-                    onToggle={() => toggleActive(discount.id)}
+                    onToggle={() => handleToggle(discount)}
                   />
                 ))
               ) : (
@@ -230,19 +323,14 @@ export default function AdminCodesPage() {
         <DiscountModal
           type={activeTab}
           discount={editingDiscount}
+          users={users}
+          searchUsers={searchUsers}
+          isSaving={isSaving}
           onClose={() => {
             setShowCreateModal(false);
             setEditingDiscount(null);
           }}
-          onSave={(data) => {
-            if (editingDiscount) {
-              updateDiscount(editingDiscount.id, data);
-            } else {
-              addDiscount(data);
-            }
-            setShowCreateModal(false);
-            setEditingDiscount(null);
-          }}
+          onSave={handleSave}
         />
       )}
 
@@ -250,6 +338,7 @@ export default function AdminCodesPage() {
       {deleteTarget && (
         <DeleteConfirmModal
           discount={deleteTarget}
+          isSaving={isSaving}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => handleDelete(deleteTarget)}
         />
@@ -261,11 +350,13 @@ export default function AdminCodesPage() {
 // 행 컴포넌트
 function DiscountRow({
   discount,
+  isSaving,
   onEdit,
   onDelete,
   onToggle,
 }: {
   discount: IDiscount;
+  isSaving: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
@@ -369,9 +460,11 @@ function DiscountRow({
       <td className="px-6 py-4">
         <button
           onClick={onToggle}
+          disabled={isSaving}
           className={cn(
             'flex items-center gap-1.5 text-sm font-medium transition-colors',
-            discount.isActive ? 'text-green-600' : 'text-gray-400'
+            discount.isActive ? 'text-green-600' : 'text-gray-400',
+            isSaving && 'opacity-50 cursor-not-allowed'
           )}
         >
           {discount.isActive ? (
@@ -391,13 +484,15 @@ function DiscountRow({
         <div className="flex items-center gap-2">
           <button
             onClick={onEdit}
-            className="p-2 text-gray-400 hover:text-primary-400 hover:bg-primary-50 rounded-lg transition-colors"
+            disabled={isSaving}
+            className="p-2 text-gray-400 hover:text-primary-400 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={onDelete}
-            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            disabled={isSaving}
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -411,16 +506,20 @@ function DiscountRow({
 function DiscountModal({
   type,
   discount,
+  users,
+  searchUsers,
+  isSaving,
   onClose,
   onSave,
 }: {
   type: TDiscountType;
   discount: IDiscount | null;
+  users: IUser[];
+  searchUsers: (query: string) => IUser[];
+  isSaving: boolean;
   onClose: () => void;
   onSave: (data: IDiscountCreateInput) => void;
 }) {
-  const { users, searchUsers } = useAdminUserStore();
-
   const [formData, setFormData] = useState<IDiscountCreateInput>({
     name: discount?.name || '',
     code: discount?.code || '',
@@ -936,15 +1035,17 @@ function DiscountModal({
         <div className="flex gap-3 p-4 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             취소
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 h-12 bg-primary-400 text-white font-medium rounded-xl hover:bg-primary-500 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 bg-primary-400 text-white font-medium rounded-xl hover:bg-primary-500 transition-colors disabled:opacity-50"
           >
-            {discount ? '수정하기' : '추가하기'}
+            {isSaving ? '저장 중...' : (discount ? '수정하기' : '추가하기')}
           </button>
         </div>
       </div>
@@ -955,10 +1056,12 @@ function DiscountModal({
 // 삭제 확인 모달
 function DeleteConfirmModal({
   discount,
+  isSaving,
   onClose,
   onConfirm,
 }: {
   discount: IDiscount;
+  isSaving: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -985,15 +1088,17 @@ function DeleteConfirmModal({
         <div className="flex gap-3 p-4 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             취소
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-12 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors"
+            disabled={isSaving}
+            className="flex-1 h-12 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
           >
-            삭제하기
+            {isSaving ? '삭제 중...' : '삭제하기'}
           </button>
         </div>
       </div>

@@ -23,7 +23,99 @@ interface ApiLogEntry {
   timestamp: string;
   userId?: string;
   userAgent?: string;
+  action?: string; // 한글 설명
 }
+
+// 엔드포인트별 한글 설명
+const getActionDescription = (endpoint: string, method: string): string => {
+  // 정확한 매칭
+  const exactMatches: Record<string, Record<string, string>> = {
+    '/auth/signup': { POST: '회원가입' },
+    '/auth/confirm': { POST: '이메일 인증' },
+    '/auth/login': { POST: '로그인' },
+    '/auth/refresh': { POST: '토큰 갱신' },
+    '/auth/logout': { POST: '로그아웃' },
+    '/users/me': { GET: '내 정보 조회', PUT: '내 정보 수정', DELETE: '회원 탈퇴' },
+    '/users/me/grade': { GET: '등급/수수료 조회' },
+    '/deals': { GET: '거래 목록 조회', POST: '거래 생성' },
+    '/discounts/validate': { POST: '할인코드 검증' },
+    '/discounts/coupons': { GET: '쿠폰 목록 조회' },
+    '/content/banners': { GET: '배너 조회' },
+    '/content/notices': { GET: '공지사항 목록' },
+    '/content/faqs': { GET: 'FAQ 조회' },
+    '/uploads/presigned-url': { POST: '파일 업로드 URL 요청' },
+    '/admin/auth/login': { POST: '관리자 로그인' },
+    '/admin/users': { GET: '회원 목록 조회' },
+    '/admin/deals': { GET: '거래 목록 조회 (관리자)' },
+    '/admin/banners': { GET: '배너 목록', POST: '배너 등록' },
+    '/admin/notices': { GET: '공지사항 목록', POST: '공지사항 등록' },
+    '/admin/faqs': { GET: 'FAQ 목록', POST: 'FAQ 등록' },
+    '/admin/discounts': { GET: '할인코드 목록', POST: '할인코드 등록' },
+    '/admin/admins': { GET: '관리자 목록', POST: '관리자 등록' },
+    '/admin/analytics': { GET: '분석 데이터 조회' },
+    '/admin/business-analytics': { GET: '비즈니스 분석 조회' },
+  };
+
+  if (exactMatches[endpoint]?.[method]) {
+    return exactMatches[endpoint][method];
+  }
+
+  // 패턴 매칭 (동적 ID 포함)
+  if (endpoint.match(/^\/deals\/[^/]+$/)) {
+    if (method === 'GET') return '거래 상세 조회';
+    if (method === 'PUT') return '거래 수정';
+    if (method === 'DELETE') return '거래 취소';
+  }
+  if (endpoint.match(/^\/deals\/[^/]+\/discount$/)) {
+    return '할인 적용';
+  }
+  if (endpoint.match(/^\/content\/notices\/[^/]+$/)) {
+    return '공지사항 상세';
+  }
+  if (endpoint.match(/^\/admin\/users\/[^/]+$/)) {
+    return '회원 상세 조회';
+  }
+  if (endpoint.match(/^\/admin\/users\/[^/]+\/status$/)) {
+    return '회원 상태 변경';
+  }
+  if (endpoint.match(/^\/admin\/users\/[^/]+\/grade$/)) {
+    return '회원 등급 변경';
+  }
+  if (endpoint.match(/^\/admin\/users\/[^/]+\/business$/)) {
+    return '사업자 인증 처리';
+  }
+  if (endpoint.match(/^\/admin\/deals\/[^/]+$/)) {
+    return '거래 상세 조회 (관리자)';
+  }
+  if (endpoint.match(/^\/admin\/deals\/[^/]+\/status$/)) {
+    return '거래 상태 변경';
+  }
+  if (endpoint.match(/^\/admin\/banners\/[^/]+$/)) {
+    if (method === 'PUT') return '배너 수정';
+    if (method === 'DELETE') return '배너 삭제';
+  }
+  if (endpoint.match(/^\/admin\/notices\/[^/]+$/)) {
+    if (method === 'PUT') return '공지사항 수정';
+    if (method === 'DELETE') return '공지사항 삭제';
+  }
+  if (endpoint.match(/^\/admin\/faqs\/[^/]+$/)) {
+    if (method === 'PUT') return 'FAQ 수정';
+    if (method === 'DELETE') return 'FAQ 삭제';
+  }
+  if (endpoint.match(/^\/admin\/discounts\/[^/]+$/)) {
+    if (method === 'GET') return '할인코드 상세';
+    if (method === 'PUT') return '할인코드 수정';
+    if (method === 'DELETE') return '할인코드 삭제';
+  }
+  if (endpoint.match(/^\/admin\/admins\/[^/]+$/)) {
+    if (method === 'GET') return '관리자 상세';
+    if (method === 'PUT') return '관리자 수정';
+    if (method === 'DELETE') return '관리자 삭제';
+  }
+
+  // 기본값
+  return `${method} ${endpoint}`;
+};
 
 // 로그 즉시 전송 (비동기, fire-and-forget)
 const sendLog = (log: ApiLogEntry) => {
@@ -44,9 +136,10 @@ const sendLog = (log: ApiLogEntry) => {
   }
 };
 
-// 로그 전송 (queueLog -> sendLog로 변경)
+// 로그 전송 (action 설명 추가)
 const queueLog = (log: ApiLogEntry) => {
-  sendLog(log);
+  const action = getActionDescription(log.endpoint, log.method);
+  sendLog({ ...log, action });
 };
 
 // 현재 사용자 ID 가져오기 (로그용)

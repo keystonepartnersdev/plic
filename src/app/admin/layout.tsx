@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,10 +14,11 @@ import {
   Settings,
   UserCog,
   LogOut,
+  BarChart3,
+  Bug,
 } from 'lucide-react';
 import { useAdminStore } from '@/stores';
 import { cn } from '@/lib/utils';
-import { AdminHelper } from '@/classes';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -31,6 +32,8 @@ const menuItems = [
   { href: '/admin/contents/banners', icon: Image, label: '배너관리', permission: 'content.banner.manage' },
   { href: '/admin/contents/notices', icon: Bell, label: '공지사항', permission: 'content.notice.manage' },
   { href: '/admin/contents/faqs', icon: HelpCircle, label: 'FAQ관리', permission: 'content.faq.manage' },
+  { href: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'analytics.view' },
+  { href: '/admin/api-logs', icon: Bug, label: 'API Logs', permission: 'analytics.view' },
   { href: '/admin/admins', icon: UserCog, label: '어드민관리', permission: 'admin.view' },
   { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view' },
 ];
@@ -38,34 +41,35 @@ const menuItems = [
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { currentAdmin, isLoggedIn, logout, hasPermission, login, adminList } = useAdminStore();
+  const { currentAdmin, logout, hasPermission } = useAdminStore();
+  const [mounted, setMounted] = useState(false);
+
+  // 토큰 확인 함수
+  const checkToken = () => {
+    if (typeof window !== 'undefined') {
+      return !!localStorage.getItem('plic_admin_token');
+    }
+    return false;
+  };
 
   useEffect(() => {
-    // 개발 환경: 자동 로그인 (로그인 우회)
-    if (!isLoggedIn) {
-      // 마스터 관리자 계정으로 자동 로그인
-      const admin = adminList.find((a) => a.email === 'admin');
-      if (admin) {
-        const roleConfig = AdminHelper.getRoleConfig(admin.role);
-        const now = new Date();
-        const expiresAt = new Date(now.getTime() + 8 * 60 * 60 * 1000); // 8시간
+    setMounted(true);
+  }, []);
 
-        login({
-          adminId: admin.adminId,
-          email: admin.email,
-          name: admin.name,
-          role: admin.role,
-          permissions: roleConfig.permissions,
-          loginAt: now.toISOString(),
-          expiresAt: expiresAt.toISOString(),
-        });
+  useEffect(() => {
+    // 마운트 후 토큰 체크
+    if (mounted && pathname !== '/admin/login') {
+      const hasToken = checkToken();
+      if (!hasToken) {
+        router.replace('/admin/login');
       }
     }
-  }, [isLoggedIn, login, adminList]);
+  }, [mounted, pathname, router]);
 
   const handleLogout = () => {
+    localStorage.removeItem('plic_admin_token');
     logout();
-    // 로그아웃 후 자동으로 다시 로그인됨
+    router.replace('/admin/login');
   };
 
   // 로그인 페이지일 경우 레이아웃 없이 렌더링
@@ -73,8 +77,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return <>{children}</>;
   }
 
-  // 로그인되지 않은 경우 로딩
-  if (!isLoggedIn) {
+  // 마운트 전이면 로딩
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
+
+  // 토큰 없으면 로딩 (리다이렉트 대기)
+  if (!checkToken()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -93,16 +106,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* 사용자 정보 */}
         <div className="p-4 border-b border-gray-200">
-          <p className="font-semibold text-gray-900">{currentAdmin?.name}</p>
-          <p className="text-sm text-gray-500">{currentAdmin?.email}</p>
+          <p className="font-semibold text-gray-900">{currentAdmin?.name || '관리자'}</p>
+          <p className="text-sm text-gray-500">{currentAdmin?.email || ''}</p>
         </div>
 
         {/* 메뉴 */}
         <nav className="p-4">
           <ul className="space-y-1">
             {menuItems.map((item) => {
-              // 권한 체크
-              if (item.permission && !hasPermission(item.permission)) {
+              if (item.permission && currentAdmin && !hasPermission(item.permission)) {
                 return null;
               }
 

@@ -1,0 +1,4326 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: PLIC Backend API
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value:
+      Ref: CognitoUserPool
+  CognitoClientId:
+    Description: Cognito Client ID
+    Value:
+      Ref: CognitoUserPoolClient
+Resources:
+  CancelDealFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/cancel.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: CancelDealFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/53c1f0eb06f4809c653a92f689df0c7b
+      Handler: cancel.handler
+      Role:
+        Fn::GetAtt:
+        - CancelDealFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  UpdateMeFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/update.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: UpdateMeFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/cb978e0d2904cc85d90a5798a453f155
+      Handler: update.handler
+      Role:
+        Fn::GetAtt:
+        - UpdateMeFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminDealsStatusFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminDealsStatusFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: AdminDealsStatusFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: AdminDealsStatusFunctionRolePolicy2
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  WithdrawFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WithdrawFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/DELETE/users/me
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminUsersGetFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminUsersGetFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: AdminUsersGetFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: AdminUsersGetFunctionRolePolicy2
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ServerlessRestApiProdStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId:
+        Ref: ServerlessRestApiDeployment8bb8033978
+      RestApiId:
+        Ref: ServerlessRestApi
+      StageName: Prod
+  AdminsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-admins
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: adminId
+        AttributeType: S
+      - AttributeName: email
+        AttributeType: S
+      KeySchema:
+      - AttributeName: adminId
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: email-index
+        KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+    Metadata:
+      SamResourceId: AdminsTable
+  ApplyDiscountFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: ApplyDiscountFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/deals/*/discount
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminUsersGetFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-get.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersGetFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/e5e38aec399deb33f6e2a0fbbc89749e
+      Handler: users-get.handler
+      Role:
+        Fn::GetAtt:
+        - AdminUsersGetFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  UpdateDealFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: UpdateDealFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: UpdateDealFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: UpdateDealFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  AdminUsersStatusFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-status.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersStatusFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/07b5e99f553b1417ae3484864afa6bb8
+      Handler: users-status.handler
+      Role:
+        Fn::GetAtt:
+        - AdminUsersStatusFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminUsersListFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-list.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersListFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/3ede920b8be726e22d11adddbd41387c
+      Handler: users-list.handler
+      Role:
+        Fn::GetAtt:
+        - AdminUsersListFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetBannersFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetBannersFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/content/banners
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminDealsStatusFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminDealsStatusFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/PUT/admin/deals/*/status
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetFaqsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetFaqsFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: ContentsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: ContentsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ConfirmFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/confirm.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ConfirmFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/4dc31adf8268b327d4fdcca619aef004
+      Handler: confirm.handler
+      Role:
+        Fn::GetAtt:
+        - ConfirmFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetGradeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetGradeFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: GetGradeFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  UpdateMeFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: UpdateMeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/PUT/users/me
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetCouponsFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetCouponsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/discounts/coupons
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminUsersGradeFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/users-grade.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersGradeFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/2c7abc4a313183a0085e4e3fe2179465
+      Handler: users-grade.handler
+      Role:
+        Fn::GetAtt:
+        - AdminUsersGradeFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetDealFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetDealFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/deals/*
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetNoticesFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/notices.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetNoticesFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/417c13f901032f2efdfd1a4c378a88a2
+      Handler: notices.handler
+      Role:
+        Fn::GetAtt:
+        - GetNoticesFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  WithdrawFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: WithdrawFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: WithdrawFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            - cognito-idp:AdminDeleteUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetNoticeDetailFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetNoticeDetailFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/content/notices/*
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  ValidateDiscountFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: ValidateDiscountFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName: plic-discounts
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName: plic-discounts
+      - PolicyName: ValidateDiscountFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: ValidateDiscountFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetFaqsFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/faqs.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetFaqsFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/e0565dd2fd2a0952a40bce5cb4a3410b
+      Handler: faqs.handler
+      Role:
+        Fn::GetAtt:
+        - GetFaqsFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminUsersGetFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminUsersGetFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/admin/users/*
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  RefreshFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/refresh.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: RefreshFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/f6c29d1b332bf7c410d733c1124699b4
+      Handler: refresh.handler
+      Role:
+        Fn::GetAtt:
+        - RefreshFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminUsersGradeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminUsersGradeFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: AdminUsersGradeFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ApplyDiscountFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/discounts/apply.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ApplyDiscountFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/8788b90997ca9959ec0d39f7025a381a
+      Handler: apply.handler
+      Role:
+        Fn::GetAtt:
+        - ApplyDiscountFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminDealsListFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/deals-list.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminDealsListFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/c437217f92704afccd01bbd973ebd146
+      Handler: deals-list.handler
+      Role:
+        Fn::GetAtt:
+        - AdminDealsListFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetCouponsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetCouponsFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName: plic-discounts
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName: plic-discounts
+      - PolicyName: GetCouponsFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: GetCouponsFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  UpdateDealFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/update.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: UpdateDealFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/d6172aa501bce3ad8c1dd56f45731b0c
+      Handler: update.handler
+      Role:
+        Fn::GetAtt:
+        - UpdateDealFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetDealFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/get.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetDealFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/2c45403cfa491bd75a6c8f07ce45c3a7
+      Handler: get.handler
+      Role:
+        Fn::GetAtt:
+        - GetDealFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  RefreshFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: RefreshFunctionRolePolicy0
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:InitiateAuth
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ApplyDiscountFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: ApplyDiscountFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName: plic-discounts
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName: plic-discounts
+      - PolicyName: ApplyDiscountFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: ApplyDiscountFunctionRolePolicy2
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: ApplyDiscountFunctionRolePolicy3
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  RefreshFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: RefreshFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/auth/refresh
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetMeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetMeFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: GetMeFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ValidateDiscountFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: ValidateDiscountFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/discounts/validate
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetMeFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/me.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetMeFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/eb0f5a7e7eebfd6d6dcbb5f4962c2479
+      Handler: me.handler
+      Role:
+        Fn::GetAtt:
+        - GetMeFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminUsersListFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminUsersListFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/admin/users
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: plic-users
+      AutoVerifiedAttributes:
+      - email
+      UsernameAttributes:
+      - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+    Metadata:
+      SamResourceId: CognitoUserPool
+  SignupFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: SignupFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/auth/signup
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminLoginFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminLoginFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/admin/auth/login
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  CreateDealFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: CreateDealFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/deals
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminDealsGetFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminDealsGetFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/admin/deals/*
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  LoginFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/login.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: LoginFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/9db06c412ae6ba5bb8a0043319b6512e
+      Handler: login.handler
+      Role:
+        Fn::GetAtt:
+        - LoginFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  UpdateMeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: UpdateMeFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: UpdateMeFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: plic-web
+      UserPoolId:
+        Ref: CognitoUserPool
+      ExplicitAuthFlows:
+      - ALLOW_USER_PASSWORD_AUTH
+      - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+    Metadata:
+      SamResourceId: CognitoUserPoolClient
+  ListDealsFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/list.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ListDealsFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/cd9d32dbd60fa4184f203e34a9d6e26c
+      Handler: list.handler
+      Role:
+        Fn::GetAtt:
+        - ListDealsFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetNoticeDetailFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/notice-detail.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetNoticeDetailFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/2d230cd2f9b81b25b865e87c2e3775f6
+      Handler: notice-detail.handler
+      Role:
+        Fn::GetAtt:
+        - GetNoticeDetailFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  ConfirmFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: ConfirmFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: ConfirmFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:ConfirmSignUp
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetCouponsFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/discounts/coupons.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetCouponsFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/90e8f08e2f2d0bd7388e07830ae4b4c0
+      Handler: coupons.handler
+      Role:
+        Fn::GetAtt:
+        - GetCouponsFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  LoginFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: LoginFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: LoginFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:InitiateAuth
+            - cognito-idp:AdminGetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  AdminDealsGetFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/deals-get.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminDealsGetFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/b198c48e97f71b909e3fb7c13f22e3a3
+      Handler: deals-get.handler
+      Role:
+        Fn::GetAtt:
+        - AdminDealsGetFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminDealsStatusFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/deals-status.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminDealsStatusFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/7d86c2e7fabac7545b1d031385058ea7
+      Handler: deals-status.handler
+      Role:
+        Fn::GetAtt:
+        - AdminDealsStatusFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  DealsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-deals
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: did
+        AttributeType: S
+      - AttributeName: uid
+        AttributeType: S
+      - AttributeName: status
+        AttributeType: S
+      - AttributeName: createdAt
+        AttributeType: S
+      KeySchema:
+      - AttributeName: did
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: uid-index
+        KeySchema:
+        - AttributeName: uid
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+      - IndexName: status-index
+        KeySchema:
+        - AttributeName: status
+          KeyType: HASH
+        - AttributeName: createdAt
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+    Metadata:
+      SamResourceId: DealsTable
+  GetNoticesFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetNoticesFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/content/notices
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetNoticesFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetNoticesFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: ContentsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: ContentsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ContentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-contents
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: pk
+        AttributeType: S
+      - AttributeName: sk
+        AttributeType: S
+      KeySchema:
+      - AttributeName: pk
+        KeyType: HASH
+      - AttributeName: sk
+        KeyType: RANGE
+    Metadata:
+      SamResourceId: ContentsTable
+  GetDealFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetDealFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: GetDealFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: GetDealFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  UpdateDealFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: UpdateDealFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/PUT/deals/*
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetBannersFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetBannersFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: ContentsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: ContentsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  CancelDealFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: CancelDealFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: CancelDealFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: CancelDealFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ListDealsFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: ListDealsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/deals
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminDealsListFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminDealsListFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: AdminDealsListFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ConfirmFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: ConfirmFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/auth/confirm
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminUsersGradeFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminUsersGradeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/PUT/admin/users/*/grade
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  LogoutFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LogoutFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/auth/logout
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  GetGradeFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetGradeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/users/me/grade
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  LogoutFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/logout.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: LogoutFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/1baeafb63613f462cb5daadb6f51812d
+      Handler: logout.handler
+      Role:
+        Fn::GetAtt:
+        - LogoutFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AttachmentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: plic-attachments-${AWS::AccountId}
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders:
+          - '*'
+          AllowedMethods:
+          - GET
+          - PUT
+          - POST
+          AllowedOrigins:
+          - '*'
+          MaxAge: 3000
+    Metadata:
+      SamResourceId: AttachmentsBucket
+  CancelDealFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: CancelDealFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/DELETE/deals/*
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  CreateDealFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: CreateDealFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: CreateDealFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: CreateDealFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  SignupFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: SignupFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: SignupFunctionRolePolicy1
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:SignUp
+            - cognito-idp:AdminCreateUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetGradeFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/grade.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetGradeFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/32aa838348238fa890c9035bf939a78b
+      Handler: grade.handler
+      Role:
+        Fn::GetAtt:
+        - GetGradeFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  GetFaqsFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetFaqsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/content/faqs
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  LogoutFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: LogoutFunctionRolePolicy0
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GlobalSignOut
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  LoginFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LoginFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/POST/auth/login
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminLoginFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminLoginFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetBannersFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/content/banners.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetBannersFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/2fa5b956a54c47e415540cf058b46e86
+      Handler: banners.handler
+      Role:
+        Fn::GetAtt:
+        - GetBannersFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminUsersStatusFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminUsersStatusFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/PUT/admin/users/*/status
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminDealsListFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: AdminDealsListFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/admin/deals
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  ListDealsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: ListDealsFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: ListDealsFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: ListDealsFunctionRolePolicy2
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - cognito-idp:GetUser
+            Resource:
+              Fn::GetAtt:
+              - CognitoUserPool
+              - Arn
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  SignupFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/auth/signup.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: SignupFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/5f45ef845021b564d7448a163f399441
+      Handler: signup.handler
+      Role:
+        Fn::GetAtt:
+        - SignupFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  WithdrawFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/users/withdraw.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: WithdrawFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/6d8b95c053cb3c3c8c96b7258e687915
+      Handler: withdraw.handler
+      Role:
+        Fn::GetAtt:
+        - WithdrawFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  AdminLoginFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/admin/login.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminLoginFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/a61ebaec165d720ec1ddaa3875b627ec
+      Handler: login.handler
+      Role:
+        Fn::GetAtt:
+        - AdminLoginFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  CreateDealFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/deals/create.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: CreateDealFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/0ec917b5a075c9b9709e324a05691d6c
+      Handler: create.handler
+      Role:
+        Fn::GetAtt:
+        - CreateDealFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: uid
+        AttributeType: S
+      - AttributeName: email
+        AttributeType: S
+      - AttributeName: phone
+        AttributeType: S
+      KeySchema:
+      - AttributeName: uid
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: email-index
+        KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+      - IndexName: phone-index
+        KeySchema:
+        - AttributeName: phone
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+    Metadata:
+      SamResourceId: UsersTable
+  ServerlessRestApiDeployment8bb8033978:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: 'RestApi deployment id: 8bb8033978312af842d7c66710f65440be4018d6'
+      RestApiId:
+        Ref: ServerlessRestApi
+      StageName: Stage
+  AdminDealsGetFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminDealsGetFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: DealsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: DealsTable
+      - PolicyName: AdminDealsGetFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: AdminDealsGetFunctionRolePolicy2
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetNoticeDetailFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: GetNoticeDetailFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: ContentsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: ContentsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  GetMeFunctionApiPermissionProd:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: GetMeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+        - arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/GET/users/me
+        - __ApiId__:
+            Ref: ServerlessRestApi
+          __Stage__: '*'
+  AdminUsersStatusFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminUsersStatusFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: AdminUsersStatusFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  AdminUsersListFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: AdminUsersListFunctionRolePolicy0
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: UsersTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: UsersTable
+      - PolicyName: AdminUsersListFunctionRolePolicy1
+        PolicyDocument:
+          Statement:
+          - Action:
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:DescribeTable
+            - dynamodb:ConditionCheckItem
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}
+              - tableName:
+                  Ref: AdminsTable
+            - Fn::Sub:
+              - arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*
+              - tableName:
+                  Ref: AdminsTable
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+  ServerlessRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Body:
+        info:
+          version: '1.0'
+          title:
+            Ref: AWS::StackName
+        paths:
+          /auth/confirm:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConfirmFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /auth/signup:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SignupFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /auth/refresh:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RefreshFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /users/me/grade:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetGradeFunction.Arn}/invocations
+              responses: {}
+          /deals:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateDealFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListDealsFunction.Arn}/invocations
+              responses: {}
+          /deals/{did}/discount:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApplyDiscountFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /content/banners:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetBannersFunction.Arn}/invocations
+              responses: {}
+          /auth/login:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LoginFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /admin/deals/{did}/status:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminDealsStatusFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /discounts/validate:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValidateDiscountFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /admin/deals:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminDealsListFunction.Arn}/invocations
+              responses: {}
+          /admin/users:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminUsersListFunction.Arn}/invocations
+              responses: {}
+          /deals/{did}:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateDealFunction.Arn}/invocations
+              responses: {}
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetDealFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            delete:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CancelDealFunction.Arn}/invocations
+              responses: {}
+          /discounts/coupons:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetCouponsFunction.Arn}/invocations
+              responses: {}
+          /content/notices:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetNoticesFunction.Arn}/invocations
+              responses: {}
+          /admin/users/{uid}/status:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminUsersStatusFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /users/me:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateMeFunction.Arn}/invocations
+              responses: {}
+            delete:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WithdrawFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetMeFunction.Arn}/invocations
+              responses: {}
+          /content/faqs:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetFaqsFunction.Arn}/invocations
+              responses: {}
+          /admin/deals/{did}:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminDealsGetFunction.Arn}/invocations
+              responses: {}
+          /auth/logout:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LogoutFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /admin/users/{uid}:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminUsersGetFunction.Arn}/invocations
+              responses: {}
+          /admin/auth/login:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminLoginFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /admin/users/{uid}/grade:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminUsersGradeFunction.Arn}/invocations
+              responses: {}
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+          /content/notices/{id}:
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: "{\n  \"statusCode\" : 200\n}\n"
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: '{}
+
+                        '
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''GET,POST,PUT,DELETE,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'''
+              consumes:
+              - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+              - application/json
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetNoticeDetailFunction.Arn}/invocations
+              responses: {}
+        swagger: '2.0'
+  ValidateDiscountFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - functions/discounts/validate.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: ValidateDiscountFunction
+    Properties:
+      Code:
+        S3Bucket: aws-sam-cli-managed-default-samclisourcebucket-1vfscgg4tjxp
+        S3Key: plic/caca2dbbad63de27299eed7a4d967ee7
+      Handler: validate.handler
+      Role:
+        Fn::GetAtt:
+        - ValidateDiscountFunctionRole
+        - Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          DISCOUNTS_TABLE: plic-discounts
+          NODE_OPTIONS: ' --enable-source-maps'
+      Tags:
+      - Key: lambda:createdBy
+        Value: SAM
+      Architectures:
+      - x86_64
+      LoggingConfig:
+        LogFormat: JSON

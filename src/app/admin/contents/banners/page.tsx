@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Plus, Edit2, Trash2, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
-import { useContentStore } from '@/stores';
-import { ContentHelper } from '@/classes';
+import { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
+import { contentAPI, adminAPI } from '@/lib/api';
 import { IHomeBanner } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminBannersPage() {
-  const { banners, addBanner, updateBanner, deleteBanner } = useContentStore();
+  // API 데이터 상태
+  const [banners, setBanners] = useState<IHomeBanner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [editingBanner, setEditingBanner] = useState<IHomeBanner | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -19,7 +23,25 @@ export default function AdminBannersPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
 
-  // Mock 배너 데이터
+  // API에서 배너 목록 로드
+  const fetchBanners = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await contentAPI.getBanners();
+      setBanners(response.banners || []);
+    } catch (err: any) {
+      console.error('배너 목록 로드 실패:', err);
+      setError(err.message || '배너 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBanners();
+  }, []);
+
   const displayBanners = banners;
 
   // priority 기준으로 정렬
@@ -41,53 +63,77 @@ export default function AdminBannersPage() {
     setShowForm(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) return;
 
-    if (editingBanner) {
-      updateBanner(editingBanner.bannerId, {
-        title,
-        imageUrl,
-        linkUrl,
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      const newBanner = ContentHelper.createNewBanner(
-        title,
-        imageUrl,
-        linkUrl,
-        'admin'
-      );
-      // 새 배너는 마지막 순서로 추가
-      newBanner.priority = sortedBanners.length;
-      addBanner(newBanner);
+    setIsSaving(true);
+    try {
+      if (editingBanner) {
+        await adminAPI.updateBanner(editingBanner.bannerId, {
+          title,
+          imageUrl,
+          linkUrl,
+        });
+      } else {
+        await adminAPI.createBanner({
+          title,
+          imageUrl,
+          linkUrl,
+          priority: sortedBanners.length + 1,
+          isVisible: true,
+        });
+      }
+      await fetchBanners();
+      resetForm();
+    } catch (err: any) {
+      console.error('배너 저장 실패:', err);
+      alert(err.message || '배너 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
-    resetForm();
   };
 
-  const handleDelete = (bannerId: string) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      deleteBanner(bannerId);
+  const handleDelete = async (bannerId: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+
+    setIsSaving(true);
+    try {
+      await adminAPI.deleteBanner(bannerId);
+      await fetchBanners();
+    } catch (err: any) {
+      console.error('배너 삭제 실패:', err);
+      alert(err.message || '배너 삭제에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleToggleVisibility = (banner: IHomeBanner) => {
-    updateBanner(banner.bannerId, { isVisible: !banner.isVisible });
+  const handleToggleVisibility = async (banner: IHomeBanner) => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updateBanner(banner.bannerId, { isVisible: !banner.isVisible });
+      await fetchBanners();
+    } catch (err: any) {
+      console.error('배너 상태 변경 실패:', err);
+      alert(err.message || '배너 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // 순서 변경 (위/아래 버튼)
-  const handleMoveUp = (index: number) => {
+  const handleMoveUp = async (index: number) => {
     if (index <= 0) return;
     const newBanners = [...sortedBanners];
     [newBanners[index - 1], newBanners[index]] = [newBanners[index], newBanners[index - 1]];
-    updatePriorities(newBanners);
+    await updatePriorities(newBanners);
   };
 
-  const handleMoveDown = (index: number) => {
+  const handleMoveDown = async (index: number) => {
     if (index >= sortedBanners.length - 1) return;
     const newBanners = [...sortedBanners];
     [newBanners[index], newBanners[index + 1]] = [newBanners[index + 1], newBanners[index]];
-    updatePriorities(newBanners);
+    await updatePriorities(newBanners);
   };
 
   // 드래그 앤 드롭
@@ -100,24 +146,44 @@ export default function AdminBannersPage() {
     setDragOverIndex(index);
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = async () => {
     if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
       const newBanners = [...sortedBanners];
       const [removed] = newBanners.splice(draggedIndex, 1);
       newBanners.splice(dragOverIndex, 0, removed);
-      updatePriorities(newBanners);
+      await updatePriorities(newBanners);
     }
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
 
-  const updatePriorities = (newOrder: IHomeBanner[]) => {
-    newOrder.forEach((banner, index) => {
-      if (banner.priority !== index + 1) {
-        updateBanner(banner.bannerId, { priority: index + 1 });
+  const updatePriorities = async (newOrder: IHomeBanner[]) => {
+    setIsSaving(true);
+    try {
+      // 순서가 변경된 배너들의 priority 업데이트
+      for (let i = 0; i < newOrder.length; i++) {
+        const banner = newOrder[i];
+        if (banner.priority !== i + 1) {
+          await adminAPI.updateBanner(banner.bannerId, { priority: i + 1 });
+        }
       }
-    });
+      await fetchBanners();
+    } catch (err: any) {
+      console.error('배너 순서 변경 실패:', err);
+      alert(err.message || '배너 순서 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  // 로딩 상태
+  if (loading && banners.length === 0) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -127,14 +193,32 @@ export default function AdminBannersPage() {
           <h1 className="text-2xl font-bold text-gray-900">배너 관리</h1>
           <p className="text-gray-500 mt-1">홈 화면 배너를 관리합니다. 드래그하여 순서를 변경하세요.</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-400 text-white rounded-lg hover:bg-primary-500 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          배너 추가
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchBanners}
+            disabled={loading || isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+            새로고침
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-400 text-white rounded-lg hover:bg-primary-500 transition-colors disabled:opacity-50"
+          >
+            <Plus className="w-5 h-5" />
+            배너 추가
+          </button>
+        </div>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* 배너 등록/수정 폼 */}
       {showForm && (
@@ -190,16 +274,17 @@ export default function AdminBannersPage() {
           <div className="flex gap-2 mt-4">
             <button
               onClick={resetForm}
-              className="flex-1 h-10 border border-gray-200 rounded-lg text-gray-600 font-medium hover:bg-gray-50"
+              disabled={isSaving}
+              className="flex-1 h-10 border border-gray-200 rounded-lg text-gray-600 font-medium hover:bg-gray-50 disabled:opacity-50"
             >
               취소
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!title.trim()}
+              disabled={!title.trim() || isSaving}
               className="flex-1 h-10 bg-gray-900 text-white rounded-lg font-medium disabled:bg-gray-200 disabled:text-gray-400"
             >
-              {editingBanner ? '수정' : '등록'}
+              {isSaving ? '저장 중...' : (editingBanner ? '수정' : '등록')}
             </button>
           </div>
         </div>

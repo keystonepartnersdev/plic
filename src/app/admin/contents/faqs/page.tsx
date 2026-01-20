@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
-import { useContentStore } from '@/stores';
+import { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { contentAPI, adminAPI } from '@/lib/api';
 import { ContentHelper } from '@/classes';
 import { IFAQ } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminFAQsPage() {
-  const { faqs, addFAQ, updateFAQ, deleteFAQ } = useContentStore();
+  // API 데이터 상태
+  const [faqs, setFaqs] = useState<IFAQ[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [editingFAQ, setEditingFAQ] = useState<IFAQ | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
@@ -22,7 +27,25 @@ export default function AdminFAQsPage() {
 
   const categories = ContentHelper.FAQ_CATEGORIES;
 
-  // Mock FAQ 데이터
+  // API에서 FAQ 목록 로드
+  const fetchFaqs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await contentAPI.getFaqs();
+      setFaqs(response.faqs || []);
+    } catch (err: any) {
+      console.error('FAQ 목록 로드 실패:', err);
+      setError(err.message || 'FAQ 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFaqs();
+  }, []);
+
   const displayFAQs = faqs;
 
   const filteredFAQs = filterCategory === 'all'
@@ -47,32 +70,63 @@ export default function AdminFAQsPage() {
     setShowForm(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!question.trim() || !answer.trim()) return;
 
-    if (editingFAQ) {
-      updateFAQ(editingFAQ.faqId, {
-        question,
-        answer,
-        category,
-        isHomeFeatured,
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      const newFAQ = ContentHelper.createNewFAQ(question, answer, 'admin', { category, isHomeFeatured });
-      addFAQ(newFAQ);
+    setIsSaving(true);
+    try {
+      if (editingFAQ) {
+        await adminAPI.updateFaq(editingFAQ.faqId, {
+          question,
+          answer,
+          category,
+          isHomeFeatured,
+        });
+      } else {
+        await adminAPI.createFaq({
+          question,
+          answer,
+          category,
+          isHomeFeatured,
+          isVisible: true,
+        });
+      }
+      await fetchFaqs();
+      resetForm();
+    } catch (err: any) {
+      console.error('FAQ 저장 실패:', err);
+      alert(err.message || 'FAQ 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
-    resetForm();
   };
 
-  const handleDelete = (faqId: string) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      deleteFAQ(faqId);
+  const handleDelete = async (faqId: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+
+    setIsSaving(true);
+    try {
+      await adminAPI.deleteFaq(faqId);
+      await fetchFaqs();
+    } catch (err: any) {
+      console.error('FAQ 삭제 실패:', err);
+      alert(err.message || 'FAQ 삭제에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleToggleVisibility = (faq: IFAQ) => {
-    updateFAQ(faq.faqId, { isVisible: !faq.isVisible });
+  const handleToggleVisibility = async (faq: IFAQ) => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updateFaq(faq.faqId, { isVisible: !faq.isVisible });
+      await fetchFaqs();
+    } catch (err: any) {
+      console.error('FAQ 상태 변경 실패:', err);
+      alert(err.message || 'FAQ 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getCategoryName = (categoryId?: string) => {
@@ -90,6 +144,15 @@ export default function AdminFAQsPage() {
     return colors[categoryId || ''] || 'bg-gray-100 text-gray-700';
   };
 
+  // 로딩 상태
+  if (loading && faqs.length === 0) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* 페이지 헤더 */}
@@ -98,14 +161,32 @@ export default function AdminFAQsPage() {
           <h1 className="text-2xl font-bold text-gray-900">FAQ 관리</h1>
           <p className="text-gray-500 mt-1">자주 묻는 질문을 관리합니다.</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-400 text-white rounded-lg hover:bg-primary-500 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          FAQ 등록
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchFaqs}
+            disabled={loading || isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+            새로고침
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-400 text-white rounded-lg hover:bg-primary-500 transition-colors disabled:opacity-50"
+          >
+            <Plus className="w-5 h-5" />
+            FAQ 등록
+          </button>
+        </div>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* FAQ 등록/수정 폼 */}
       {showForm && (
@@ -163,16 +244,17 @@ export default function AdminFAQsPage() {
           <div className="flex gap-2 mt-4">
             <button
               onClick={resetForm}
-              className="flex-1 h-10 border border-gray-200 rounded-lg text-gray-600 font-medium hover:bg-gray-50"
+              disabled={isSaving}
+              className="flex-1 h-10 border border-gray-200 rounded-lg text-gray-600 font-medium hover:bg-gray-50 disabled:opacity-50"
             >
               취소
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!question.trim() || !answer.trim()}
+              disabled={!question.trim() || !answer.trim() || isSaving}
               className="flex-1 h-10 bg-gray-900 text-white rounded-lg font-medium disabled:bg-gray-200 disabled:text-gray-400"
             >
-              {editingFAQ ? '수정' : '등록'}
+              {isSaving ? '저장 중...' : (editingFAQ ? '수정' : '등록')}
             </button>
           </div>
         </div>

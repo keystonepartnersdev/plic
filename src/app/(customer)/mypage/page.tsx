@@ -51,8 +51,15 @@ export default function MyPage() {
           setUser(meData);
         }
         setGradeInfo(gradeData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('사용자 정보 로드 실패:', error);
+        // 401 에러 시 로그아웃 처리
+        if (error.message?.includes('401') || error.message?.includes('인증')) {
+          tokenManager.clearTokens();
+          logout();
+          router.replace('/auth/login');
+          return;
+        }
       } finally {
         setLoading(false);
       }
@@ -60,7 +67,7 @@ export default function MyPage() {
     if (mounted && isLoggedIn) {
       fetchData();
     }
-  }, [mounted, isLoggedIn, setUser]);
+  }, [mounted, isLoggedIn, setUser, logout, router]);
 
   if (!mounted || !isLoggedIn || !currentUser || loading) {
     return (
@@ -71,10 +78,10 @@ export default function MyPage() {
   }
 
   const userDeals = deals.filter((d) => d.uid === currentUser.uid);
-  const completedDeals = userDeals.filter((d) => d.status === 'completed');
+  const completedDeals = userDeals.filter((d) => d.status && d.status === 'completed');
   const totalAmount = gradeInfo?.stats?.totalPaymentAmount || completedDeals.reduce((sum, d) => sum + d.amount, 0);
 
-  const gradeConfig = currentUser ? UserHelper.getGradeConfig(currentUser.grade) : { name: '베이직', feeRate: 4.0, monthlyLimit: 10000000 };
+  const gradeConfig = currentUser?.grade ? UserHelper.getGradeConfig(currentUser.grade) : { name: '베이직', feeRate: 4.0, monthlyLimit: 10000000 };
   const remainingLimit = gradeInfo?.limit?.remaining ?? UserHelper.getRemainingLimit(currentUser);
   const usageRate = gradeInfo?.limit?.usagePercent ?? UserHelper.getUsageRate(currentUser);
 

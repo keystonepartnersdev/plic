@@ -1,24 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, ChevronRight, Filter, FileText, Clock, Check, AlertCircle, X } from 'lucide-react';
-import { useDealStore } from '@/stores';
+import { Search, ChevronRight, FileText, Clock, Check, AlertCircle, X, RefreshCw } from 'lucide-react';
+import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminDealsPage() {
-  const { deals } = useDealStore();
+  const [deals, setDeals] = useState<IDeal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
-
-  // 샘플 거래 데이터
-  const sampleDeals: IDeal[] = [];
-
-  // 스토어의 거래 데이터와 샘플 데이터 병합
-  const allDeals = [...deals, ...sampleDeals.filter(sd => !deals.some(d => d.did === sd.did))];
 
   const statuses = [
     { value: 'all', label: '전체' },
@@ -36,10 +32,28 @@ export default function AdminDealsPage() {
     })),
   ];
 
-  const filteredDeals = allDeals.filter((deal) => {
-    const matchesSearch = deal.dealName.includes(searchQuery) ||
-      deal.did.includes(searchQuery) ||
-      deal.recipient.accountHolder.includes(searchQuery);
+  const fetchDeals = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getDeals();
+      setDeals(response.deals || []);
+    } catch (err: any) {
+      console.error('거래 목록 로드 실패:', err);
+      setError(err.message || '거래 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeals();
+  }, []);
+
+  const filteredDeals = deals.filter((deal) => {
+    const matchesSearch = (deal.dealName && deal.dealName.includes(searchQuery)) ||
+      (deal.did && deal.did.includes(searchQuery)) ||
+      (deal.recipient?.accountHolder && deal.recipient.accountHolder.includes(searchQuery));
     const matchesStatus = filterStatus === 'all' || deal.status === filterStatus;
     const matchesType = filterType === 'all' || deal.dealType === filterType;
     return matchesSearch && matchesStatus && matchesType;
@@ -73,20 +87,37 @@ export default function AdminDealsPage() {
 
   // 통계 계산
   const stats = {
-    total: allDeals.length,
-    pending: allDeals.filter(d => d.status === 'pending').length,
-    reviewing: allDeals.filter(d => d.status === 'reviewing').length,
-    completed: allDeals.filter(d => d.status === 'completed').length,
-    totalAmount: allDeals.filter(d => d.status === 'completed').reduce((sum, d) => sum + d.totalAmount, 0),
+    total: deals.length,
+    pending: deals.filter(d => d.status && d.status === 'pending').length,
+    reviewing: deals.filter(d => d.status && d.status === 'reviewing').length,
+    completed: deals.filter(d => d.status && d.status === 'completed').length,
+    totalAmount: deals.filter(d => d.status && d.status === 'completed').reduce((sum, d) => sum + (d.totalAmount || 0), 0),
   };
 
   return (
     <div>
       {/* 페이지 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">거래정보</h1>
-        <p className="text-gray-500 mt-1">전체 거래 목록을 관리합니다.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">거래정보</h1>
+          <p className="text-gray-500 mt-1">전체 거래 목록을 관리합니다.</p>
+        </div>
+        <button
+          onClick={fetchDeals}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+        >
+          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          새로고침
+        </button>
       </div>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -149,97 +180,101 @@ export default function AdminDealsPage() {
 
       {/* 거래 목록 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">거래정보</th>
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">유형</th>
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">상태</th>
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">결제금액</th>
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">수취인</th>
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">일자</th>
-                <th className="text-left text-sm font-medium text-gray-500 px-6 py-4"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDeals.length > 0 ? (
-                filteredDeals.map((deal) => {
-                  const statusConfig = DealHelper.getStatusConfig(deal.status);
-                  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
-                  return (
-                    <tr key={deal.did} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-gray-900">{deal.dealName}</p>
-                          <p className="text-xs text-gray-400 font-mono">{deal.did}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700">
-                          {typeConfig.name}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {deal.isPaid && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-700">
-                              <Check className="w-3 h-3" />
-                              결제완료
-                            </span>
-                          )}
-                          <span className={cn(
-                            'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded',
-                            statusColors[statusConfig.color]
-                          )}>
-                            <StatusIcon status={deal.status} />
-                            {statusConfig.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-gray-900">
-                          {deal.finalAmount > 0
-                            ? deal.finalAmount.toLocaleString()
-                            : deal.totalAmount.toLocaleString()}원
-                        </p>
-                        {deal.discountAmount > 0 && deal.discountCode && (
-                          <p className="text-xs text-green-600">할인코드 {deal.discountCode}</p>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          수수료 {(deal.feeAmount - deal.discountAmount).toLocaleString()}원
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-900">{deal.recipient.accountHolder}</p>
-                        <p className="text-xs text-gray-500">{deal.recipient.bank}</p>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(deal.createdAt).toLocaleDateString('ko-KR')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link
-                          href={`/admin/deals/${deal.did}`}
-                          className="text-primary-400 hover:text-primary-500"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    {searchQuery || filterStatus !== 'all' || filterType !== 'all'
-                      ? '검색 결과가 없습니다.'
-                      : '등록된 거래가 없습니다.'}
-                  </td>
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">거래정보</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">유형</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">상태</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">결제금액</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">수취인</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">일자</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4"></th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredDeals.length > 0 ? (
+                  filteredDeals.map((deal) => {
+                    const statusConfig = DealHelper.getStatusConfig(deal.status);
+                    const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
+                    return (
+                      <tr key={deal.did} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{deal.dealName || '-'}</p>
+                            <p className="text-xs text-gray-400 font-mono">{deal.did}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700">
+                            {typeConfig.name}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {deal.isPaid && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-700">
+                                <Check className="w-3 h-3" />
+                                결제완료
+                              </span>
+                            )}
+                            <span className={cn(
+                              'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded',
+                              statusColors[statusConfig.color]
+                            )}>
+                              <StatusIcon status={deal.status} />
+                              {statusConfig.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-gray-900">
+                            {(deal.finalAmount || deal.totalAmount || 0).toLocaleString()}원
+                          </p>
+                          {deal.discountAmount > 0 && deal.discountCode && (
+                            <p className="text-xs text-green-600">할인코드 {deal.discountCode}</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            수수료 {((deal.feeAmount || 0) - (deal.discountAmount || 0)).toLocaleString()}원
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm text-gray-900">{deal.recipient?.accountHolder || '-'}</p>
+                          <p className="text-xs text-gray-500">{deal.recipient?.bank || '-'}</p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString('ko-KR') : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Link
+                            href={`/admin/deals/${deal.did}`}
+                            className="text-primary-400 hover:text-primary-500"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                      {searchQuery || filterStatus !== 'all' || filterType !== 'all'
+                        ? '검색 결과가 없습니다.'
+                        : '등록된 거래가 없습니다.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

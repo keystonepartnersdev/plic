@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { adminAPI } from '@/lib/api';
 import { useAdminStore } from '@/stores';
 import { AdminHelper } from '@/classes';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { adminList, login } = useAdminStore();
+  const { login } = useAdminStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,52 +22,32 @@ export default function AdminLoginPage() {
     setError('');
     setIsLoading(true);
 
-    // 지연 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      // 백엔드 API로 로그인
+      const response = await adminAPI.login({ email, password });
 
-    // 어드민 찾기
-    const admin = adminList.find((a) => a.email === email);
+      // 로그인 성공 - 토큰은 adminAPI.login에서 이미 저장됨
+      const roleConfig = AdminHelper.getRoleConfig(response.admin.role);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 8 * 60 * 60 * 1000); // 8시간
 
-    if (!admin) {
-      setError('존재하지 않는 계정입니다.');
+      login({
+        adminId: response.admin.adminId,
+        email: response.admin.email,
+        name: response.admin.name,
+        role: response.admin.role,
+        permissions: roleConfig.permissions,
+        loginAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      });
+
+      router.replace('/admin');
+    } catch (err: any) {
+      console.error('로그인 실패:', err);
+      setError(err.message || '로그인에 실패했습니다.');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    if (admin.isLocked) {
-      setError('잠긴 계정입니다. 관리자에게 문의하세요.');
-      setIsLoading(false);
-      return;
-    }
-
-    if (admin.status !== 'active') {
-      setError('비활성화된 계정입니다.');
-      setIsLoading(false);
-      return;
-    }
-
-    if (admin.password !== password) {
-      setError('비밀번호가 일치하지 않습니다.');
-      setIsLoading(false);
-      return;
-    }
-
-    // 로그인 성공
-    const roleConfig = AdminHelper.getRoleConfig(admin.role);
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 8 * 60 * 60 * 1000); // 8시간
-
-    login({
-      adminId: admin.adminId,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role,
-      permissions: roleConfig.permissions,
-      loginAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-    });
-
-    router.replace('/admin');
   };
 
   return (
@@ -91,7 +72,7 @@ export default function AdminLoginPage() {
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin"
+                placeholder="이메일 주소"
                 className="
                   w-full h-12 pl-10 pr-4
                   border border-gray-200 rounded-xl
@@ -113,7 +94,7 @@ export default function AdminLoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="admin"
+                placeholder="비밀번호"
                 className="
                   w-full h-12 pl-10 pr-12
                   border border-gray-200 rounded-xl
@@ -151,11 +132,6 @@ export default function AdminLoginPage() {
           >
             {isLoading ? '로그인 중...' : '로그인'}
           </button>
-
-          {/* 테스트 계정 안내 */}
-          <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-100">
-            <p>테스트 계정: admin / admin</p>
-          </div>
         </form>
       </div>
     </div>

@@ -3,31 +3,41 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IHomeBanner, INotice, IFAQ } from '@/types';
+import { contentAPI } from '@/lib/api';
 
 interface IContentState {
   banners: IHomeBanner[];
   notices: INotice[];
   faqs: IFAQ[];
+  faqsByCategory: Record<string, IFAQ[]>;
+  isLoading: boolean;
+  apiError: string | null;
 
-  // 배너
+  // API 연동 메서드
+  fetchBanners: () => Promise<void>;
+  fetchNotices: (limit?: number) => Promise<void>;
+  fetchNoticeDetail: (id: string) => Promise<INotice | null>;
+  fetchFaqs: (category?: string) => Promise<void>;
+
+  // 로컬 메서드 (기존 호환용 + 관리자)
   addBanner: (banner: IHomeBanner) => void;
   updateBanner: (id: string, updates: Partial<IHomeBanner>) => void;
   deleteBanner: (id: string) => void;
   getVisibleBanners: () => IHomeBanner[];
 
-  // 공지사항
   addNotice: (notice: INotice) => void;
   updateNotice: (id: string, updates: Partial<INotice>) => void;
   deleteNotice: (id: string) => void;
   getVisibleNotices: () => INotice[];
 
-  // FAQ
   addFAQ: (faq: IFAQ) => void;
   updateFAQ: (id: string, updates: Partial<IFAQ>) => void;
   deleteFAQ: (id: string) => void;
   getVisibleFAQs: () => IFAQ[];
   getHomeFeaturedFAQs: () => IFAQ[];
   getFAQsByCategory: (category: string) => IFAQ[];
+
+  clearApiError: () => void;
 }
 
 export const useContentStore = create(
@@ -36,6 +46,110 @@ export const useContentStore = create(
       banners: [],
       notices: [],
       faqs: [],
+      faqsByCategory: {},
+      isLoading: false,
+      apiError: null,
+
+      // ============================================
+      // API 연동 메서드
+      // ============================================
+
+      fetchBanners: async () => {
+        set({ isLoading: true, apiError: null });
+        try {
+          const result = await contentAPI.getBanners();
+          set({
+            banners: result.banners,
+            isLoading: false,
+          });
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            apiError: error.message || '배너를 불러오는데 실패했습니다.',
+          });
+        }
+      },
+
+      fetchNotices: async (limit) => {
+        set({ isLoading: true, apiError: null });
+        try {
+          const result = await contentAPI.getNotices(limit);
+          set({
+            notices: result.notices,
+            isLoading: false,
+          });
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            apiError: error.message || '공지사항을 불러오는데 실패했습니다.',
+          });
+        }
+      },
+
+      fetchNoticeDetail: async (id) => {
+        set({ isLoading: true, apiError: null });
+        try {
+          const result = await contentAPI.getNoticeDetail(id);
+          const notice = result.notice;
+
+          // 로컬 캐시 업데이트
+          const existingIndex = get().notices.findIndex(n => n.noticeId === id);
+          if (existingIndex >= 0) {
+            set((state) => ({
+              notices: state.notices.map(n => n.noticeId === id ? notice : n),
+            }));
+          } else {
+            set((state) => ({
+              notices: [notice, ...state.notices],
+            }));
+          }
+
+          set({ isLoading: false });
+          return notice;
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            apiError: error.message || '공지사항을 불러오는데 실패했습니다.',
+          });
+          return null;
+        }
+      },
+
+      fetchFaqs: async (category) => {
+        set({ isLoading: true, apiError: null });
+        try {
+          const result = await contentAPI.getFaqs(category);
+
+          if (category) {
+            // 특정 카테고리만 업데이트
+            set((state) => ({
+              faqsByCategory: {
+                ...state.faqsByCategory,
+                [category]: result.faqs,
+              },
+              isLoading: false,
+            }));
+          } else {
+            // 전체 FAQ 업데이트
+            set({
+              faqs: result.faqs,
+              faqsByCategory: result.grouped || {},
+              isLoading: false,
+            });
+          }
+        } catch (error: any) {
+          set({
+            isLoading: false,
+            apiError: error.message || 'FAQ를 불러오는데 실패했습니다.',
+          });
+        }
+      },
+
+      clearApiError: () => set({ apiError: null }),
+
+      // ============================================
+      // 로컬 메서드 (기존 호환용 + 관리자)
+      // ============================================
 
       // 배너
       addBanner: (banner) => set((state) => ({
@@ -90,7 +204,14 @@ export const useContentStore = create(
 
       getHomeFeaturedFAQs: () => get().faqs.filter((f) => f.isVisible && f.isHomeFeatured).sort((a, b) => a.priority - b.priority),
 
-      getFAQsByCategory: (category) => get().faqs.filter((f) => f.isVisible && f.category === category),
+      getFAQsByCategory: (category) => {
+        // API에서 불러온 faqsByCategory가 있으면 사용, 없으면 로컬 faqs 필터링
+        const fromAPI = get().faqsByCategory[category];
+        if (fromAPI && fromAPI.length > 0) {
+          return fromAPI.filter(f => f.isVisible);
+        }
+        return get().faqs.filter((f) => f.isVisible && f.category === category);
+      },
     }),
     {
       name: 'plic-content-storage',

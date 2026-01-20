@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -20,9 +20,15 @@ import {
   Check,
   History,
   FileText,
+  RefreshCw,
+  Building,
+  ExternalLink,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
-import { useUserStore, useDealStore, useSettingsStore } from '@/stores';
-import { TUserGrade, TUserStatus, IUserHistory, IDeal, TDealStatus } from '@/types';
+import { useSettingsStore } from '@/stores';
+import { adminAPI } from '@/lib/api';
+import { TUserGrade, TUserStatus, IUserHistory, IDeal, TDealStatus, IUser } from '@/types';
 import { DealHelper } from '@/classes';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +51,7 @@ const STATUS_LABELS: Record<string, string> = {
   inactive: '비활성',
   suspended: '정지',
   pending: '대기',
+  pending_verification: '사업자 인증 대기',
   withdrawn: '탈퇴',
 };
 
@@ -53,6 +60,7 @@ const STATUS_COLORS: Record<string, string> = {
   inactive: 'bg-gray-100 text-gray-700',
   suspended: 'bg-red-100 text-red-700',
   pending: 'bg-yellow-100 text-yellow-700',
+  pending_verification: 'bg-orange-100 text-orange-700',
   withdrawn: 'bg-gray-100 text-gray-500',
 };
 
@@ -82,51 +90,90 @@ export default function AdminUserDetailPage() {
   const router = useRouter();
   const uid = params.uid as string;
 
-  const { users, updateUserInList } = useUserStore();
-  const { deals } = useDealStore();
   const { getGradeSettings, settings } = useSettingsStore();
-  const user = users.find(u => u.uid === uid);
+
+  // API 데이터 상태
+  const [user, setUser] = useState<IUser | null>(null);
+  const [userDeals, setUserDeals] = useState<IDeal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
-    grade: user?.grade || 'basic',
-    status: user?.status || 'active',
+    grade: 'basic' as TUserGrade,
+    status: 'active' as TUserStatus,
   });
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectMemo, setRejectMemo] = useState('');
+  const [isApprovingBusiness, setIsApprovingBusiness] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [editInfoData, setEditInfoData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
+    name: '',
+    email: '',
+    phone: '',
   });
 
-  // 회원의 거래 내역 (샘플 데이터 포함)
-  const sampleDeals: IDeal[] = [];
+  // API에서 회원 정보 로드
+  const fetchUser = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getUser(uid);
+      setUser(response.user);
+      setUserDeals(response.recentDeals || []);
+      // 편집 데이터 초기화
+      setEditData({
+        grade: response.user.grade || 'basic',
+        status: response.user.status || 'active',
+      });
+      setEditInfoData({
+        name: response.user.name || '',
+        email: response.user.email || '',
+        phone: response.user.phone || '',
+      });
+    } catch (err: any) {
+      console.error('회원 정보 로드 실패:', err);
+      setError(err.message || '회원 정보를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const allDeals = [...deals, ...sampleDeals.filter(sd => !deals.some(d => d.did === sd.did))];
-  const userDeals = useMemo(() => {
-    return allDeals.filter(deal => deal.uid === uid).sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [allDeals, uid]);
+  useEffect(() => {
+    fetchUser();
+  }, [uid]);
 
   // 거래 통계 계산
   const dealStats = useMemo(() => {
-    const completed = userDeals.filter(d => d.status === 'completed');
-    const pending = userDeals.filter(d => ['pending', 'reviewing', 'awaiting_payment'].includes(d.status));
+    const completed = userDeals.filter(d => d.status && d.status === 'completed');
+    const pending = userDeals.filter(d => d.status && ['pending', 'reviewing', 'awaiting_payment'].includes(d.status));
     return {
       total: userDeals.length,
       completed: completed.length,
       pending: pending.length,
-      totalAmount: completed.reduce((sum, d) => sum + d.amount, 0),
+      totalAmount: completed.reduce((sum, d) => sum + (d.amount || 0), 0),
     };
   }, [userDeals]);
 
-  if (!user) {
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
+
+  // 에러 또는 회원 없음
+  if (error || !user) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <AlertCircle className="w-16 h-16 text-gray-300 mb-4" />
-        <h2 className="text-xl font-bold text-gray-900 mb-2">회원을 찾을 수 없습니다</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          {error || '회원을 찾을 수 없습니다'}
+        </h2>
         <p className="text-gray-500 mb-6">요청하신 회원 정보가 존재하지 않습니다.</p>
         <Link
           href="/admin/users"
@@ -139,86 +186,28 @@ export default function AdminUserDetailPage() {
     );
   }
 
-  const handleSave = () => {
-    const historyEntries: IUserHistory[] = [];
-    const now = new Date().toISOString();
-    const gradeSettings = getGradeSettings(editData.grade as TUserGrade);
-
-    // 등급 변경 시
-    if (editData.grade !== user.grade) {
-      historyEntries.push({
-        id: `H${Date.now()}_grade`,
-        field: 'grade',
-        fieldLabel: FIELD_LABELS.grade,
-        prevValue: GRADE_LABELS[user.grade],
-        newValue: GRADE_LABELS[editData.grade as TUserGrade],
-        actor: 'admin',
-        actorLabel: ACTOR_LABELS.admin,
-        timestamp: now,
-      });
-
-      // 등급 변경 시 수수료율 변경 기록
-      if (user.feeRate !== gradeSettings.feeRate) {
-        historyEntries.push({
-          id: `H${Date.now()}_feeRate`,
-          field: 'feeRate',
-          fieldLabel: FIELD_LABELS.feeRate,
-          prevValue: `${user.feeRate}%`,
-          newValue: `${gradeSettings.feeRate}%`,
-          actor: 'admin',
-          actorLabel: ACTOR_LABELS.admin,
-          memo: `${GRADE_LABELS[editData.grade as TUserGrade]} 등급 적용`,
-          timestamp: now,
-        });
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // 등급 변경
+      if (editData.grade !== user.grade) {
+        await adminAPI.updateUserGrade(user.uid, editData.grade);
       }
 
-      // 등급 변경 시 월 한도 변경 기록
-      if (user.monthlyLimit !== gradeSettings.monthlyLimit) {
-        historyEntries.push({
-          id: `H${Date.now()}_limit`,
-          field: 'monthlyLimit',
-          fieldLabel: FIELD_LABELS.monthlyLimit,
-          prevValue: `${user.monthlyLimit.toLocaleString()}원`,
-          newValue: `${gradeSettings.monthlyLimit.toLocaleString()}원`,
-          actor: 'admin',
-          actorLabel: ACTOR_LABELS.admin,
-          memo: `${GRADE_LABELS[editData.grade as TUserGrade]} 등급 적용`,
-          timestamp: now,
-        });
+      // 상태 변경
+      if (editData.status !== user.status) {
+        await adminAPI.updateUserStatus(user.uid, editData.status);
       }
+
+      // 데이터 다시 로드
+      await fetchUser();
+      setIsEditing(false);
+    } catch (err: any) {
+      console.error('회원 정보 수정 실패:', err);
+      alert(err.message || '회원 정보 수정에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
-
-    // 상태 변경 시
-    if (editData.status !== user.status) {
-      historyEntries.push({
-        id: `H${Date.now()}_status`,
-        field: 'status',
-        fieldLabel: FIELD_LABELS.status,
-        prevValue: STATUS_LABELS[user.status],
-        newValue: STATUS_LABELS[editData.status],
-        actor: 'admin',
-        actorLabel: ACTOR_LABELS.admin,
-        timestamp: now,
-      });
-    }
-
-    // 업데이트 데이터 구성
-    const updateData: Partial<typeof user> = {
-      grade: editData.grade as TUserGrade,
-      status: editData.status as TUserStatus,
-      history: [...historyEntries, ...(user.history || [])],
-    };
-
-    // 등급 변경 시 수수료/한도 자동 적용
-    if (editData.grade !== user.grade) {
-      updateData.feeRate = gradeSettings.feeRate;
-      updateData.monthlyLimit = gradeSettings.monthlyLimit;
-      // B2B 또는 임직원으로 변경 시 수동 등급으로 표시
-      updateData.isGradeManual = editData.grade === 'b2b' || editData.grade === 'employee';
-    }
-
-    updateUserInList(user.uid, updateData);
-    setIsEditing(false);
   };
 
   const handleCancel = () => {
@@ -229,83 +218,57 @@ export default function AdminUserDetailPage() {
     setIsEditing(false);
   };
 
-  const handleWithdraw = () => {
-    const now = new Date().toISOString();
-    const historyEntry: IUserHistory = {
-      id: `H${Date.now()}_status`,
-      field: 'status',
-      fieldLabel: FIELD_LABELS.status,
-      prevValue: STATUS_LABELS[user.status],
-      newValue: STATUS_LABELS.withdrawn,
-      actor: 'admin',
-      actorLabel: ACTOR_LABELS.admin,
-      memo: '회원탈퇴 처리',
-      timestamp: now,
-    };
-
-    updateUserInList(user.uid, {
-      status: 'withdrawn',
-      history: [historyEntry, ...(user.history || [])],
-    });
-
-    setShowWithdrawModal(false);
+  const handleWithdraw = async () => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updateUserStatus(user.uid, 'withdrawn', '관리자 회원탈퇴 처리');
+      await fetchUser();
+      setShowWithdrawModal(false);
+    } catch (err: any) {
+      console.error('회원 탈퇴 처리 실패:', err);
+      alert(err.message || '회원 탈퇴 처리에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSaveInfo = () => {
-    const historyEntries: IUserHistory[] = [];
-    const now = new Date().toISOString();
-
-    // 이름 변경 시
-    if (editInfoData.name !== user.name) {
-      historyEntries.push({
-        id: `H${Date.now()}_name`,
-        field: 'name',
-        fieldLabel: FIELD_LABELS.name,
-        prevValue: user.name,
-        newValue: editInfoData.name,
-        actor: 'admin',
-        actorLabel: ACTOR_LABELS.admin,
-        timestamp: now,
-      });
+  const handleApproveBusiness = async () => {
+    setIsApprovingBusiness(true);
+    try {
+      await adminAPI.updateBusinessVerification(user.uid, 'verified');
+      await fetchUser();
+      alert('사업자 인증이 승인되었습니다.');
+    } catch (err: any) {
+      console.error('사업자 승인 실패:', err);
+      alert(err.message || '사업자 승인에 실패했습니다.');
+    } finally {
+      setIsApprovingBusiness(false);
     }
+  };
 
-    // 이메일 변경 시
-    if (editInfoData.email !== user.email) {
-      historyEntries.push({
-        id: `H${Date.now()}_email`,
-        field: 'email',
-        fieldLabel: FIELD_LABELS.email,
-        prevValue: user.email || '-',
-        newValue: editInfoData.email,
-        actor: 'admin',
-        actorLabel: ACTOR_LABELS.admin,
-        timestamp: now,
-      });
+  const handleRejectBusiness = async () => {
+    if (!rejectMemo.trim()) {
+      alert('거절 사유를 입력해주세요.');
+      return;
     }
-
-    // 연락처 변경 시
-    if (editInfoData.phone !== user.phone) {
-      historyEntries.push({
-        id: `H${Date.now()}_phone`,
-        field: 'phone',
-        fieldLabel: FIELD_LABELS.phone,
-        prevValue: user.phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3'),
-        newValue: editInfoData.phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3'),
-        actor: 'admin',
-        actorLabel: ACTOR_LABELS.admin,
-        timestamp: now,
-      });
+    setIsApprovingBusiness(true);
+    try {
+      await adminAPI.updateBusinessVerification(user.uid, 'rejected', rejectMemo);
+      await fetchUser();
+      setShowRejectModal(false);
+      setRejectMemo('');
+      alert('사업자 인증이 거절되었습니다.');
+    } catch (err: any) {
+      console.error('사업자 거절 실패:', err);
+      alert(err.message || '사업자 거절에 실패했습니다.');
+    } finally {
+      setIsApprovingBusiness(false);
     }
+  };
 
-    if (historyEntries.length > 0) {
-      updateUserInList(user.uid, {
-        name: editInfoData.name,
-        email: editInfoData.email,
-        phone: editInfoData.phone,
-        history: [...historyEntries, ...(user.history || [])],
-      });
-    }
-
+  const handleSaveInfo = async () => {
+    // 현재 백엔드에서 회원 기본정보 수정 API가 없으므로 알림 표시
+    alert('회원 기본정보 수정 기능은 준비중입니다.');
     setIsEditingInfo(false);
   };
 
@@ -362,6 +325,13 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={fetchUser}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          </button>
           <span className={cn(
             'px-3 py-1.5 text-sm font-medium rounded-lg',
             GRADE_COLORS[user.grade]
@@ -378,7 +348,8 @@ export default function AdminUserDetailPage() {
           {user.status !== 'withdrawn' && (
             <button
               onClick={() => setShowWithdrawModal(true)}
-              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              disabled={isSaving}
+              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
             >
               회원탈퇴
             </button>
@@ -764,6 +735,106 @@ export default function AdminUserDetailPage() {
 
         {/* 오른쪽: 등급/수수료 관리 */}
         <div className="space-y-6">
+          {/* 사업자 인증 관리 */}
+          {user.userType === 'business' && user.businessInfo && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Building className="w-5 h-5 text-gray-400" />
+                <h2 className="text-lg font-semibold text-gray-900">사업자 인증</h2>
+              </div>
+
+              {/* 인증 상태 배지 */}
+              <div className="mb-4">
+                <span className={cn(
+                  'inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg',
+                  user.businessInfo.verificationStatus === 'verified' ? 'bg-green-100 text-green-700' :
+                  user.businessInfo.verificationStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-orange-100 text-orange-700'
+                )}>
+                  {user.businessInfo.verificationStatus === 'verified' ? (
+                    <><CheckCircle className="w-4 h-4" />인증 완료</>
+                  ) : user.businessInfo.verificationStatus === 'rejected' ? (
+                    <><XCircle className="w-4 h-4" />인증 거절</>
+                  ) : (
+                    <><Clock className="w-4 h-4" />인증 대기</>
+                  )}
+                </span>
+              </div>
+
+              {/* 사업자 정보 */}
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">상호</span>
+                  <span className="font-medium text-gray-900">{user.businessInfo.businessName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">사업자등록번호</span>
+                  <span className="font-medium text-gray-900 font-mono">
+                    {user.businessInfo.businessNumber.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3')}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">대표자명</span>
+                  <span className="font-medium text-gray-900">{user.businessInfo.representativeName}</span>
+                </div>
+                {user.businessInfo.businessLicenseKey && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">사업자등록증</span>
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_S3_URL || 'https://plic-uploads-prod.s3.ap-northeast-2.amazonaws.com'}/${user.businessInfo.businessLicenseKey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-primary-400 hover:text-primary-500 font-medium"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      파일 보기
+                    </a>
+                  </div>
+                )}
+                {user.businessInfo.verificationMemo && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <span className="text-gray-500 block mb-1">메모</span>
+                    <p className="text-gray-700 bg-gray-50 p-2 rounded">{user.businessInfo.verificationMemo}</p>
+                  </div>
+                )}
+                {user.businessInfo.verifiedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">인증일</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(user.businessInfo.verifiedAt).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 승인/거절 버튼 (대기 상태일 때만) */}
+              {(user.businessInfo.verificationStatus === 'pending' || user.status === 'pending_verification') && (
+                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => setShowRejectModal(true)}
+                    disabled={isApprovingBusiness}
+                    className="flex-1 h-10 flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    거절
+                  </button>
+                  <button
+                    onClick={handleApproveBusiness}
+                    disabled={isApprovingBusiness}
+                    className="flex-1 h-10 flex items-center justify-center gap-1 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isApprovingBusiness ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4" />
+                    )}
+                    승인
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 등급 및 수수료 관리 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
@@ -779,15 +850,17 @@ export default function AdminUserDetailPage() {
                 <div className="flex gap-1">
                   <button
                     onClick={handleCancel}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                    disabled={isSaving}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
                   >
                     <X className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleSave}
-                    className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg"
+                    disabled={isSaving}
+                    className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg disabled:opacity-50"
                   >
-                    <Save className="w-4 h-4" />
+                    {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   </button>
                 </div>
               )}
@@ -856,6 +929,7 @@ export default function AdminUserDetailPage() {
                   >
                     <option value="active">활성</option>
                     <option value="pending">대기</option>
+                    <option value="pending_verification">사업자 인증 대기</option>
                     <option value="suspended">정지</option>
                     <option value="withdrawn">탈퇴</option>
                   </select>
@@ -959,6 +1033,47 @@ export default function AdminUserDetailPage() {
                 className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
               >
                 탈퇴 처리
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 사업자 인증 거절 모달 */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">사업자 인증 거절</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              거절 사유를 입력해주세요. 회원에게 해당 사유가 전달됩니다.
+            </p>
+            <textarea
+              value={rejectMemo}
+              onChange={(e) => setRejectMemo(e.target.value)}
+              placeholder="거절 사유를 입력하세요 (예: 사업자등록증이 불명확합니다)"
+              className="w-full h-24 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 resize-none text-sm"
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectMemo('');
+                }}
+                disabled={isApprovingBusiness}
+                className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleRejectBusiness}
+                disabled={isApprovingBusiness}
+                className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+              >
+                {isApprovingBusiness ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  '거절하기'
+                )}
               </button>
             </div>
           </div>

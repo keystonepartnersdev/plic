@@ -123,9 +123,9 @@ export default function AccountsPage() {
 
     const query = searchQuery.toLowerCase();
     return uniqueAccounts.filter((account) =>
-      account.accountHolder.toLowerCase().includes(query) ||
-      account.bank.toLowerCase().includes(query) ||
-      account.accountNumber.includes(query)
+      (account.accountHolder && account.accountHolder.toLowerCase().includes(query)) ||
+      (account.bank && account.bank.toLowerCase().includes(query)) ||
+      (account.accountNumber && account.accountNumber.includes(query))
     );
   }, [uniqueAccounts, searchQuery]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -22,9 +22,9 @@ import {
   File,
   Users,
 } from 'lucide-react';
-import { useDealStore, useUserStore } from '@/stores';
+import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
-import { IDeal, TDealStatus } from '@/types';
+import { IDeal, TDealStatus, IUser } from '@/types';
 import { cn } from '@/lib/utils';
 
 const statusColors: Record<string, string> = {
@@ -36,22 +36,16 @@ const statusColors: Record<string, string> = {
   green: 'bg-green-100 text-green-700',
 };
 
-// 샘플 거래 데이터 (page.tsx와 동일)
-const sampleDeals: IDeal[] = [];
-
 export default function AdminDealDetailPage() {
   const params = useParams();
   const router = useRouter();
   const did = params.did as string;
 
-  const { deals, updateDeal } = useDealStore();
-  const { users } = useUserStore();
-
-  // 스토어 또는 샘플 데이터에서 거래 찾기
-  const deal = deals.find(d => d.did === did) || sampleDeals.find(d => d.did === did);
-
-  // 거래를 생성한 사용자 정보 조회
-  const dealUser = deal ? users.find(u => u.uid === deal.uid) : null;
+  // API 데이터 상태
+  const [deal, setDeal] = useState<IDeal | null>(null);
+  const [dealUser, setDealUser] = useState<IUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showRevisionModal, setShowRevisionModal] = useState(false);
@@ -59,11 +53,43 @@ export default function AdminDealDetailPage() {
   const [selectedRevisionType, setSelectedRevisionType] = useState<'documents' | 'recipient' | null>(null);
   const [revisionMemo, setRevisionMemo] = useState('');
 
-  if (!deal) {
+  // API에서 거래 정보 로드
+  const fetchDeal = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getDeal(did);
+      setDeal(response.deal);
+      setDealUser(response.user || null);
+    } catch (err: any) {
+      console.error('거래 정보 로드 실패:', err);
+      setError(err.message || '거래 정보를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeal();
+  }, [did]);
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
+
+  // 에러 또는 거래 없음
+  if (error || !deal) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <AlertCircle className="w-16 h-16 text-gray-300 mb-4" />
-        <h2 className="text-xl font-bold text-gray-900 mb-2">거래를 찾을 수 없습니다</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          {error || '거래를 찾을 수 없습니다'}
+        </h2>
         <p className="text-gray-500 mb-6">요청하신 거래 정보가 존재하지 않습니다.</p>
         <Link
           href="/admin/deals"
@@ -87,10 +113,15 @@ export default function AdminDealDetailPage() {
     }
 
     setIsProcessing(true);
-    // 실제로는 API 호출
-    await new Promise(resolve => setTimeout(resolve, 500));
-    updateDeal(deal.did, { status: newStatus });
-    setIsProcessing(false);
+    try {
+      await adminAPI.updateDealStatus(deal.did, newStatus);
+      await fetchDeal(); // 데이터 다시 로드
+    } catch (err: any) {
+      console.error('거래 상태 변경 실패:', err);
+      alert(err.message || '거래 상태 변경에 실패했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // 보완 요청 유형 선택 시 (확인 모달 표시)
@@ -106,27 +137,22 @@ export default function AdminDealDetailPage() {
     if (!selectedRevisionType) return;
 
     setIsProcessing(true);
-    // 실제로는 API 호출
-    await new Promise(resolve => setTimeout(resolve, 500));
-    updateDeal(deal.did, {
-      status: 'need_revision',
-      revisionType: selectedRevisionType,
-      revisionMemo: revisionMemo || undefined,
-      history: [
-        {
-          timestamp: new Date().toISOString(),
-          action: '보완 요청',
-          description: selectedRevisionType === 'documents'
-            ? '운영팀이 서류 보완을 요청했습니다.'
-            : '운영팀이 수취인 정보 보완을 요청했습니다.',
-          actor: 'admin',
-        },
-        ...deal.history,
-      ],
-    });
-    setIsProcessing(false);
-    setShowRevisionModal(false);
-    setSelectedRevisionType(null);
+    try {
+      const reason = selectedRevisionType === 'documents'
+        ? `서류 보완 요청${revisionMemo ? `: ${revisionMemo}` : ''}`
+        : `수취인 정보 보완 요청${revisionMemo ? `: ${revisionMemo}` : ''}`;
+
+      await adminAPI.updateDealStatus(deal.did, 'need_revision', reason);
+      await fetchDeal(); // 데이터 다시 로드
+      setShowRevisionConfirmModal(false);
+      setSelectedRevisionType(null);
+      setRevisionMemo('');
+    } catch (err: any) {
+      console.error('보완 요청 실패:', err);
+      alert(err.message || '보완 요청에 실패했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const StatusIcon = ({ status }: { status: TDealStatus }) => {
@@ -163,6 +189,13 @@ export default function AdminDealDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={fetchDeal}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          </button>
           {deal.isPaid && (
             <span className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-100 text-red-700">
               <Check className="w-4 h-4" />

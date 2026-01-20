@@ -38,6 +38,7 @@ interface ApiLog {
   timestamp: string;
   userId?: string;
   level: 'INFO' | 'WARN' | 'ERROR';
+  action?: string; // 한글 설명
 }
 
 interface CategoryStats {
@@ -509,9 +510,16 @@ export default function AdminApiLogsPage() {
                           )}>
                             {log.method}
                           </span>
-                          <span className="flex-1 font-mono text-sm text-gray-700 truncate">
-                            {log.endpoint}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-gray-900">
+                              {log.action || log.endpoint}
+                            </span>
+                            {log.action && (
+                              <span className="ml-2 font-mono text-xs text-gray-400">
+                                {log.endpoint}
+                              </span>
+                            )}
+                          </div>
                           <span className={cn(
                             'px-2 py-0.5 rounded text-xs font-medium',
                             getStatusBadge(log.statusCode)
@@ -610,9 +618,16 @@ export default function AdminApiLogsPage() {
                             {log.method}
                           </span>
 
-                          <span className="flex-1 font-mono text-sm text-gray-700 truncate">
-                            {log.endpoint}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-gray-900">
+                              {log.action || log.endpoint}
+                            </span>
+                            {log.action && (
+                              <span className="ml-2 font-mono text-xs text-gray-400">
+                                {log.endpoint}
+                              </span>
+                            )}
+                          </div>
 
                           <span
                             className={cn(
@@ -623,13 +638,18 @@ export default function AdminApiLogsPage() {
                             {log.statusCode || 'ERR'}
                           </span>
 
-                          <div className="flex items-center gap-1 text-xs text-gray-500 w-20">
+                          <div className="flex items-center gap-1 text-xs text-gray-500 w-16">
                             <Clock className="w-3 h-3" />
                             {log.executionTime}ms
                           </div>
 
-                          <span className="text-xs text-gray-400 w-32">
-                            {new Date(log.timestamp).toLocaleString('ko-KR')}
+                          <span className="text-xs text-gray-400 w-28 text-right">
+                            {new Date(log.timestamp).toLocaleString('ko-KR', {
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
                           </span>
 
                           {expandedLog === log.logId ? (
