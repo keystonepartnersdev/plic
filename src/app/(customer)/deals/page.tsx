@@ -51,8 +51,18 @@ export default function DealsPage() {
       if (!isLoggedIn) return;
       try {
         const response = await dealsAPI.list();
-        setLocalDeals(response.deals || []);
-        setDeals(response.deals || []);
+        const apiDeals = response.deals || [];
+
+        // 기존 로컬 캐시에서 API에 없는 deal을 찾아서 병합 (새로 생성된 deal 보존)
+        const { deals: existingDeals } = useDealStore.getState();
+        const apiDealIds = new Set(apiDeals.map((d: IDeal) => d.did));
+        const localOnlyDeals = existingDeals.filter((d) => !apiDealIds.has(d.did));
+
+        // API 응답 + 로컬 전용 deals 병합
+        const mergedDeals = [...localOnlyDeals, ...apiDeals];
+
+        setLocalDeals(mergedDeals);
+        setDeals(mergedDeals);
       } catch (error) {
         console.error('거래 목록 로드 실패:', error);
         setLocalDeals([]);
