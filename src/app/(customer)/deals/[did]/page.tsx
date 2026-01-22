@@ -104,13 +104,20 @@ export default function DealDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
-      router.replace('/auth/login');
+    if (!mounted || !isLoggedIn) {
+      if (mounted && !isLoggedIn) {
+        router.replace('/auth/login');
+      }
       return;
     }
 
-    const foundDeal = deals.find((d) => d.did === did);
-    
+    // 이미 deal이 설정되어 있으면 skip
+    if (deal) return;
+
+    // store에서 직접 가져오기 (dependency 변경 방지)
+    const { deals: storeDeals } = useDealStore.getState();
+    const foundDeal = storeDeals.find((d) => d.did === did);
+
     if (foundDeal) {
       setDeal(foundDeal);
       // 저장된 할인 코드가 있으면 복원
@@ -127,7 +134,7 @@ export default function DealDetailPage() {
           setAppliedDiscounts(restoredDiscounts);
         }
       }
-    } else if (mounted) {
+    } else {
       // store에 없으면 API에서 가져오기
       dealsAPI.get(did).then(response => {
         if (response.deal) {
@@ -139,7 +146,7 @@ export default function DealDetailPage() {
         router.replace('/deals');
       });
     }
-  }, [mounted, isLoggedIn, deals, did, router, getDiscountByCode, availableCoupons]);
+  }, [mounted, isLoggedIn, did, router, deal, getDiscountByCode, availableCoupons]);
 
   // 결제대기 상태일 때 쿠폰 목록 API에서 가져오기
   useEffect(() => {
