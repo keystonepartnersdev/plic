@@ -554,10 +554,22 @@ function NewDealContent() {
       // API 응답에 누락된 필드가 있을 수 있으므로 보낸 데이터와 병합
       const completeDeal = {
         ...response.deal,
+        status: response.deal.status || 'awaiting_payment',
+        dealType: response.deal.dealType || dealData.dealType,
+        dealName: response.deal.dealName || dealData.dealName,
+        amount: response.deal.amount || dealData.amount,
         recipient: response.deal.recipient || dealData.recipient,
         attachments: response.deal.attachments || dealData.attachments,
         senderName: response.deal.senderName || dealData.senderName,
         history: response.deal.history || [],
+        isPaid: response.deal.isPaid || false,
+        feeRate: response.deal.feeRate ?? (currentUser?.feeRate || 0),
+        feeAmount: response.deal.feeAmount ?? feeAmount,
+        totalAmount: response.deal.totalAmount ?? totalAmount,
+        finalAmount: response.deal.finalAmount ?? finalAmount,
+        discountAmount: response.deal.discountAmount ?? 0,
+        createdAt: response.deal.createdAt || new Date().toISOString(),
+        updatedAt: response.deal.updatedAt || new Date().toISOString(),
       };
 
       // store에도 추가 (로컬 캐시용)
