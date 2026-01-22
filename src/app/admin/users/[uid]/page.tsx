@@ -108,6 +108,9 @@ export default function AdminUserDetailPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectMemo, setRejectMemo] = useState('');
   const [isApprovingBusiness, setIsApprovingBusiness] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [newStatus, setNewStatus] = useState<TUserStatus>('active');
+  const [statusChangeReason, setStatusChangeReason] = useState('');
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [editInfoData, setEditInfoData] = useState({
     name: '',
@@ -266,6 +269,33 @@ export default function AdminUserDetailPage() {
     }
   };
 
+  // 빠른 상태 변경
+  const handleQuickStatusChange = async () => {
+    if (newStatus === user.status) {
+      setShowStatusModal(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await adminAPI.updateUserStatus(user.uid, newStatus, statusChangeReason || undefined);
+      await fetchUser();
+      setShowStatusModal(false);
+      setStatusChangeReason('');
+      alert(`회원 상태가 "${STATUS_LABELS[newStatus]}"(으)로 변경되었습니다.`);
+    } catch (err: any) {
+      console.error('상태 변경 실패:', err);
+      alert(err.message || '상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openStatusModal = () => {
+    setNewStatus(user.status);
+    setStatusChangeReason('');
+    setShowStatusModal(true);
+  };
+
   const handleSaveInfo = async () => {
     // 현재 백엔드에서 회원 기본정보 수정 API가 없으므로 알림 표시
     alert('회원 기본정보 수정 기능은 준비중입니다.');
@@ -274,9 +304,9 @@ export default function AdminUserDetailPage() {
 
   const handleCancelInfo = () => {
     setEditInfoData({
-      name: user.name,
+      name: user.name || '',
       email: user.email || '',
-      phone: user.phone,
+      phone: user.phone || '',
     });
     setIsEditingInfo(false);
   };
@@ -339,12 +369,17 @@ export default function AdminUserDetailPage() {
             {GRADE_LABELS[user.grade]}
             {user.isGradeManual && <span className="ml-1 text-xs">(수동)</span>}
           </span>
-          <span className={cn(
-            'px-3 py-1.5 text-sm font-medium rounded-lg',
-            STATUS_COLORS[user.status]
-          )}>
+          <button
+            onClick={openStatusModal}
+            disabled={isSaving}
+            className={cn(
+              'px-3 py-1.5 text-sm font-medium rounded-lg flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer',
+              STATUS_COLORS[user.status]
+            )}
+          >
             {STATUS_LABELS[user.status]}
-          </span>
+            <Edit2 className="w-3 h-3" />
+          </button>
           {user.status !== 'withdrawn' && (
             <button
               onClick={() => setShowWithdrawModal(true)}
@@ -446,7 +481,7 @@ export default function AdminUserDetailPage() {
                     />
                   ) : (
                     <p className="font-medium text-gray-900">
-                      {user.phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
+                      {user.phone ? user.phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3') : '-'}
                     </p>
                   )}
                 </div>
@@ -580,8 +615,8 @@ export default function AdminUserDetailPage() {
                   </thead>
                   <tbody>
                     {userDeals.slice(0, 5).map((deal) => {
-                      const statusConfig = DealHelper.getStatusConfig(deal.status);
-                      const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
+                      const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+                      const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
                       return (
                         <tr key={deal.did} className="border-b border-gray-50 hover:bg-gray-50">
                           <td className="px-3 py-3">
@@ -638,26 +673,26 @@ export default function AdminUserDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-gray-700">서비스 이용약관</span>
-                <span className={user.agreements.service ? 'text-green-600' : 'text-red-500'}>
-                  {user.agreements.service ? '동의' : '미동의'}
+                <span className={user.agreements?.service ? 'text-green-600' : 'text-red-500'}>
+                  {user.agreements?.service ? '동의' : '미동의'}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-gray-700">개인정보 처리방침</span>
-                <span className={user.agreements.privacy ? 'text-green-600' : 'text-red-500'}>
-                  {user.agreements.privacy ? '동의' : '미동의'}
+                <span className={user.agreements?.privacy ? 'text-green-600' : 'text-red-500'}>
+                  {user.agreements?.privacy ? '동의' : '미동의'}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-gray-700">제3자 정보제공</span>
-                <span className={user.agreements.thirdParty ? 'text-green-600' : 'text-red-500'}>
-                  {user.agreements.thirdParty ? '동의' : '미동의'}
+                <span className={user.agreements?.thirdParty ? 'text-green-600' : 'text-red-500'}>
+                  {user.agreements?.thirdParty ? '동의' : '미동의'}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-gray-700">마케팅 수신</span>
-                <span className={user.agreements.marketing ? 'text-green-600' : 'text-red-500'}>
-                  {user.agreements.marketing ? '동의' : '미동의'}
+                <span className={user.agreements?.marketing ? 'text-green-600' : 'text-red-500'}>
+                  {user.agreements?.marketing ? '동의' : '미동의'}
                 </span>
               </div>
             </div>
@@ -1073,6 +1108,80 @@ export default function AdminUserDetailPage() {
                   <RefreshCw className="w-4 h-4 animate-spin" />
                 ) : (
                   '거절하기'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 상태 변경 모달 */}
+      {showStatusModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">회원 상태 변경</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              <strong className="text-gray-900">{user.name}</strong>님의 상태를 변경합니다.
+            </p>
+
+            {/* 현재 상태 */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-500 mb-1">현재 상태</p>
+              <span className={cn(
+                'inline-flex px-2 py-1 text-sm font-medium rounded',
+                STATUS_COLORS[user.status]
+              )}>
+                {STATUS_LABELS[user.status]}
+              </span>
+            </div>
+
+            {/* 새 상태 선택 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">변경할 상태</label>
+              <select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value as TUserStatus)}
+                className="w-full h-11 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+              >
+                <option value="active">활성</option>
+                <option value="pending">대기</option>
+                <option value="pending_verification">사업자 인증 대기</option>
+                <option value="suspended">정지</option>
+                <option value="withdrawn">탈퇴</option>
+              </select>
+            </div>
+
+            {/* 변경 사유 (선택) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">변경 사유 (선택)</label>
+              <textarea
+                value={statusChangeReason}
+                onChange={(e) => setStatusChangeReason(e.target.value)}
+                placeholder="상태 변경 사유를 입력하세요"
+                className="w-full h-20 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 resize-none text-sm"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setStatusChangeReason('');
+                }}
+                disabled={isSaving}
+                className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleQuickStatusChange}
+                disabled={isSaving || newStatus === user.status}
+                className="flex-1 h-12 bg-primary-400 hover:bg-primary-500 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:bg-gray-300 flex items-center justify-center"
+              >
+                {isSaving ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  '변경하기'
                 )}
               </button>
             </div>

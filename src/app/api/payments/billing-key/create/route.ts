@@ -1,8 +1,8 @@
 /**
- * 결제 생성 API
- * POST /api/payments/billing
+ * 빌링키 발급 요청 API
+ * POST /api/payments/billing-key/create
  *
- * 거래등록 후 결제창 URL을 반환합니다.
+ * 카드 등록을 위한 빌링키 발급창 URL을 반환합니다.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,49 +11,36 @@ import { softpayment } from '@/lib/softpayment';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('[Payment Create] Received body:', JSON.stringify(body, null, 2));
+    console.log('[BillingKey Create] Received body:', JSON.stringify(body, null, 2));
 
     const {
-      dealNumber,    // PLIC deal_number (없으면 자동 생성)
-      amount,
-      goodsName,
       payerName,
       payerEmail,
       payerTel,
       device,
-      dealId,        // 내부 dealId (shopValueInfo에 저장)
-      userId,        // 내부 userId (shopValueInfo에 저장)
+      userId,
     } = body;
 
-    // 필수값 검증
-    if (!amount || !goodsName) {
-      console.log('[Payment Create] Missing required fields - amount:', amount, 'goodsName:', goodsName);
-      return NextResponse.json(
-        { error: `필수 필드가 누락되었습니다. amount: ${amount}, goodsName: ${goodsName}` },
-        { status: 400 }
-      );
-    }
-
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const trackId = dealNumber || softpayment.generateDealNumber();
+    const trackId = `BK_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
-    console.log('[Payment Create] Starting with trackId:', trackId);
+    console.log('[BillingKey Create] Starting with trackId:', trackId);
 
-    const response = await softpayment.createPayment({
+    const response = await softpayment.createBillingKey({
       trackId,
-      amount: Number(amount),
-      returnUrl: `${baseUrl}/api/payments/callback`,
-      goodsName,
+      returnUrl: `${baseUrl}/api/payments/billing-key/callback`,
       payerName: payerName || '',
       payerEmail: payerEmail || '',
       payerTel: payerTel || '',
       device: device === 'mobile' ? 'mobile' : 'pc',
       shopValueInfo: {
-        value1: dealId || '',
-        value2: userId || '',
+        value1: userId || '',
+        value2: '',
         value3: '',
       },
     });
+
+    console.log('[BillingKey Create] Response:', JSON.stringify(response, null, 2));
 
     if (!softpayment.isSuccess(response.resCode)) {
       const isRetryable = softpayment.isRetryable(response.resCode);
@@ -74,9 +61,9 @@ export async function POST(request: NextRequest) {
       authPageUrl: response.data?.authPageUrl,
     });
   } catch (error) {
-    console.error('[Payment Create] Error:', error);
+    console.error('[BillingKey Create] Error:', error);
     return NextResponse.json(
-      { error: '결제 생성 중 오류가 발생했습니다.' },
+      { error: '빌링키 발급 요청 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

@@ -102,8 +102,8 @@ export default function AdminDealDetailPage() {
     );
   }
 
-  const statusConfig = DealHelper.getStatusConfig(deal.status);
-  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
+  const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
 
   const handleStatusChange = async (newStatus: TDealStatus) => {
     // 보완 요청일 경우 모달 열기
@@ -281,15 +281,15 @@ export default function AdminDealDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">은행</p>
-                <p className="font-medium text-gray-900">{deal.recipient.bank}</p>
+                <p className="font-medium text-gray-900">{deal.recipient?.bank || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">예금주</p>
-                <p className="font-medium text-gray-900">{deal.recipient.accountHolder}</p>
+                <p className="font-medium text-gray-900">{deal.recipient?.accountHolder || '-'}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-sm text-gray-500">계좌번호</p>
-                <p className="font-medium text-gray-900 font-mono">{deal.recipient.accountNumber}</p>
+                <p className="font-medium text-gray-900 font-mono">{deal.recipient?.accountNumber || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">발송인</p>
@@ -299,9 +299,9 @@ export default function AdminDealDetailPage() {
                 <p className="text-sm text-gray-500">계좌 인증</p>
                 <p className={cn(
                   'font-medium',
-                  deal.recipient.isVerified ? 'text-green-600' : 'text-red-500'
+                  deal.recipient?.isVerified ? 'text-green-600' : 'text-red-500'
                 )}>
-                  {deal.recipient.isVerified ? '인증' : '미인증'}
+                  {deal.recipient?.isVerified ? '인증' : '미인증'}
                 </p>
               </div>
             </div>
@@ -310,7 +310,7 @@ export default function AdminDealDetailPage() {
           {/* 첨부 서류 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">첨부 서류</h2>
-            {deal.attachments.length > 0 ? (
+            {deal.attachments && deal.attachments.length > 0 ? (
               <div className="space-y-2">
                 {deal.attachments.map((url, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -418,7 +418,7 @@ export default function AdminDealDetailPage() {
           {/* 히스토리 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">처리 이력</h2>
-            {deal.history.length > 0 ? (
+            {deal.history && deal.history.length > 0 ? (
               <div className="space-y-4">
                 {deal.history.map((item, index) => (
                   <div key={index} className="flex gap-3">

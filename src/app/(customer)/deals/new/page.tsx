@@ -546,15 +546,20 @@ function NewDealContent() {
         attachments: attachmentData,
       };
 
+      console.log('[NewDeal] Creating deal...');
       const response = await dealsAPI.create(dealData);
+      console.log('[NewDeal] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
 
       // Draft 제출 완료 후 삭제
       submitDraft();
 
       // API 응답에 누락된 필드가 있을 수 있으므로 보낸 데이터와 병합
+      // status는 항상 'awaiting_payment'로 설정 (결제 전이므로)
       const completeDeal = {
         ...response.deal,
-        status: response.deal.status || 'awaiting_payment',
+        did: response.deal.did,
+        uid: response.deal.uid || currentUser?.uid,
+        status: 'awaiting_payment' as const, // 항상 결제대기 상태
         dealType: response.deal.dealType || dealData.dealType,
         dealName: response.deal.dealName || dealData.dealName,
         amount: response.deal.amount || dealData.amount,
@@ -562,7 +567,8 @@ function NewDealContent() {
         attachments: response.deal.attachments || dealData.attachments,
         senderName: response.deal.senderName || dealData.senderName,
         history: response.deal.history || [],
-        isPaid: response.deal.isPaid || false,
+        isPaid: false, // 항상 미결제 상태
+        isTransferred: false,
         feeRate: response.deal.feeRate ?? (currentUser?.feeRate || 0),
         feeAmount: response.deal.feeAmount ?? feeAmount,
         totalAmount: response.deal.totalAmount ?? totalAmount,
@@ -572,11 +578,8 @@ function NewDealContent() {
         updatedAt: response.deal.updatedAt || new Date().toISOString(),
       };
 
-      // store에도 추가 (로컬 캐시용)
+      // store에 추가 (백엔드 응답 기반)
       addDeal(completeDeal);
-
-      // 페이지 이동 전에 sessionStorage에도 저장 (store 동기화 문제 방지)
-      sessionStorage.setItem(`pending-deal-${response.deal.did}`, JSON.stringify(completeDeal));
 
       router.replace(`/deals/${response.deal.did}`);
     } catch (error: any) {

@@ -3,28 +3,53 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
-import { CreditCard, AlertCircle, Clock, Shield, CheckCircle } from 'lucide-react';
+import { CreditCard, AlertCircle, Clock, Shield, CheckCircle, ChevronRight, Check } from 'lucide-react';
 import { Header } from '@/components/common';
-import { useUserStore, useDealStore } from '@/stores';
-import { IDeal } from '@/types';
+import { useUserStore } from '@/stores';
+import { dealsAPI } from '@/lib/api';
+import { IDeal, IRegisteredCard } from '@/types';
+
+type PaymentMethod = 'new' | 'registered';
 
 export default function PaymentPage() {
   const router = useRouter();
   const params = useParams();
   const did = params.did as string;
 
-  const { currentUser, isLoggedIn } = useUserStore();
-  const { deals } = useDealStore();
+  const { currentUser, isLoggedIn, fetchCurrentUser, registeredCards } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [deal, setDeal] = useState<IDeal | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [userRefreshed, setUserRefreshed] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('new');
+  const [selectedCard, setSelectedCard] = useState<IRegisteredCard | null>(null);
+  const [showCardSelector, setShowCardSelector] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setPortalTarget(document.getElementById('mobile-frame'));
   }, []);
+
+  // 등록된 카드가 있으면 기본 결제 방법으로 설정
+  useEffect(() => {
+    if (registeredCards.length > 0 && !selectedCard) {
+      // 기본 카드 또는 첫 번째 카드 선택
+      const defaultCard = registeredCards.find(c => c.isDefault) || registeredCards[0];
+      setSelectedCard(defaultCard);
+      setPaymentMethod('registered');
+    }
+  }, [registeredCards, selectedCard]);
+
+  // 결제 페이지 진입 시 최신 사용자 정보 가져오기 (어드민에서 상태 변경된 경우 반영)
+  useEffect(() => {
+    if (mounted && isLoggedIn && !userRefreshed) {
+      fetchCurrentUser().finally(() => {
+        setUserRefreshed(true);
+      });
+    }
+  }, [mounted, isLoggedIn, userRefreshed, fetchCurrentUser]);
 
   useEffect(() => {
     if (mounted && !isLoggedIn) {
@@ -32,16 +57,21 @@ export default function PaymentPage() {
       return;
     }
 
-    const foundDeal = deals.find((d) => d.did === did);
-    if (mounted && (!foundDeal || foundDeal.isPaid)) {
-      router.replace('/deals');
-      return;
+    if (mounted && isLoggedIn && userRefreshed) {
+      // API에서 거래 정보 가져오기
+      dealsAPI.get(did).then(response => {
+        if (response.deal && !response.deal.isPaid) {
+          setDeal(response.deal);
+        } else {
+          router.replace('/deals');
+        }
+      }).catch(() => {
+        router.replace('/deals');
+      });
     }
+  }, [mounted, isLoggedIn, userRefreshed, did, router]);
 
-    setDeal(foundDeal || null);
-  }, [mounted, isLoggedIn, deals, did, router]);
-
-  if (!mounted || !isLoggedIn || !deal || !currentUser) {
+  if (!mounted || !isLoggedIn || !userRefreshed || !deal || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -63,8 +93,10 @@ export default function PaymentPage() {
               사업자 인증 대기 중
             </h2>
             <p className="text-gray-500 mb-6">
-              사업자등록증 검토가 완료되면<br />
-              결제 및 송금이 가능합니다.
+              사업자 정보 검토가 완료되면<br />
+              결제 및 송금이 가능합니다.<br /><br />
+              하단의 [거래내역]에서 등록하신<br />
+              거래 정보를 확인하실 수 있습니다.
             </p>
             <div className="bg-yellow-50 rounded-xl p-4 text-left">
               <div className="flex items-start gap-3">
@@ -90,29 +122,49 @@ export default function PaymentPage() {
     );
   }
 
-  const handlePayment = async () => {
+  // 새 카드로 결제 (기존 방식 - 결제창 열기)
+  const handleNewCardPayment = async () => {
     setIsLoading(true);
 
     try {
+      // 결제 전 데이터 검증
+      console.log('[Payment] Deal data:', {
+        did: deal.did,
+        amount: deal.amount,
+        finalAmount: deal.finalAmount,
+        feeAmount: deal.feeAmount,
+      });
+
+      if (!deal.finalAmount || deal.finalAmount <= 0) {
+        alert('결제 금액 정보가 올바르지 않습니다. 거래를 다시 확인해주세요.');
+        setIsLoading(false);
+        return;
+      }
+
       // Softpayment API를 통해 결제창 URL 받기
+      const requestBody = {
+        amount: deal.finalAmount,
+        goodsName: `송금 ${(deal.amount || 0).toLocaleString()}원 + 수수료`,
+        payerName: currentUser.name || '',
+        payerEmail: currentUser.email || '',
+        payerTel: currentUser.phone || '',
+        device: 'mobile',
+        dealId: deal.did,
+        userId: currentUser.uid,
+      };
+
+      console.log('[Payment] Request body:', requestBody);
+
       const response = await fetch('/api/payments/billing', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          amount: deal.finalAmount,
-          goodsName: `송금 ${deal.amount.toLocaleString()}원 + 수수료`,
-          payerName: currentUser.name || '',
-          payerEmail: currentUser.email || '',
-          payerTel: currentUser.phone || '',
-          device: 'mobile',
-          dealId: deal.did,
-          userId: currentUser.uid,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
+      console.log('[Payment] API response:', data);
 
       if (!response.ok || !data.success) {
         alert(data.error || '결제 생성에 실패했습니다.');
@@ -131,6 +183,96 @@ export default function PaymentPage() {
       console.error('Payment error:', error);
       alert('결제 처리 중 오류가 발생했습니다.');
       setIsLoading(false);
+    }
+  };
+
+  // 등록된 카드로 결제 (빌링키 결제)
+  const handleBillingKeyPayment = async () => {
+    if (!selectedCard) {
+      alert('결제할 카드를 선택해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      console.log('[BillingKey Payment] Starting with card:', selectedCard.cardId);
+
+      if (!deal.finalAmount || deal.finalAmount <= 0) {
+        alert('결제 금액 정보가 올바르지 않습니다.');
+        setIsLoading(false);
+        return;
+      }
+
+      const requestBody = {
+        billingKey: selectedCard.billingKey,
+        amount: deal.finalAmount,
+        goodsName: `송금 ${(deal.amount || 0).toLocaleString()}원 + 수수료`,
+        payerName: currentUser.name || '',
+        payerEmail: currentUser.email || '',
+        payerTel: currentUser.phone || '',
+        dealId: deal.did,
+        userId: currentUser.uid,
+      };
+
+      console.log('[BillingKey Payment] Request body:', requestBody);
+
+      const response = await fetch('/api/payments/billing-key/pay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+      console.log('[BillingKey Payment] API response:', data);
+
+      if (!response.ok || !data.success) {
+        const errorMsg = data.error || '결제에 실패했습니다.';
+        alert(errorMsg);
+        setIsLoading(false);
+        return;
+      }
+
+      // API를 통해 거래 상태 업데이트
+      try {
+        await dealsAPI.update(deal.did, {
+          isPaid: true,
+          paidAt: new Date().toISOString(),
+          status: 'reviewing',
+          pgTransactionId: data.trxId,
+        });
+      } catch (updateError) {
+        console.error('[BillingKey Payment] Failed to update deal status:', updateError);
+        // 결제는 성공했지만 상태 업데이트 실패 - 계속 진행
+      }
+
+      // 결제 완료 페이지로 이동
+      const params = new URLSearchParams({
+        success: 'true',
+        trxId: data.trxId || '',
+        trackId: data.trackId || '',
+        amount: String(data.amount || deal.finalAmount),
+        authCd: data.authCd || '',
+        cardNo: data.cardNo || '',
+        issuer: data.issuer || '',
+        dealId: deal.did,
+      });
+      router.push(`/payment/result?${params.toString()}`);
+    } catch (error) {
+      console.error('BillingKey Payment error:', error);
+      alert('결제 처리 중 오류가 발생했습니다.');
+      setIsLoading(false);
+    }
+  };
+
+  // 결제 핸들러 (결제 방법에 따라 분기)
+  const handlePayment = async () => {
+    if (paymentMethod === 'registered' && selectedCard) {
+      await handleBillingKeyPayment();
+    } else {
+      await handleNewCardPayment();
     }
   };
 
@@ -171,19 +313,120 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      {/* 결제 방법 안내 */}
+      {/* 결제 방법 선택 */}
       <div className="bg-white px-5 py-6 mb-2">
         <h3 className="font-semibold text-gray-900 mb-4">결제 방법</h3>
-        <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-            <CreditCard className="w-6 h-6 text-primary-500" />
-          </div>
-          <div>
-            <p className="font-medium text-gray-900">신용/체크카드</p>
-            <p className="text-sm text-gray-500">결제창에서 카드 정보를 입력해 주세요</p>
-          </div>
+        <div className="space-y-3">
+          {/* 등록된 카드로 결제 */}
+          {registeredCards.length > 0 && (
+            <button
+              onClick={() => {
+                setPaymentMethod('registered');
+                setShowCardSelector(true);
+              }}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
+                paymentMethod === 'registered'
+                  ? 'border-primary-400 bg-primary-50'
+                  : 'border-gray-200 bg-gray-50'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                paymentMethod === 'registered' ? 'bg-primary-100' : 'bg-gray-100'
+              }`}>
+                <CreditCard className={`w-6 h-6 ${
+                  paymentMethod === 'registered' ? 'text-primary-500' : 'text-gray-400'
+                }`} />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-medium text-gray-900">등록된 카드</p>
+                {selectedCard ? (
+                  <p className="text-sm text-gray-500">
+                    {selectedCard.cardCompany} ****{selectedCard.cardNumberLast4}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">카드를 선택해주세요</p>
+                )}
+              </div>
+              {paymentMethod === 'registered' && (
+                <Check className="w-5 h-5 text-primary-500" />
+              )}
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+          )}
+
+          {/* 새 카드로 결제 */}
+          <button
+            onClick={() => {
+              setPaymentMethod('new');
+              setShowCardSelector(false);
+            }}
+            className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
+              paymentMethod === 'new'
+                ? 'border-primary-400 bg-primary-50'
+                : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              paymentMethod === 'new' ? 'bg-primary-100' : 'bg-gray-100'
+            }`}>
+              <CreditCard className={`w-6 h-6 ${
+                paymentMethod === 'new' ? 'text-primary-500' : 'text-gray-400'
+              }`} />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-medium text-gray-900">새 카드로 결제</p>
+              <p className="text-sm text-gray-500">결제창에서 카드 정보 입력</p>
+            </div>
+            {paymentMethod === 'new' && (
+              <Check className="w-5 h-5 text-primary-500" />
+            )}
+          </button>
         </div>
       </div>
+
+      {/* 카드 선택 모달 */}
+      {showCardSelector && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl mx-4 p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">결제 카드 선택</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {registeredCards.map((card) => (
+                <button
+                  key={card.cardId}
+                  onClick={() => {
+                    setSelectedCard(card);
+                    setShowCardSelector(false);
+                  }}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-colors ${
+                    selectedCard?.cardId === card.cardId
+                      ? 'border-primary-400 bg-primary-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6 text-gray-400" />
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-gray-900">
+                      {card.cardNickname || `${card.cardCompany} 카드`}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {card.cardCompany} ****{card.cardNumberLast4}
+                    </p>
+                  </div>
+                  {selectedCard?.cardId === card.cardId && (
+                    <Check className="w-5 h-5 text-primary-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowCardSelector(false)}
+              className="w-full mt-4 h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 안내 사항 */}
       <div className="bg-white px-5 py-6 mb-2">
@@ -225,7 +468,10 @@ export default function PaymentPage() {
               pointer-events-auto
             "
           >
-            {isLoading ? '결제창 이동 중...' : `${deal.finalAmount.toLocaleString()}원 결제하기`}
+            {isLoading
+              ? (paymentMethod === 'registered' ? '결제 처리 중...' : '결제창 이동 중...')
+              : `${deal.finalAmount.toLocaleString()}원 결제하기`
+            }
           </button>
         </div>,
         portalTarget

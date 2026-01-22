@@ -12,6 +12,10 @@ import {
   CancelPaymentResponse,
   StatusRequest,
   StatusResponse,
+  CreateBillingKeyRequest,
+  CreateBillingKeyResponse,
+  BillingPaymentRequest,
+  BillingPaymentResponse,
 } from './types';
 import { CARD_CODES, RESULT_CODES, ERROR_CLASSIFICATION, TIMEOUTS } from './constants';
 
@@ -142,6 +146,38 @@ export const softpayment = {
     return apiCall<StatusResponse>('/api/trxStatus', {
       trxId: request.trxId,
     }, TIMEOUTS.STATUS);
+  },
+
+  /**
+   * 빌링키 발급 요청 API
+   * 카드 등록을 위한 빌링키 발급창 URL을 반환합니다.
+   */
+  async createBillingKey(request: CreateBillingKeyRequest): Promise<CreateBillingKeyResponse> {
+    return apiCall<CreateBillingKeyResponse>('/api/webpay/billing/create', {
+      trackId: request.trackId,
+      returnUrl: request.returnUrl,
+      payerName: request.payerName || '',
+      payerEmail: request.payerEmail || '',
+      payerTel: request.payerTel || '',
+      device: request.device,
+      ...(request.shopValueInfo && { shopValueInfo: request.shopValueInfo }),
+    });
+  },
+
+  /**
+   * 빌링키 결제 API
+   * 발급된 빌링키로 결제를 진행합니다.
+   */
+  async payWithBillingKey(request: BillingPaymentRequest): Promise<BillingPaymentResponse> {
+    return apiCall<BillingPaymentResponse>('/api/billing/payment', {
+      trackId: request.trackId,
+      billingKey: request.billingKey,
+      amount: String(request.amount),
+      goodsName: request.goodsName,
+      payerName: request.payerName || '',
+      payerEmail: request.payerEmail || '',
+      payerTel: request.payerTel || '',
+    });
   },
 
   /**

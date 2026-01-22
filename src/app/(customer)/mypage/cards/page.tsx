@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Plus, Trash2, Star, AlertCircle } from 'lucide-react';
+import { CreditCard, Plus, Trash2, Star, AlertCircle, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { IRegisteredCard } from '@/types/payment';
@@ -29,6 +29,7 @@ const CARD_COMPANIES = [
 
 export default function CardsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser, isLoggedIn, registeredCards, addCard, removeCard, setDefaultCard } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
@@ -40,10 +41,48 @@ export default function CardsPage() {
   const [cardPassword, setCardPassword] = useState('');
   const [cardNickname, setCardNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 빌링키 발급 콜백 처리
+  useEffect(() => {
+    if (!mounted || !currentUser) return;
+
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    const billingKey = searchParams.get('billingKey');
+    const cardNo = searchParams.get('cardNo');
+    const issuer = searchParams.get('issuer');
+    const issuerCode = searchParams.get('issuerCode');
+
+    if (error) {
+      alert(`카드 등록 실패: ${decodeURIComponent(error)}`);
+      // URL 파라미터 제거
+      router.replace('/mypage/cards');
+      return;
+    }
+
+    if (success === 'true' && billingKey) {
+      // 빌링키 발급 성공 - 카드 추가
+      const card: IRegisteredCard = {
+        cardId: `CARD${Date.now()}`,
+        billingKey: billingKey,
+        cardNickname: `${issuer || '카드'} ${cardNo?.slice(-4) || '****'}`,
+        cardCompany: issuerCode?.toLowerCase() || 'etc',
+        cardNumberLast4: cardNo?.slice(-4) || '****',
+        isDefault: registeredCards.length === 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      addCard(card);
+      alert('카드가 등록되었습니다.');
+      // URL 파라미터 제거
+      router.replace('/mypage/cards');
+    }
+  }, [mounted, currentUser, searchParams, addCard, registeredCards.length, router]);
 
   useEffect(() => {
     if (mounted && !isLoggedIn) {
@@ -59,6 +98,49 @@ export default function CardsPage() {
     );
   }
 
+  // 빌링키 발급 시작 (PG 결제창으로 이동)
+  const handleStartBillingKeyRegistration = async () => {
+    if (!currentUser) return;
+
+    setIsRegistering(true);
+    try {
+      const response = await fetch('/api/payments/billing-key/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payerName: currentUser.name || '',
+          payerEmail: currentUser.email || '',
+          payerTel: currentUser.phone || '',
+          device: 'mobile',
+          userId: currentUser.uid,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        alert(data.error || '카드 등록 요청에 실패했습니다.');
+        setIsRegistering(false);
+        return;
+      }
+
+      // 빌링키 발급창으로 이동
+      if (data.authPageUrl) {
+        window.location.href = data.authPageUrl;
+      } else {
+        alert('카드 등록 페이지 URL을 받지 못했습니다.');
+        setIsRegistering(false);
+      }
+    } catch (error) {
+      console.error('Billing key registration error:', error);
+      alert('카드 등록 요청 중 오류가 발생했습니다.');
+      setIsRegistering(false);
+    }
+  };
+
+  // 기존 로컬 카드 등록 (테스트용 - 나중에 제거)
   const handleAddCard = async () => {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -141,11 +223,21 @@ export default function CardsPage() {
       <div className="flex-1 overflow-y-auto px-5 py-6">
         {/* 카드 추가 버튼 */}
         <button
-          onClick={() => setShowAddModal(true)}
-          className="w-full mb-4 h-14 bg-white border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 text-gray-500 hover:border-primary-400 hover:text-primary-400 transition-colors"
+          onClick={handleStartBillingKeyRegistration}
+          disabled={isRegistering}
+          className="w-full mb-4 h-14 bg-white border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 text-gray-500 hover:border-primary-400 hover:text-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Plus className="w-5 h-5" />
-          새 카드 등록
+          {isRegistering ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              카드 등록 중...
+            </>
+          ) : (
+            <>
+              <Plus className="w-5 h-5" />
+              새 카드 등록
+            </>
+          )}
         </button>
 
         {/* 등록된 카드 목록 */}

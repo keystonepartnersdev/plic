@@ -45,6 +45,8 @@ export default function DealDetailPage() {
   const [showRevisionConfirmModal, setShowRevisionConfirmModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null);
+  const [showDealDeleteModal, setShowDealDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [revisionType, setRevisionType] = useState<'documents' | 'recipient' | null>(null);
   const [revisionVerificationFailed, setRevisionVerificationFailed] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -116,66 +118,40 @@ export default function DealDetailPage() {
     if (dealFetchedRef.current) return;
     dealFetchedRef.current = true;
 
-    // 1. 먼저 sessionStorage 확인 (거래 생성 직후 이동한 경우)
-    const pendingDealKey = `pending-deal-${did}`;
-    const pendingDeal = sessionStorage.getItem(pendingDealKey);
-    if (pendingDeal) {
-      try {
-        const parsedDeal = JSON.parse(pendingDeal);
-        setDeal(parsedDeal);
-        sessionStorage.removeItem(pendingDealKey);
-        // store에도 추가 (아직 없을 수 있으므로)
-        const { deals: currentDeals, addDeal } = useDealStore.getState();
-        if (!currentDeals.find(d => d.did === did)) {
-          addDeal(parsedDeal);
-        }
-        return;
-      } catch (e) {
-        sessionStorage.removeItem(pendingDealKey);
-      }
-    }
+    // API에서 거래 정보 가져오기 (백엔드가 source of truth)
+    console.log('[DealDetail] Fetching deal from API:', did);
+    dealsAPI.get(did).then(response => {
+      console.log('[DealDetail] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
+      if (response.deal) {
+        // API 응답에 필수 필드가 없으면 기본값 설정
+        const completeDeal = {
+          ...response.deal,
+          recipient: response.deal.recipient || {},
+          attachments: response.deal.attachments || [],
+          history: response.deal.history || [],
+        };
+        setDeal(completeDeal);
 
-    // 2. store에서 찾기
-    const { deals: storeDeals } = useDealStore.getState();
-    const foundDeal = storeDeals.find((d) => d.did === did);
-
-    if (foundDeal) {
-      setDeal(foundDeal);
-      // 저장된 할인 코드가 있으면 복원
-      if (foundDeal.discountCode) {
-        const discountCodes = foundDeal.discountCode.split(', ').filter(code => code.trim());
-        const restoredDiscounts: IDiscount[] = [];
-        discountCodes.forEach(code => {
-          const discountData = getDiscountByCode(code) || availableCoupons.find(c => c.name === code);
-          if (discountData) {
-            restoredDiscounts.push(discountData);
+        // 저장된 할인 코드가 있으면 복원
+        if (completeDeal.discountCode) {
+          const discountCodes = completeDeal.discountCode.split(', ').filter((code: string) => code.trim());
+          const restoredDiscounts: IDiscount[] = [];
+          discountCodes.forEach((code: string) => {
+            const discountData = getDiscountByCode(code) || availableCoupons.find(c => c.name === code);
+            if (discountData) {
+              restoredDiscounts.push(discountData);
+            }
+          });
+          if (restoredDiscounts.length > 0) {
+            setAppliedDiscounts(restoredDiscounts);
           }
-        });
-        if (restoredDiscounts.length > 0) {
-          setAppliedDiscounts(restoredDiscounts);
         }
-      }
-    } else {
-      // 3. store에 없으면 API에서 가져오기
-      dealsAPI.get(did).then(response => {
-        if (response.deal) {
-          // API 응답에 필수 필드가 없으면 기본값 설정
-          const completeDeal = {
-            ...response.deal,
-            status: response.deal.status || 'awaiting_payment',
-            recipient: response.deal.recipient || {},
-            attachments: response.deal.attachments || [],
-            history: response.deal.history || [],
-            isPaid: response.deal.isPaid || false,
-          };
-          setDeal(completeDeal);
-        } else {
-          router.replace('/deals');
-        }
-      }).catch(() => {
+      } else {
         router.replace('/deals');
-      });
-    }
+      }
+    }).catch(() => {
+      router.replace('/deals');
+    });
   }, [mounted, isLoggedIn, did, router]);
 
   // 결제대기 상태일 때 쿠폰 목록 API에서 가져오기
@@ -237,6 +213,24 @@ export default function DealDetailPage() {
           ...(deal.history || []),
         ],
       });
+    }
+  };
+
+  // 거래 삭제 (API 호출)
+  const handleDeleteDeal = async () => {
+    if (!deal) return;
+
+    setIsDeleting(true);
+    try {
+      await dealsAPI.cancel(deal.did);
+      alert('거래가 삭제되었습니다.');
+      router.replace('/deals');
+    } catch (error: any) {
+      console.error('Delete deal error:', error);
+      alert(error.message || '거래 삭제에 실패했습니다.');
+    } finally {
+      setIsDeleting(false);
+      setShowDealDeleteModal(false);
     }
   };
 
@@ -627,8 +621,8 @@ export default function DealDetailPage() {
         <h2 className="text-xl font-bold text-gray-900 mb-1">{deal.dealName}</h2>
         <p className="text-gray-500">{typeConfig.name}</p>
 
-        {/* 결제 버튼 */}
-        {deal.status === 'awaiting_payment' && !deal.isPaid && (
+        {/* 결제 버튼 - draft 또는 awaiting_payment 상태이면서 미결제일 때 */}
+        {(deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid && (
           <Link
             href={`/payment/${deal.did}`}
             className="
@@ -644,8 +638,8 @@ export default function DealDetailPage() {
           </Link>
         )}
 
-        {/* 할인코드 & 쿠폰 섹션 - 결제대기 상태에서만 표시 */}
-        {deal.status === 'awaiting_payment' && !deal.isPaid && (
+        {/* 할인코드 & 쿠폰 섹션 - draft/awaiting_payment 상태에서 표시 */}
+        {(deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid && (
           <div className="mt-4 space-y-3">
             {/* 적용된 할인 목록 */}
             {appliedDiscounts.length > 0 && (
@@ -1109,8 +1103,21 @@ export default function DealDetailPage() {
         </div>
       </div>
 
-      {/* 거래 취소 버튼 */}
-      {deal.status && ['awaiting_payment', 'pending', 'reviewing', 'hold', 'need_revision'].includes(deal.status) && !deal.isPaid && (
+      {/* 거래 삭제 버튼 - draft/awaiting_payment 상태이면서 미결제일 때 */}
+      {deal.status && (deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid && (
+        <div className="px-5 mt-4">
+          <button
+            onClick={() => setShowDealDeleteModal(true)}
+            className="w-full h-12 text-red-500 hover:text-red-700 font-medium flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-5 h-5" />
+            거래 삭제
+          </button>
+        </div>
+      )}
+
+      {/* 거래 취소 버튼 - 결제 후 진행중인 거래 */}
+      {deal.status && ['pending', 'reviewing', 'hold', 'need_revision'].includes(deal.status) && deal.isPaid && (
         <div className="px-5 mt-4">
           <button
             onClick={handleCancel}
@@ -1423,6 +1430,39 @@ export default function DealDetailPage() {
                 className="flex-1 h-11 bg-primary-400 text-white font-medium rounded-xl hover:bg-primary-500 transition-colors"
               >
                 확인
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.getElementById('mobile-frame')!
+      )}
+
+      {/* 거래 삭제 확인 모달 */}
+      {mounted && showDealDeleteModal && createPortal(
+        <div className="absolute inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2 text-center">거래 삭제</h3>
+            <p className="text-gray-600 mb-6 text-center">
+              이 거래를 삭제하시겠습니까?<br />
+              <span className="text-red-500 text-sm">삭제된 거래는 복구할 수 없습니다.</span>
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDealDeleteModal(false)}
+                disabled={isDeleting}
+                className="flex-1 h-11 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteDeal}
+                disabled={isDeleting}
+                className="flex-1 h-11 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? '삭제 중...' : '삭제'}
               </button>
             </div>
           </div>

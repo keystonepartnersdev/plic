@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 type TabType = 'progress' | 'revision' | 'completed';
 
 const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
-  { id: 'progress', label: '진행중', statuses: ['pending', 'reviewing', 'hold', 'awaiting_payment'] },
+  { id: 'progress', label: '진행중', statuses: ['draft', 'pending', 'reviewing', 'hold', 'awaiting_payment'] },
   { id: 'revision', label: '보완필요', statuses: ['need_revision'] },
   { id: 'completed', label: '거래완료', statuses: ['completed', 'cancelled'] },
 ];
@@ -38,7 +38,7 @@ export default function DealsPage() {
     setMounted(true);
     clearCurrentDraft();
     setPortalTarget(document.getElementById('mobile-frame'));
-  }, []);
+  }, [clearCurrentDraft]);
 
   useEffect(() => {
     if (mounted && !isLoggedIn) {
@@ -50,22 +50,21 @@ export default function DealsPage() {
     const fetchDeals = async () => {
       if (!isLoggedIn) return;
       try {
+        console.log('[DealsPage] Fetching deals from API...');
         const response = await dealsAPI.list();
         const apiDeals = response.deals || [];
+        console.log('[DealsPage] API returned:', apiDeals.length, 'deals');
+        console.log('[DealsPage] Deals status:', apiDeals.map((d: IDeal) => ({ did: d.did, status: d.status, isPaid: d.isPaid })));
 
-        // 기존 로컬 캐시에서 API에 없는 deal을 찾아서 병합 (새로 생성된 deal 보존)
-        const { deals: existingDeals } = useDealStore.getState();
-        const apiDealIds = new Set(apiDeals.map((d: IDeal) => d.did));
-        const localOnlyDeals = existingDeals.filter((d) => !apiDealIds.has(d.did));
+        const awaitingPayment = apiDeals.filter((d: IDeal) => d.status === 'awaiting_payment');
+        console.log('[DealsPage] awaiting_payment deals:', awaitingPayment.length);
 
-        // API 응답 + 로컬 전용 deals 병합
-        const mergedDeals = [...localOnlyDeals, ...apiDeals];
-
-        setLocalDeals(mergedDeals);
-        setDeals(mergedDeals);
+        setLocalDeals(apiDeals);
+        setDeals(apiDeals);
       } catch (error) {
-        console.error('거래 목록 로드 실패:', error);
+        console.error('[DealsPage] 거래 목록 로드 실패:', error);
         setLocalDeals([]);
+        setDeals([]);
       } finally {
         setLoading(false);
       }
@@ -84,9 +83,11 @@ export default function DealsPage() {
   }
 
   const userDrafts = drafts.filter((d) => d.uid === currentUser?.uid && d.status && d.status === 'draft');
-  const awaitingPaymentDeals = deals.filter((d) => d.status && d.status === 'awaiting_payment');
+  // 결제 전 거래 (draft 또는 awaiting_payment 상태이면서 미결제)
+  const unpaidDeals = deals.filter((d) => d.status && (d.status === 'draft' || d.status === 'awaiting_payment') && !d.isPaid);
   const activeTabConfig = tabs.find((t) => t.id === activeTab) || tabs[0];
-  const filteredDeals = deals.filter((d) => d.status && activeTabConfig.statuses.includes(d.status) && d.status !== 'awaiting_payment');
+  // 결제 완료된 진행중 거래 (draft/awaiting_payment 제외)
+  const filteredDeals = deals.filter((d) => d.status && activeTabConfig.statuses.includes(d.status) && d.status !== 'draft' && d.status !== 'awaiting_payment');
 
   const getTabCount = (tab: TabType) => {
     const tabConfig = tabs.find((t) => t.id === tab) || tabs[0];
@@ -147,11 +148,11 @@ export default function DealsPage() {
           </div>
         ) : (
           <>
-            {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
+            {activeTab === 'progress' && (userDrafts.length > 0 || unpaidDeals.length > 0) && (
               <div className="mb-6">
                 <h3 className="text-sm font-bold text-gray-500 mb-4">작성중</h3>
                 <div className="space-y-3">
-                  {awaitingPaymentDeals.map((deal) => (
+                  {unpaidDeals.map((deal) => (
                     <DealCard key={deal.did} deal={deal} />
                   ))}
                   {userDrafts.map((draft) => (
@@ -168,7 +169,7 @@ export default function DealsPage() {
 
             {filteredDeals.length > 0 ? (
               <div className="space-y-3">
-                {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
+                {activeTab === 'progress' && (userDrafts.length > 0 || unpaidDeals.length > 0) && (
                   <h3 className="text-sm font-bold text-gray-500 mb-4">진행중</h3>
                 )}
                 {filteredDeals.map((deal) => (
@@ -176,7 +177,7 @@ export default function DealsPage() {
                 ))}
               </div>
             ) : (
-              (activeTab !== 'progress' || (userDrafts.length === 0 && awaitingPaymentDeals.length === 0)) && (
+              (activeTab !== 'progress' || (userDrafts.length === 0 && unpaidDeals.length === 0)) && (
                 <div className="text-center py-16">
                   <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
                     <FileText className="w-10 h-10 text-gray-400" strokeWidth={1.5} />
@@ -267,12 +268,15 @@ function DealCard({ deal }: { deal: IDeal }) {
     green: 'bg-green-100 text-green-700',
   };
 
+  // 미결제 거래인지 확인 (draft 또는 awaiting_payment)
+  const isUnpaid = (deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid;
+
   return (
     <Link
       href={`/deals/${deal.did}`}
       className={cn(
         "block rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border group",
-        deal.status === 'awaiting_payment' && !deal.isPaid
+        isUnpaid
           ? "bg-blue-50/50 border-blue-100 hover:border-blue-200"
           : "bg-white border-gray-100 hover:border-gray-200"
       )}
@@ -280,7 +284,7 @@ function DealCard({ deal }: { deal: IDeal }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            {deal.status === 'awaiting_payment' && !deal.isPaid ? (
+            {isUnpaid ? (
               <span className="inline-flex px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white">
                 결제대기
               </span>

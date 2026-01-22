@@ -169,3 +169,64 @@ export interface WebhookPayload {
   approvalNo: string;
   approvalDt: string;
 }
+
+// ============ 빌링키 발급 ============
+
+export interface CreateBillingKeyRequest {
+  trackId: string;           // 가맹점 주문번호
+  returnUrl: string;         // 인증 완료 후 이동할 URL
+  payerName?: string;        // 구매자 성명
+  payerEmail?: string;       // 구매자 이메일
+  payerTel?: string;         // 구매자 전화번호
+  device: 'pc' | 'mobile';   // 결제고객 단말 구분
+  shopValueInfo?: {
+    value1?: string;         // userId
+    value2?: string;
+    value3?: string;
+  };
+}
+
+export interface CreateBillingKeyData {
+  authPageUrl: string;       // 빌링키 발급창 URL
+  trackId: string;
+  trxId: string;
+}
+
+export type CreateBillingKeyResponse = SoftpaymentResponse<CreateBillingKeyData>;
+
+// ============ 빌링키 인증 콜백 ============
+
+export interface BillingKeyCallbackData {
+  trxId: string;
+  billingKey: string;        // 발급된 빌링키
+  cardInfo: CardInfo;        // 카드 정보
+  shopValueInfo?: {
+    value1?: string;
+    value2?: string;
+    value3?: string;
+  };
+}
+
+export type BillingKeyCallbackResponse = SoftpaymentResponse<BillingKeyCallbackData>;
+
+// ============ 빌링키 결제 ============
+
+export interface BillingPaymentRequest {
+  trackId: string;           // 가맹점 주문번호
+  billingKey: string;        // 발급받은 빌링키
+  amount: number;            // 결제 금액
+  goodsName: string;         // 상품명
+  payerName?: string;
+  payerEmail?: string;
+  payerTel?: string;
+}
+
+export interface BillingPaymentData {
+  trxId: string;
+  trackId: string;
+  amount: string;
+  transactionDate: string;
+  payInfo: PayInfo;
+}
+
+export type BillingPaymentResponse = SoftpaymentResponse<BillingPaymentData>;
