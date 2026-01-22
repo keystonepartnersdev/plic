@@ -156,8 +156,8 @@ export default function DealDetailPage() {
     );
   }
 
-  const statusConfig = DealHelper.getStatusConfig(deal.status);
-  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
+  const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
 
   const statusColors: Record<string, string> = {
     blue: 'bg-blue-100 text-blue-700',
