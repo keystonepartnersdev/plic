@@ -18,7 +18,7 @@ type TabType = 'progress' | 'revision' | 'completed';
 const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
   { id: 'progress', label: '진행중', statuses: ['draft', 'pending', 'reviewing', 'hold', 'awaiting_payment'] },
   { id: 'revision', label: '보완필요', statuses: ['need_revision'] },
-  { id: 'completed', label: '거래완료', statuses: ['completed', 'cancelled'] },
+  { id: 'completed', label: '거래완료', statuses: ['completed'] },
 ];
 
 export default function DealsPage() {
@@ -53,14 +53,16 @@ export default function DealsPage() {
         console.log('[DealsPage] Fetching deals from API...');
         const response = await dealsAPI.list();
         const apiDeals = response.deals || [];
-        console.log('[DealsPage] API returned:', apiDeals.length, 'deals');
-        console.log('[DealsPage] Deals status:', apiDeals.map((d: IDeal) => ({ did: d.did, status: d.status, isPaid: d.isPaid })));
+        // cancelled 상태 거래 제외 (삭제된 거래)
+        const filteredApiDeals = apiDeals.filter((d: IDeal) => d.status !== 'cancelled');
+        console.log('[DealsPage] API returned:', apiDeals.length, 'deals, after filter:', filteredApiDeals.length);
+        console.log('[DealsPage] Deals status:', filteredApiDeals.map((d: IDeal) => ({ did: d.did, status: d.status, isPaid: d.isPaid })));
 
-        const awaitingPayment = apiDeals.filter((d: IDeal) => d.status === 'awaiting_payment');
+        const awaitingPayment = filteredApiDeals.filter((d: IDeal) => d.status === 'awaiting_payment');
         console.log('[DealsPage] awaiting_payment deals:', awaitingPayment.length);
 
-        setLocalDeals(apiDeals);
-        setDeals(apiDeals);
+        setLocalDeals(filteredApiDeals);
+        setDeals(filteredApiDeals);
       } catch (error) {
         console.error('[DealsPage] 거래 목록 로드 실패:', error);
         setLocalDeals([]);
