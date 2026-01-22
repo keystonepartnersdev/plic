@@ -236,9 +236,9 @@ export function BannerSlider() {
               key={index}
               onClick={() => goToSlide(index)}
               className={cn(
-                'w-2 h-2 rounded-full transition-all',
+                'w-2 h-2 rounded-full transition-all duration-300',
                 currentIndex === index
-                  ? 'bg-primary-400 w-4'
+                  ? 'bg-[#2563EB] w-4'
                   : 'bg-gray-300 hover:bg-gray-400'
               )}
             />
@@ -251,7 +251,7 @@ export function BannerSlider() {
 
 function BannerContent({ banner }: { banner: { title: string; imageUrl: string; linkUrl?: string } }) {
   return (
-    <div className="w-full h-full flex flex-col justify-center px-6 select-none bg-gradient-to-r from-primary-400 to-primary-500">
+    <div className="w-full h-full flex flex-col justify-center px-6 select-none bg-gradient-to-r from-[#2563EB] to-[#3B82F6]">
       {banner.imageUrl ? (
         <img
           src={banner.imageUrl}

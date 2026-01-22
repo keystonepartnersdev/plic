@@ -42,7 +42,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }));
 
       const admins = (result.Items || []).map(admin => {
-        const { password, ...safeAdmin } = admin;
+        const { password, passwordHash, ...safeAdmin } = admin;
         return safeAdmin;
       });
 

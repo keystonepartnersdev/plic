@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, ChevronRight, Search, Copy, Check, Star } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
+import { tokenManager } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 // 은행 정보
 const BANK_INFO: Record<string, { name: string; color: string }> = {
@@ -55,19 +58,68 @@ export default function AccountsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
   const [favoriteAccounts, setFavoriteAccounts] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch favorite accounts from API
+  const fetchFavoriteAccounts = useCallback(async () => {
+    const token = tokenManager.getAccessToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success && data.data?.favoriteAccounts) {
+        setFavoriteAccounts(data.data.favoriteAccounts);
+      }
+    } catch (error) {
+      console.error('Failed to fetch favorite accounts:', error);
+      // Fallback to localStorage
+      const saved = localStorage.getItem('favoriteAccounts');
+      if (saved) {
+        try {
+          setFavoriteAccounts(JSON.parse(saved));
+        } catch (e) {
+          console.error('Failed to parse favorite accounts');
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Save favorite accounts to API
+  const saveFavoriteAccounts = useCallback(async (newFavorites: string[]) => {
+    const token = tokenManager.getAccessToken();
+    if (!token) return;
+
+    try {
+      await fetch(`${API_BASE_URL}/users/me/settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ favoriteAccounts: newFavorites }),
+      });
+    } catch (error) {
+      console.error('Failed to save favorite accounts:', error);
+    }
+    // Also save to localStorage as fallback
+    localStorage.setItem('favoriteAccounts', JSON.stringify(newFavorites));
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-    // Load favorites from localStorage
-    const saved = localStorage.getItem('favoriteAccounts');
-    if (saved) {
-      try {
-        setFavoriteAccounts(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse favorite accounts');
-      }
-    }
-  }, []);
+    fetchFavoriteAccounts();
+  }, [fetchFavoriteAccounts]);
 
   useEffect(() => {
     if (mounted && !isLoggedIn) {
@@ -138,7 +190,7 @@ export default function AccountsPage() {
     };
   }, [uniqueAccounts]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !isLoggedIn || !currentUser || isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -172,7 +224,7 @@ export default function AccountsPage() {
     }
 
     setFavoriteAccounts(newFavorites);
-    localStorage.setItem('favoriteAccounts', JSON.stringify(newFavorites));
+    saveFavoriteAccounts(newFavorites);
   };
 
   const maskAccountNumber = (accountNumber: string) => {

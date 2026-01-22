@@ -18,7 +18,7 @@ export default function MobileLayout({
       {showLeftPanel && (
         <aside className="
           hidden lg:flex lg:w-1/2 h-screen
-          bg-gradient-to-b from-primary-50 to-white
+          bg-gradient-to-b from-blue-50 to-white
           flex-col justify-center items-center
           p-10
           flex-shrink-0 overflow-hidden

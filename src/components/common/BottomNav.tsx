@@ -31,11 +31,11 @@ export default function BottomNav() {
   return (
     <nav className="
       flex-shrink-0
-      bg-white border-t border-gray-100
+      bg-white/90 backdrop-blur-md border-t border-gray-100
       pb-safe
       z-50
     ">
-      <div className="flex items-center justify-around h-14">
+      <div className="flex items-center justify-around h-16">
         {navItems.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;
@@ -46,12 +46,15 @@ export default function BottomNav() {
               href={item.href}
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full',
-                'transition-colors duration-200',
-                active ? 'text-primary-400' : 'text-gray-400 hover:text-gray-600'
+                'transition-all duration-300',
+                active ? 'text-[#2563EB]' : 'text-gray-400 hover:text-gray-600'
               )}
             >
-              <Icon className={cn('w-6 h-6', active && 'stroke-[2.5]')} />
-              <span className="text-xs mt-0.5">{item.label}</span>
+              <Icon className={cn('w-6 h-6', active && 'stroke-[2.5]')} strokeWidth={2} />
+              <span className={cn(
+                'text-xs mt-1',
+                active ? 'font-semibold' : 'font-medium'
+              )}>{item.label}</span>
             </Link>
           );
         })}

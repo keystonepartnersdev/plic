@@ -86,32 +86,37 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 영역 */}
-      <header className="bg-white px-5 py-4">
+      {/* 헤더 영역 - PLIC 디자인 시스템 적용 */}
+      <header className="bg-white/90 backdrop-blur-md px-5 py-4 sticky top-0 z-50 border-b border-gray-100">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary-400">PLIC</h1>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-md">
+              <span className="text-white font-black text-sm">P</span>
+            </div>
+            <h1 className="text-2xl font-black text-gradient">PLIC</h1>
+          </div>
           {isLoggedIn ? (
-            <Link href="/mypage" className="text-sm text-gray-600 hover:text-gray-900">
+            <Link href="/mypage" className="text-sm text-gray-600 hover:text-[#2563EB] font-medium transition-colors duration-300">
               {currentUser?.name}님
             </Link>
           ) : (
-            <Link href="/auth/login" className="text-sm text-primary-400 font-medium">
+            <Link href="/auth/login" className="text-sm text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
               로그인
             </Link>
           )}
         </div>
       </header>
 
-      {/* 히어로 섹션 */}
-      <section className="bg-gradient-to-b from-primary-50 to-white px-5 py-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+      {/* 히어로 섹션 - PLIC 디자인 시스템 적용 */}
+      <section className="bg-gradient-to-b from-blue-50 to-white px-5 py-8">
+        <h2 className="text-2xl font-black text-gray-900 mb-2">
           현금 결제를 카드로!
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-gray-600 mb-6 font-medium">
           카드 한도만큼 현금 즉시 송금
         </p>
 
-        {/* 결제대기 송금 알림 배너 (우선 표시) */}
+        {/* 결제대기 송금 알림 배너 (우선 표시) - PLIC 디자인 시스템 적용 */}
         {userAwaitingDeals.length > 0 && (
           <button
             onClick={() => {
@@ -121,24 +126,24 @@ export default function HomePage() {
               }
               window.location.href = '/deals?tab=progress';
             }}
-            className="w-full block bg-blue-50 border border-blue-200 rounded-xl p-4 mb-3 hover:bg-blue-100 transition-colors"
+            className="w-full block bg-blue-50/50 border border-blue-100 rounded-2xl p-4 mb-3 hover:bg-blue-50 hover:border-blue-200 transition-all duration-300 group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <CreditCard className="w-5 h-5 text-blue-500" />
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <CreditCard className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-gray-900">
-                  결제대기 중인 송금이 <strong className="text-blue-600">{userAwaitingDeals.length}건</strong> 있습니다
+                <p className="text-sm font-bold text-gray-900">
+                  결제대기 중인 송금이 <strong className="text-[#2563EB]">{userAwaitingDeals.length}건</strong> 있습니다
                 </p>
-                <p className="text-xs text-gray-500">바로 결제하기</p>
+                <p className="text-xs text-gray-500 font-medium">바로 결제하기</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all duration-300" strokeWidth={2} />
             </div>
           </button>
         )}
 
-        {/* 작성중 송금 알림 배너 */}
+        {/* 작성중 송금 알림 배너 - PLIC 디자인 시스템 적용 */}
         {userDrafts.length > 0 && (
           <button
             onClick={() => {
@@ -148,19 +153,19 @@ export default function HomePage() {
               }
               window.location.href = '/deals?tab=progress';
             }}
-            className="w-full block bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 hover:bg-orange-100 transition-colors"
+            className="w-full block bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-6 hover:bg-indigo-50 hover:border-indigo-200 transition-all duration-300 group"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Edit3 className="w-5 h-5 text-orange-500" />
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <Edit3 className="w-6 h-6 text-[#4F46E5]" strokeWidth={2} />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-gray-900">
-                  작성중인 송금이 <strong className="text-orange-600">{userDrafts.length}건</strong> 있습니다
+                <p className="text-sm font-bold text-gray-900">
+                  작성중인 송금이 <strong className="text-[#4F46E5]">{userDrafts.length}건</strong> 있습니다
                 </p>
-                <p className="text-xs text-gray-500">이어서 작성하기</p>
+                <p className="text-xs text-gray-500 font-medium">이어서 작성하기</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#4F46E5] group-hover:translate-x-1 transition-all duration-300" strokeWidth={2} />
             </div>
           </button>
         )}
@@ -170,29 +175,29 @@ export default function HomePage() {
           <BannerSlider />
         </div>
 
-        {/* 금액 입력 */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm">
-          <label className="block text-sm text-gray-500 mb-2">송금할 금액</label>
+        {/* 금액 입력 - PLIC 디자인 시스템 적용 */}
+        <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+          <label className="block text-sm text-gray-500 mb-2 font-medium">송금할 금액</label>
           <div className="relative">
             <input
               type="text"
               value={amount}
               onChange={handleAmountChange}
               placeholder="0"
-              className="w-full text-3xl font-bold text-gray-900 border-none outline-none bg-transparent"
+              className="w-full text-3xl font-black text-gray-900 border-none outline-none bg-transparent"
             />
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400">원</span>
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400 font-medium">원</span>
           </div>
 
           {numericAmount > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="flex justify-between text-sm text-gray-500 mb-1">
-                <span>수수료 ({feeRate}%)</span>
-                <span>{feeAmount.toLocaleString()}원</span>
+                <span className="font-medium">수수료 ({feeRate}%)</span>
+                <span className="font-semibold">{feeAmount.toLocaleString()}원</span>
               </div>
-              <div className="flex justify-between font-semibold text-gray-900">
+              <div className="flex justify-between font-bold text-gray-900">
                 <span>총 결제금액</span>
-                <span className="text-primary-400">{totalAmount.toLocaleString()}원</span>
+                <span className="text-[#2563EB] text-lg font-black">{totalAmount.toLocaleString()}원</span>
               </div>
             </div>
           )}
@@ -208,106 +213,133 @@ export default function HomePage() {
                 window.location.href = url;
               }}
               className="
-                mt-5 w-full h-12
-                bg-primary-400 hover:bg-primary-500
-                text-white font-semibold
-                rounded-xl
+                mt-5 w-full h-14
+                bg-gradient-to-r from-[#2563EB] to-[#3B82F6]
+                hover:shadow-xl hover:shadow-blue-500/30
+                text-white font-semibold text-lg
+                rounded-full
                 flex items-center justify-center gap-2
-                transition-colors
+                transition-all duration-300
+                group
               "
             >
               송금 신청하기
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={2} />
             </button>
           ) : (
             <Link
               href="/auth/login"
               className="
-                mt-5 w-full h-12
-                bg-primary-400 hover:bg-primary-500
-                text-white font-semibold
-                rounded-xl
+                mt-5 w-full h-14
+                bg-gradient-to-r from-[#2563EB] to-[#3B82F6]
+                hover:shadow-xl hover:shadow-blue-500/30
+                text-white font-semibold text-lg
+                rounded-full
                 flex items-center justify-center gap-2
-                transition-colors
+                transition-all duration-300
+                group
               "
             >
               로그인하고 시작하기
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={2} />
             </Link>
           )}
         </div>
       </section>
 
-      {/* 혜택 섹션 */}
-      <section className="px-5 py-6 bg-white">
-        <h3 className="font-bold text-lg text-gray-900 mb-4">PLIC만의 특별한 혜택</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-50 rounded-xl p-4">
-            <Sparkles className="w-8 h-8 text-primary-400 mb-2" />
-            <h4 className="font-semibold text-gray-900 mb-1">포인트 적립</h4>
-            <p className="text-sm text-gray-500">카드 포인트/마일리지 적립</p>
+      {/* 혜택 섹션 - PLIC 디자인 시스템 적용 */}
+      <section className="px-5 py-8 bg-white">
+        <h3 className="font-black text-xl text-gray-900 mb-6">PLIC만의 특별한 혜택</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <Sparkles className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
+            </div>
+            <h4 className="font-bold text-gray-900 mb-1">포인트 적립</h4>
+            <p className="text-sm text-gray-600">카드 포인트/마일리지 적립</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <Shield className="w-8 h-8 text-primary-400 mb-2" />
-            <h4 className="font-semibold text-gray-900 mb-1">안전한 거래</h4>
-            <p className="text-sm text-gray-500">서류 검증 후 송금 진행</p>
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <Shield className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
+            </div>
+            <h4 className="font-bold text-gray-900 mb-1">안전한 거래</h4>
+            <p className="text-sm text-gray-600">서류 검증 후 송금 진행</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <Clock className="w-8 h-8 text-primary-400 mb-2" />
-            <h4 className="font-semibold text-gray-900 mb-1">빠른 처리</h4>
-            <p className="text-sm text-gray-500">승인 후 즉시 송금</p>
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <Clock className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
+            </div>
+            <h4 className="font-bold text-gray-900 mb-1">빠른 처리</h4>
+            <p className="text-sm text-gray-600">승인 후 즉시 송금</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <CreditCard className="w-8 h-8 text-primary-400 mb-2" />
-            <h4 className="font-semibold text-gray-900 mb-1">분할 결제</h4>
-            <p className="text-sm text-gray-500">최대 3개 카드로 분할</p>
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <CreditCard className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
+            </div>
+            <h4 className="font-bold text-gray-900 mb-1">분할 결제</h4>
+            <p className="text-sm text-gray-600">최대 3개 카드로 분할</p>
           </div>
         </div>
       </section>
 
-      {/* FAQ 섹션 */}
-      <section className="px-5 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg text-gray-900">자주 묻는 질문</h3>
-          <Link href="/guide" className="text-sm text-gray-500 flex items-center">
-            더보기 <ChevronRight className="w-4 h-4" />
+      {/* FAQ 섹션 - PLIC 디자인 시스템 적용 */}
+      <section className="px-5 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-black text-xl text-gray-900">자주 묻는 질문</h3>
+          <Link href="/guide" className="text-sm text-[#2563EB] font-semibold flex items-center gap-1 hover:text-[#1d4ed8] transition-colors duration-300 group">
+            더보기 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={2} />
           </Link>
         </div>
 
         {mounted && faqs.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {faqs.map((faq) => (
-              <div key={faq.faqId} className="border border-gray-100 rounded-xl overflow-hidden">
+              <div key={faq.faqId} className={cn(
+                "bg-white rounded-2xl overflow-hidden transition-all duration-300 border-2",
+                expandedFaq === faq.faqId
+                  ? "border-[#2563EB] shadow-lg"
+                  : "border-gray-100 shadow-sm hover:border-gray-200"
+              )}>
                 <button
                   onClick={() => setExpandedFaq(expandedFaq === faq.faqId ? null : faq.faqId)}
-                  className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 transition-colors duration-300"
                 >
-                  <div className="flex items-center gap-2 flex-1 pr-4">
+                  <div className="flex items-center gap-3 flex-1 pr-4">
                     <span className={cn(
-                      'inline-flex px-2 py-0.5 text-xs font-medium rounded whitespace-nowrap flex-shrink-0',
+                      'inline-flex px-3 py-1 text-xs font-bold rounded-full whitespace-nowrap flex-shrink-0',
                       getCategoryColor(faq.category)
                     )}>
                       {getCategoryName(faq.category)}
                     </span>
-                    <span className="font-medium text-gray-900 truncate">{faq.question.length > 14 ? faq.question.substring(0, 14) + '...' : faq.question}</span>
+                    <span className="font-bold text-gray-900 truncate">{faq.question.length > 14 ? faq.question.substring(0, 14) + '...' : faq.question}</span>
                   </div>
-                  <ChevronDown
-                    className={cn(
-                      'w-5 h-5 text-gray-400 transition-transform flex-shrink-0',
-                      expandedFaq === faq.faqId && 'rotate-180'
-                    )}
-                  />
+                  <div className={cn(
+                    "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
+                    expandedFaq === faq.faqId
+                      ? "bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white"
+                      : "bg-gray-100 text-gray-500"
+                  )}>
+                    <ChevronDown
+                      className={cn(
+                        'w-4 h-4 transition-transform duration-300',
+                        expandedFaq === faq.faqId && 'rotate-180'
+                      )}
+                      strokeWidth={2}
+                    />
+                  </div>
                 </button>
                 {expandedFaq === faq.faqId && (
-                  <div className="px-4 pb-4">
-                    <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
+                  <div className="px-5 pb-5">
+                    <div className="pt-2 border-t border-gray-200">
+                      <p className="text-gray-600 leading-relaxed pt-4">{faq.answer}</p>
+                    </div>
                   </div>
                 )}
               </div>
             ))}
           </div>
         ) : mounted ? (
-          <div className="bg-white rounded-xl p-4 text-center text-gray-500">
+          <div className="bg-white rounded-2xl p-6 text-center text-gray-500 border border-gray-100">
             FAQ가 준비 중입니다.
           </div>
         ) : null}
@@ -326,7 +358,7 @@ export default function HomePage() {
           <p>
             안녕하세요, <strong className="text-gray-900">{currentUser?.name}</strong>님!
             <br /><br />
-            현재 회원님의 계정은 <strong className="text-primary-400">가승인</strong> 상태로,
+            현재 회원님의 계정은 <strong className="text-[#2563EB]">가승인</strong> 상태로,
             사업자등록증 검수가 진행 중입니다.
             <br /><br />
             검수는 영업일 기준 1~2일 내에 완료되며, 승인 완료 시 바로 서비스 이용이 가능합니다.

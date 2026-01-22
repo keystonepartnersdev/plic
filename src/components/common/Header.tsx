@@ -47,9 +47,10 @@ export default function Header({
     <header
       className={`
         sticky top-0 z-50
-        h-14 px-4
+        h-16 px-4
         flex items-center justify-between
-        ${transparent ? 'bg-transparent' : 'bg-white border-b border-gray-100'}
+        transition-all duration-300
+        ${transparent ? 'bg-transparent' : 'bg-white/90 backdrop-blur-md border-b border-gray-100'}
         ${className}
       `}
     >
@@ -58,15 +59,15 @@ export default function Header({
         {showBack && (
           <button
             onClick={handleBack}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-all duration-300"
           >
-            <ChevronLeft className="w-6 h-6 text-gray-700" />
+            <ChevronLeft className="w-6 h-6 text-gray-700" strokeWidth={2} />
           </button>
         )}
       </div>
 
       {/* 중앙 타이틀 */}
-      <h1 className="flex-1 text-center font-semibold text-gray-900 truncate">
+      <h1 className="flex-1 text-center font-bold text-gray-900 truncate">
         {title}
       </h1>
 
@@ -75,9 +76,9 @@ export default function Header({
         {showClose && (
           <button
             onClick={handleClose}
-            className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-all duration-300"
           >
-            <X className="w-6 h-6 text-gray-700" />
+            <X className="w-6 h-6 text-gray-700" strokeWidth={2} />
           </button>
         )}
         {rightAction}

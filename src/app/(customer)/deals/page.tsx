@@ -68,7 +68,7 @@ export default function DealsPage() {
   if (!mounted || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]" />
       </div>
     );
   }
@@ -100,28 +100,28 @@ export default function DealsPage() {
     <div className="relative bg-gray-50 pb-24">
       <Header title="거래내역" />
 
-      <div className="bg-white border-b border-gray-100 px-5 sticky top-14 z-10">
+      <div className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-5 sticky top-14 z-10">
         <div className="flex">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex-1 py-4 text-center font-medium transition-colors relative',
-                activeTab === tab.id ? 'text-primary-400' : 'text-gray-400'
+                'flex-1 py-4 text-center font-bold transition-all duration-300 relative',
+                activeTab === tab.id ? 'text-[#2563EB]' : 'text-gray-400 hover:text-gray-600'
               )}
             >
               {tab.label}
               {getTabCount(tab.id) > 0 && (
                 <span className={cn(
-                  'ml-1 text-sm',
-                  activeTab === tab.id ? 'text-primary-400' : 'text-gray-400'
+                  'ml-1 text-sm font-semibold',
+                  activeTab === tab.id ? 'text-[#2563EB]' : 'text-gray-400'
                 )}>
                   {getTabCount(tab.id)}
                 </span>
               )}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] rounded-full" />
               )}
             </button>
           ))}
@@ -131,13 +131,13 @@ export default function DealsPage() {
       <div className="p-5">
         {loading ? (
           <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]"></div>
           </div>
         ) : (
           <>
             {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-3">작성중</h3>
+                <h3 className="text-sm font-bold text-gray-500 mb-4">작성중</h3>
                 <div className="space-y-3">
                   {awaitingPaymentDeals.map((deal) => (
                     <DealCard key={deal.did} deal={deal} />
@@ -157,7 +157,7 @@ export default function DealsPage() {
             {filteredDeals.length > 0 ? (
               <div className="space-y-3">
                 {activeTab === 'progress' && (userDrafts.length > 0 || awaitingPaymentDeals.length > 0) && (
-                  <h3 className="text-sm font-medium text-gray-500 mb-3">진행중</h3>
+                  <h3 className="text-sm font-bold text-gray-500 mb-4">진행중</h3>
                 )}
                 {filteredDeals.map((deal) => (
                   <DealCard key={deal.did} deal={deal} />
@@ -166,8 +166,10 @@ export default function DealsPage() {
             ) : (
               (activeTab !== 'progress' || (userDrafts.length === 0 && awaitingPaymentDeals.length === 0)) && (
                 <div className="text-center py-16">
-                  <FileText className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                  <p className="text-gray-500">
+                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-10 h-10 text-gray-400" strokeWidth={1.5} />
+                  </div>
+                  <p className="text-gray-500 font-medium">
                     {activeTab === 'progress' && '진행중인 거래가 없습니다.'}
                     {activeTab === 'revision' && '보완이 필요한 거래가 없습니다.'}
                     {activeTab === 'completed' && '완료된 거래가 없습니다.'}
@@ -188,7 +190,7 @@ export default function DealsPage() {
           <p>
             안녕하세요, <strong className="text-gray-900">{currentUser?.name}</strong>님!
             <br /><br />
-            현재 회원님의 계정은 <strong className="text-primary-400">가승인</strong> 상태로,
+            현재 회원님의 계정은 <strong className="text-[#2563EB]">가승인</strong> 상태로,
             사업자등록증 검수가 진행 중입니다.
             <br /><br />
             검수는 영업일 기준 1~2일 내에 완료되며, 승인 완료 시 바로 서비스 이용이 가능합니다.
@@ -217,17 +219,19 @@ export default function DealsPage() {
             }}
             className="
               w-full h-14
-              bg-primary-400 hover:bg-primary-500
+              bg-gradient-to-r from-[#2563EB] to-[#3B82F6]
+              hover:shadow-xl hover:shadow-blue-500/30
               text-white font-semibold text-lg
-              rounded-xl
+              rounded-full
               flex items-center justify-center gap-2
-              transition-colors
+              transition-all duration-300
               shadow-lg
               pointer-events-auto
+              group
             "
           >
             송금 신청하기
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={2} />
           </button>
         </div>,
         portalTarget
@@ -253,48 +257,48 @@ function DealCard({ deal }: { deal: IDeal }) {
     <Link
       href={`/deals/${deal.did}`}
       className={cn(
-        "block rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow",
+        "block rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border group",
         deal.status === 'awaiting_payment' && !deal.isPaid
-          ? "bg-blue-50 border border-blue-200"
-          : "bg-white"
+          ? "bg-blue-50/50 border-blue-100 hover:border-blue-200"
+          : "bg-white border-gray-100 hover:border-gray-200"
       )}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap mb-1">
             {deal.status === 'awaiting_payment' && !deal.isPaid ? (
-              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+              <span className="inline-flex px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white">
                 결제대기
               </span>
             ) : (
               <span className={cn(
-                'inline-flex px-2 py-0.5 text-xs font-medium rounded-full',
+                'inline-flex px-3 py-1 text-xs font-bold rounded-full',
                 statusColors[statusConfig.color]
               )}>
                 {statusConfig.name}
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-400 mt-1">{deal.did}</p>
+          <p className="text-xs text-gray-400 mt-1 font-medium">{deal.did}</p>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-300" />
+        <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all duration-300" strokeWidth={2} />
       </div>
 
-      <h3 className="font-semibold text-gray-900 mb-1">{deal.dealName}</h3>
-      <p className="text-sm text-gray-500 mb-3">{typeConfig.name}</p>
+      <h3 className="font-bold text-gray-900 mb-1">{deal.dealName}</h3>
+      <p className="text-sm text-gray-500 mb-3 font-medium">{typeConfig.name}</p>
 
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
         <div>
-          <p className="text-xs text-gray-400">송금 금액</p>
-          <p className="font-bold text-gray-900">{deal.amount.toLocaleString()}원</p>
+          <p className="text-xs text-gray-400 font-medium">송금 금액</p>
+          <p className="font-black text-[#2563EB]">{deal.amount.toLocaleString()}원</p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-400">받는 분</p>
-          <p className="text-sm text-gray-600">{deal.recipient.accountHolder}</p>
+          <p className="text-xs text-gray-400 font-medium">받는 분</p>
+          <p className="text-sm text-gray-700 font-semibold">{deal.recipient.accountHolder}</p>
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mt-3">
+      <p className="text-xs text-gray-400 mt-3 font-medium">
         {new Date(deal.createdAt).toLocaleDateString('ko-KR', {
           year: 'numeric',
           month: 'long',

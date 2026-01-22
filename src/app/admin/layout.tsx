@@ -81,7 +81,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]" />
       </div>
     );
   }
@@ -90,24 +90,29 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (!checkToken()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* 사이드바 */}
-      <aside className="w-64 bg-white border-r border-gray-200 fixed h-full">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* 사이드바 - PLIC 디자인 시스템 적용 */}
+      <aside className="w-64 bg-white border-r border-gray-100 fixed h-full shadow-sm">
         {/* 로고 */}
-        <div className="h-16 flex items-center justify-center border-b border-gray-200">
-          <h1 className="text-xl font-bold text-primary-400">PLIC Admin</h1>
+        <div className="h-16 flex items-center justify-center border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-md">
+              <span className="text-white font-black text-sm">P</span>
+            </div>
+            <h1 className="text-xl font-black text-gradient">PLIC Admin</h1>
+          </div>
         </div>
 
         {/* 사용자 정보 */}
-        <div className="p-4 border-b border-gray-200">
-          <p className="font-semibold text-gray-900">{currentAdmin?.name || '관리자'}</p>
-          <p className="text-sm text-gray-500">{currentAdmin?.email || ''}</p>
+        <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
+          <p className="font-bold text-gray-900">{currentAdmin?.name || '관리자'}</p>
+          <p className="text-sm text-gray-500 font-medium">{currentAdmin?.email || ''}</p>
         </div>
 
         {/* 메뉴 */}
@@ -127,13 +132,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300',
                       isActive
-                        ? 'bg-primary-50 text-primary-600 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white font-semibold shadow-md'
+                        : 'text-gray-600 hover:bg-blue-50 hover:text-[#2563EB]'
                     )}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
                     <span>{item.label}</span>
                   </Link>
                 </li>
@@ -143,12 +148,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* 로그아웃 */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 w-full text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 w-full text-gray-500 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all duration-300 font-medium"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-5 h-5" strokeWidth={2} />
             <span>로그아웃</span>
           </button>
         </div>

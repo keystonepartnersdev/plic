@@ -9,17 +9,23 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* PLIC Primary Colors (Key Color: #ed843d) */
-  --color-primary-50: #fef6f0;
-  --color-primary-100: #fde9d9;
-  --color-primary-200: #fbcfae;
-  --color-primary-300: #f7aa74;
-  --color-primary-400: #ed843d;
-  --color-primary-500: #e5631a;
-  --color-primary-600: #c94a10;
-  --color-primary-700: #a63811;
-  --color-primary-800: #872f15;
-  --color-primary-900: #6e2914;
+  /* PLIC Primary Colors (Key Color: #2563EB - Primary Blue) */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* PLIC Brand Colors */
+  --color-plic-blue: #2563EB;
+  --color-plic-blue-light: #3B82F6;
+  --color-plic-indigo: #4F46E5;
+  --color-plic-dark: #030213;
 
   /* Gray Scale */
   --color-gray-50: #f9fafb;
@@ -38,6 +44,11 @@
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #3b82f6;
+
+  /* Semantic Colors */
+  --color-muted-bg: #ECECF0;
+  --color-muted-text: #717182;
+  --color-destructive-red: #D4183D;
 
   /* Safe Area Insets */
   --safe-area-inset-top: env(safe-area-inset-top);
@@ -88,18 +99,18 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #ed843d;
+  --primary: #2563EB;
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted: #ECECF0;
+  --muted-foreground: #717182;
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
+  --destructive: #D4183D;
+  --border: rgba(0, 0, 0, 0.1);
   --input: oklch(0.922 0 0);
-  --ring: #ed843d;
+  --ring: #2563EB;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -107,12 +118,12 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #ed843d;
+  --sidebar-primary: #2563EB;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: #ed843d;
+  --sidebar-ring: #2563EB;
 }
 
 .dark {
@@ -122,7 +133,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #ed843d;
+  --primary: #2563EB;
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -130,10 +141,10 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: #D4183D;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: #ed843d;
+  --ring: #2563EB;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -141,12 +152,12 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #ed843d;
+  --sidebar-primary: #2563EB;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #ed843d;
+  --sidebar-ring: #2563EB;
 }
 
 @layer base {
@@ -208,5 +219,132 @@
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: #d1d5db;
     border-radius: 3px;
+  }
+
+  /* PLIC Design System - Gradient Utilities */
+  .gradient-primary {
+    background: linear-gradient(to right, #2563EB, #3B82F6);
+  }
+
+  .gradient-cta {
+    background: linear-gradient(to bottom right, #2563EB, #3B82F6, #4F46E5);
+  }
+
+  .text-gradient {
+    background: linear-gradient(to right, #2563EB, #3B82F6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-icon-light {
+    background: linear-gradient(to bottom right, #dbeafe, #e0e7ff);
+  }
+
+  .gradient-icon-brand {
+    background: linear-gradient(to bottom right, #2563EB, #3B82F6);
+  }
+
+  /* PLIC Design System - Card Utilities */
+  .card-base {
+    @apply bg-white rounded-3xl p-8 shadow-md hover:shadow-2xl transition-all duration-300 border border-gray-100;
+  }
+
+  .card-feature {
+    @apply bg-white rounded-3xl p-8 shadow-md hover:shadow-2xl transition-all duration-300 border border-gray-100 relative overflow-hidden;
+  }
+
+  .card-step {
+    @apply bg-gradient-to-br from-white to-blue-50 rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-blue-100;
+  }
+
+  .card-security {
+    @apply p-8 rounded-3xl bg-gray-50 border border-transparent hover:border-blue-100 hover:bg-blue-50/30 transition-all duration-300;
+  }
+
+  .card-metric {
+    @apply bg-white/60 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-white/50;
+  }
+
+  /* PLIC Design System - Button Utilities */
+  .btn-primary {
+    @apply px-8 py-4 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white rounded-full font-semibold text-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300;
+  }
+
+  .btn-secondary {
+    @apply px-8 py-4 bg-white text-gray-700 rounded-full font-semibold text-lg hover:bg-gray-50 transition-all duration-300 shadow-md border border-gray-100;
+  }
+
+  .btn-outline {
+    @apply px-6 py-2.5 border border-[#2563EB] text-[#2563EB] text-sm font-bold rounded-full hover:bg-blue-50 transition-all duration-300;
+  }
+
+  .btn-ghost {
+    @apply px-10 py-5 bg-white/10 backdrop-blur-md text-white rounded-full font-bold text-lg hover:bg-white/20 transition-all duration-300 border-2 border-white/30;
+  }
+
+  .btn-inverse {
+    @apply px-10 py-5 bg-white text-[#2563EB] rounded-full font-bold text-lg hover:bg-blue-50 transition-all duration-300 shadow-2xl;
+  }
+
+  /* PLIC Design System - Badge Utilities */
+  .badge-feature {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-blue-100;
+  }
+
+  .badge-category {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold;
+  }
+
+  .badge-recommended {
+    @apply bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-2;
+  }
+
+  /* PLIC Design System - Icon Container Utilities */
+  .icon-container-light {
+    @apply w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center;
+  }
+
+  .icon-container-brand {
+    @apply w-16 h-16 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-2xl flex items-center justify-center;
+  }
+
+  .icon-container-social {
+    @apply w-10 h-10 bg-white hover:bg-gradient-to-r hover:from-[#2563EB] hover:to-[#3B82F6] rounded-full flex items-center justify-center shadow-sm hover:shadow-md border border-gray-200 transition-all;
+  }
+
+  /* PLIC Design System - Note Box */
+  .note-box {
+    @apply bg-blue-50 rounded-2xl p-4 border border-blue-100;
+  }
+
+  /* PLIC Design System - Section Utilities */
+  .section-default {
+    @apply py-24 px-6;
+  }
+
+  .section-header {
+    @apply text-center mb-20;
+  }
+
+  .section-title {
+    @apply text-4xl md:text-5xl font-black text-gray-900 mb-4;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-gray-600 max-w-2xl mx-auto;
+  }
+
+  /* PLIC Design System - Container Utilities */
+  .container-base {
+    @apply max-w-7xl mx-auto px-6;
+  }
+
+  .container-content {
+    @apply max-w-6xl mx-auto px-6;
+  }
+
+  .container-text {
+    @apply max-w-4xl mx-auto;
   }
 }

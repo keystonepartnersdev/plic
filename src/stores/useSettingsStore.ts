@@ -4,6 +4,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { TUserGrade } from '@/types';
 
+const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+
 // 등급별 설정
 export interface IGradeSettings {
   feeRate: number;
@@ -67,17 +69,26 @@ export const defaultSettings: ISystemSettings = {
 
 interface SettingsStore {
   settings: ISystemSettings;
+  isLoading: boolean;
+  error: string | null;
+
   updateSettings: (newSettings: Partial<ISystemSettings>) => void;
   updateGradeSettings: (grade: TUserGrade, gradeSettings: Partial<IGradeSettings>) => void;
   updateGradeCriteria: (criteria: Partial<IGradeCriteria>) => void;
   resetSettings: () => void;
   getGradeSettings: (grade: TUserGrade) => IGradeSettings;
+
+  // API operations (admin only)
+  fetchSettings: () => Promise<void>;
+  saveSettings: () => Promise<boolean>;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set, get) => ({
       settings: { ...defaultSettings },
+      isLoading: false,
+      error: null,
 
       updateSettings: (newSettings) =>
         set((state) => ({
@@ -127,6 +138,62 @@ export const useSettingsStore = create<SettingsStore>()(
           return defaultSettings.gradeSettings[grade] || { feeRate: 0, monthlyLimit: 0 };
         }
         return currentSettings.gradeSettings[grade];
+      },
+
+      // Fetch settings from API (admin)
+      fetchSettings: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          const data = await response.json();
+          if (data.success) {
+            set({
+              settings: {
+                ...defaultSettings,
+                ...data.data.settings,
+                gradeSettings: {
+                  ...defaultSettings.gradeSettings,
+                  ...(data.data.settings?.gradeSettings || {}),
+                },
+              },
+              isLoading: false,
+            });
+          } else {
+            set({ error: data.error, isLoading: false });
+          }
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+        }
+      },
+
+      // Save settings to API (admin)
+      saveSettings: async () => {
+        const { settings } = get();
+        set({ isLoading: true, error: null });
+        try {
+          const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ settings }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            set({ isLoading: false });
+            return true;
+          } else {
+            set({ error: data.error, isLoading: false });
+            return false;
+          }
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
       },
     }),
     {

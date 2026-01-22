@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Mail, MessageSquare, Smartphone, Moon, Volume2, Check } from 'lucide-react';
+import { Bell, Mail, MessageSquare, Smartphone, Moon, Volume2, Check, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
+import { tokenManager } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 interface NotificationSettings {
   pushEnabled: boolean;
@@ -17,34 +20,92 @@ interface NotificationSettings {
   soundEnabled: boolean;
 }
 
+const defaultSettings: NotificationSettings = {
+  pushEnabled: true,
+  emailEnabled: true,
+  smsEnabled: false,
+  dealUpdates: true,
+  marketingEnabled: false,
+  nightModeEnabled: false,
+  soundEnabled: true,
+};
+
 export default function NotificationSettingsPage() {
   const router = useRouter();
   const { currentUser, isLoggedIn } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [settings, setSettings] = useState<NotificationSettings>({
-    pushEnabled: true,
-    emailEnabled: true,
-    smsEnabled: false,
-    dealUpdates: true,
-    marketingEnabled: false,
-    nightModeEnabled: false,
-    soundEnabled: true,
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<NotificationSettings>(defaultSettings);
+
+  // Fetch settings from API
+  const fetchSettings = useCallback(async () => {
+    const token = tokenManager.getAccessToken();
+    if (!token) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success && data.data?.settings) {
+        setSettings({ ...defaultSettings, ...data.data.settings });
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+      // Fallback to localStorage
+      const savedSettings = localStorage.getItem('notificationSettings');
+      if (savedSettings) {
+        try {
+          setSettings(JSON.parse(savedSettings));
+        } catch (e) {
+          console.error('Failed to parse notification settings');
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Save settings to API
+  const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
+    const token = tokenManager.getAccessToken();
+    if (!token) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings: newSettings }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 1500);
+      }
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+    // Also save to localStorage as fallback
+    localStorage.setItem('notificationSettings', JSON.stringify(newSettings));
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-    // Load saved settings from localStorage
-    const savedSettings = localStorage.getItem('notificationSettings');
-    if (savedSettings) {
-      try {
-        setSettings(JSON.parse(savedSettings));
-      } catch (e) {
-        console.error('Failed to parse notification settings');
-      }
-    }
-  }, []);
+    fetchSettings();
+  }, [fetchSettings]);
 
   useEffect(() => {
     if (mounted && !isLoggedIn) {
@@ -52,7 +113,7 @@ export default function NotificationSettingsPage() {
     }
   }, [mounted, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !isLoggedIn || !currentUser || isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -63,11 +124,8 @@ export default function NotificationSettingsPage() {
   const handleToggle = (key: keyof NotificationSettings) => {
     const newSettings = { ...settings, [key]: !settings[key] };
     setSettings(newSettings);
-    // Save to localStorage
-    localStorage.setItem('notificationSettings', JSON.stringify(newSettings));
-    // Show save success
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 1500);
+    // Save to API
+    saveSettings(newSettings);
   };
 
   const ToggleSwitch = ({ enabled, onChange }: { enabled: boolean; onChange: () => void }) => (

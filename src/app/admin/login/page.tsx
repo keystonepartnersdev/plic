@@ -51,33 +51,38 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* 로고 */}
+        {/* 로고 - PLIC 디자인 시스템 적용 */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-400 mb-2">PLIC Admin</h1>
-          <p className="text-gray-500">관리자 로그인</p>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white font-black text-xl">P</span>
+            </div>
+          </div>
+          <h1 className="text-3xl font-black text-gradient mb-2">PLIC Admin</h1>
+          <p className="text-gray-500 font-medium">관리자 로그인</p>
         </div>
 
-        {/* 로그인 폼 */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+        {/* 로그인 폼 - PLIC 디자인 시스템 적용 */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 space-y-5">
           {/* 이메일 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               아이디
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" strokeWidth={2} />
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="이메일 주소"
                 className="
-                  w-full h-12 pl-10 pr-4
-                  border border-gray-200 rounded-xl
-                  focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400
-                  transition-colors
+                  w-full h-12 pl-12 pr-4
+                  border border-gray-200 rounded-2xl
+                  focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]
+                  transition-all duration-300
                 "
               />
             </div>
@@ -85,36 +90,36 @@ export default function AdminLoginPage() {
 
           {/* 비밀번호 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               비밀번호
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" strokeWidth={2} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="비밀번호"
                 className="
-                  w-full h-12 pl-10 pr-12
-                  border border-gray-200 rounded-xl
-                  focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400
-                  transition-colors
+                  w-full h-12 pl-12 pr-12
+                  border border-gray-200 rounded-2xl
+                  focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]
+                  transition-all duration-300
                 "
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-300"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? <EyeOff className="w-5 h-5" strokeWidth={2} /> : <Eye className="w-5 h-5" strokeWidth={2} />}
               </button>
             </div>
           </div>
 
           {/* 에러 메시지 */}
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-red-500 font-medium">{error}</p>
           )}
 
           {/* 로그인 버튼 */}
@@ -123,11 +128,11 @@ export default function AdminLoginPage() {
             disabled={isLoading || !email || !password}
             className="
               w-full h-12
-              bg-primary-400 hover:bg-primary-500
-              disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed
+              bg-gradient-to-r from-[#2563EB] to-[#3B82F6] hover:shadow-xl hover:shadow-blue-500/30
+              disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed
               text-white font-semibold
-              rounded-xl
-              transition-colors
+              rounded-full
+              transition-all duration-300
             "
           >
             {isLoading ? '로그인 중...' : '로그인'}

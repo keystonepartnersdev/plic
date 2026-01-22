@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { useSettingsStore, useAdminUserStore, defaultSettings } from '@/stores';
 import { TUserGrade, IUserHistory } from '@/types';
 
+const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+
 const GRADE_LABELS: Record<TUserGrade, string> = {
   basic: '베이직',
   platinum: '플래티넘',
@@ -36,20 +38,53 @@ export default function AdminSettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // 클라이언트 hydration 후 스토어 값 로드
+  // 클라이언트 hydration 후 API에서 설정 로드
   useEffect(() => {
-    // Ensure gradeSettings is always properly initialized
-    const settingsToUse = {
-      ...defaultSettings,
-      ...settings,
-      gradeSettings: {
-        ...defaultSettings.gradeSettings,
-        ...(settings.gradeSettings || {}),
-      },
+    const loadSettings = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/settings`);
+        const data = await response.json();
+        if (data.success && data.data?.settings) {
+          const apiSettings = {
+            ...defaultSettings,
+            ...data.data.settings,
+            gradeSettings: {
+              ...defaultSettings.gradeSettings,
+              ...(data.data.settings.gradeSettings || {}),
+            },
+          };
+          setLocalSettings(apiSettings);
+          updateSettings(apiSettings);
+        } else {
+          // Fallback to local store
+          const settingsToUse = {
+            ...defaultSettings,
+            ...settings,
+            gradeSettings: {
+              ...defaultSettings.gradeSettings,
+              ...(settings.gradeSettings || {}),
+            },
+          };
+          setLocalSettings(settingsToUse);
+        }
+      } catch (error) {
+        console.error('Failed to load settings from API:', error);
+        // Fallback to local store
+        const settingsToUse = {
+          ...defaultSettings,
+          ...settings,
+          gradeSettings: {
+            ...defaultSettings.gradeSettings,
+            ...(settings.gradeSettings || {}),
+          },
+        };
+        setLocalSettings(settingsToUse);
+      }
+      setIsHydrated(true);
     };
-    setLocalSettings(settingsToUse);
-    setIsHydrated(true);
-  }, [settings]);
+
+    loadSettings();
+  }, []); // Only run once on mount
 
   // 등급별 설정이 변경되었을 때 해당 등급 회원들에게 일괄 적용
   const applyGradeSettingsToUsers = (grade: TUserGrade, feeRate: number, monthlyLimit: number) => {
@@ -115,10 +150,22 @@ export default function AdminSettingsPage() {
       }
     });
 
-    // 설정 저장
+    // 로컬 스토어 저장
     updateSettings(localSettings);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // API에 설정 저장
+    try {
+      await fetch(`${API_BASE_URL}/admin/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings: localSettings }),
+      });
+    } catch (error) {
+      console.error('Failed to save settings to API:', error);
+    }
+
     setIsSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
