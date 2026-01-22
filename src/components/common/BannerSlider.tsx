@@ -126,18 +126,8 @@ export function BannerSlider() {
     handleDragEnd();
   };
 
-  if (loading) {
-    return (
-      <div className="w-full flex justify-center">
-        <div
-          className="rounded-xl bg-gray-200 animate-pulse"
-          style={{ width: bannerWidth, height: bannerHeight }}
-        />
-      </div>
-    );
-  }
-
-  if (sortedBanners.length === 0) return null;
+  // 로딩 중이거나 배너가 없으면 아무것도 표시하지 않음
+  if (loading || sortedBanners.length === 0) return null;
 
   const prevIndex = currentIndex === 0 ? sortedBanners.length - 1 : currentIndex - 1;
   const nextIndex = currentIndex === sortedBanners.length - 1 ? 0 : currentIndex + 1;
