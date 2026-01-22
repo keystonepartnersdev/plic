@@ -115,7 +115,9 @@ export default function HomePage() {
         {userAwaitingDeals.length > 0 && (
           <button
             onClick={() => {
-              if (currentUser?.status !== 'active') {
+              // pending_verification 상태에서도 거래 목록 접근 허용
+              const canAccessDeals = currentUser?.status === 'active' || currentUser?.status === 'pending_verification';
+              if (!canAccessDeals) {
                 setShowStatusModal(true);
                 return;
               }
@@ -142,7 +144,9 @@ export default function HomePage() {
         {userDrafts.length > 0 && (
           <button
             onClick={() => {
-              if (currentUser?.status !== 'active') {
+              // pending_verification 상태에서도 거래 목록 접근 허용
+              const canAccessDeals = currentUser?.status === 'active' || currentUser?.status === 'pending_verification';
+              if (!canAccessDeals) {
                 setShowStatusModal(true);
                 return;
               }
@@ -200,7 +204,9 @@ export default function HomePage() {
           {isLoggedIn ? (
             <button
               onClick={() => {
-                if (currentUser?.status !== 'active') {
+                // pending_verification 상태에서도 거래 생성 허용 (결제 단계에서 체크)
+                const canCreateDeal = currentUser?.status === 'active' || currentUser?.status === 'pending_verification';
+                if (!canCreateDeal) {
                   setShowStatusModal(true);
                   return;
                 }

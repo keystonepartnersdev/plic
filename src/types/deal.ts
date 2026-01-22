@@ -73,6 +73,7 @@ export interface IDeal {
 
   // 결제 정보
   paymentId?: string;
+  pgTransactionId?: string; // PG 거래번호 (Softpayment trxId)
   isPaid: boolean;
   paidAt?: string;
 

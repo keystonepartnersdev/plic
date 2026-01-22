@@ -1,27 +1,20 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, XCircle, Home, FileText } from 'lucide-react';
 import { Header } from '@/components/common';
+import { useDealStore, useUserStore } from '@/stores';
 
 function PaymentResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const processedRef = useRef(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
-      </div>
-    );
-  }
+  const { updateDeal, deals } = useDealStore();
+  const { currentUser, updateUser } = useUserStore();
 
   // URL 파라미터에서 결제 결과 추출
   const success = searchParams.get('success') === 'true';
@@ -32,6 +25,55 @@ function PaymentResultContent() {
   const authCd = searchParams.get('authCd');
   const cardNo = searchParams.get('cardNo');
   const issuer = searchParams.get('issuer');
+  const dealId = searchParams.get('dealId');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 결제 성공 시 거래 상태 업데이트
+  useEffect(() => {
+    if (mounted && success && dealId && !processedRef.current) {
+      processedRef.current = true;
+
+      const deal = deals.find(d => d.did === dealId);
+      if (deal && !deal.isPaid) {
+        // 거래 상태 업데이트
+        updateDeal(dealId, {
+          isPaid: true,
+          paidAt: new Date().toISOString(),
+          status: 'reviewing',
+          pgTransactionId: trxId || undefined,
+          history: [
+            {
+              timestamp: new Date().toISOString(),
+              action: '결제 완료',
+              description: `${Number(amount || deal.finalAmount).toLocaleString()}원 결제가 완료되었습니다.`,
+              actor: 'system',
+            },
+            ...deal.history,
+          ],
+        });
+
+        // 사용자 한도 업데이트
+        if (currentUser) {
+          updateUser({
+            usedAmount: currentUser.usedAmount + deal.amount,
+            totalPaymentAmount: currentUser.totalPaymentAmount + deal.finalAmount,
+            totalDealCount: currentUser.totalDealCount + 1,
+          });
+        }
+      }
+    }
+  }, [mounted, success, dealId, deals, updateDeal, currentUser, updateUser, trxId, amount]);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
 
   // 성공 화면
   if (success && !error) {

@@ -88,7 +88,9 @@ export default function DealsPage() {
   };
 
   const handleDraftClick = (draftId: string) => {
-    if (currentUser?.status !== 'active') {
+    // pending_verification 상태에서도 드래프트 수정 허용 (결제 단계에서 체크)
+    const canAccessDraft = currentUser?.status === 'active' || currentUser?.status === 'pending_verification';
+    if (!canAccessDraft) {
       setShowStatusModal(true);
       return;
     }
@@ -211,7 +213,9 @@ export default function DealsPage() {
         <div className="absolute bottom-[71px] left-0 right-0 px-5 z-20 pointer-events-none">
           <button
             onClick={() => {
-              if (currentUser?.status !== 'active') {
+              // pending_verification 상태에서도 거래 생성 허용 (결제 단계에서 체크)
+              const canCreateDeal = currentUser?.status === 'active' || currentUser?.status === 'pending_verification';
+              if (!canCreateDeal) {
                 setShowStatusModal(true);
                 return;
               }

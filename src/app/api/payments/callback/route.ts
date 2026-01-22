@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // shopValueInfo에서 dealId 추출
+    const dealId = result.data?.shopValueInfo?.value1 || '';
+
     // 승인 성공 - 결과 데이터와 함께 리다이렉트
     const params = new URLSearchParams({
       success: 'true',
@@ -67,6 +70,7 @@ export async function POST(request: NextRequest) {
       authCd: approveResponse.data?.payInfo?.authCd || '',
       cardNo: approveResponse.data?.payInfo?.cardInfo?.cardNo || '',
       issuer: approveResponse.data?.payInfo?.cardInfo?.issuer || '',
+      dealId: dealId,
     });
 
     return NextResponse.redirect(`${baseUrl}/payment/result?${params.toString()}`);
