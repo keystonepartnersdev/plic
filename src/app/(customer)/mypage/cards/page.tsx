@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, Plus, Trash2, Star, AlertCircle, Loader2 } from 'lucide-react';
@@ -27,7 +27,7 @@ const CARD_COMPANIES = [
   { code: '기타', name: '기타', color: 'bg-gray-500' },
 ];
 
-export default function CardsPage() {
+function CardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, isLoggedIn, registeredCards, addCard, removeCard, setDefaultCard } = useUserStore();
@@ -459,5 +459,19 @@ export default function CardsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CardsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+        </div>
+      }
+    >
+      <CardsPageContent />
+    </Suspense>
   );
 }
