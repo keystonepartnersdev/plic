@@ -301,7 +301,7 @@ function NewDealContent() {
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
   const { feeAmount, totalAmount, finalAmount } = DealHelper.calculateTotal(
     numericAmount,
-    currentUser.feeRate,
+    currentUser?.feeRate || 0,
     0
   );
 
@@ -539,7 +539,7 @@ function NewDealContent() {
           accountNumber: recipient.accountNumber,
           accountHolder: recipient.accountHolder,
         },
-        senderName: senderName || currentUser.name,
+        senderName: senderName || currentUser?.name || '',
         attachments: attachmentData,
       });
 
@@ -672,7 +672,7 @@ function NewDealContent() {
               {numericAmount > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span>수수료 ({currentUser.feeRate}%)</span>
+                    <span>수수료 ({currentUser?.feeRate || 0}%)</span>
                     <span>{feeAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-900">
@@ -902,7 +902,7 @@ function NewDealContent() {
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                placeholder={currentUser.name}
+                placeholder={currentUser?.name || ''}
                 className="
                   w-full h-14 px-4
                   border border-gray-200 rounded-xl
@@ -1178,7 +1178,7 @@ function NewDealContent() {
                     <span className="font-medium">{numericAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">수수료 ({currentUser.feeRate}%)</span>
+                    <span className="text-gray-600">수수료 ({currentUser?.feeRate || 0}%)</span>
                     <span className="font-medium">{feeAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
