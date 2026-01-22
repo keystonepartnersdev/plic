@@ -621,7 +621,7 @@ function NewDealContent() {
             </p>
 
             <div className="grid grid-cols-2 gap-3">
-              {dealTypes.map((item) => (
+              {dealTypes.filter(item => item && item.name).map((item) => (
                 <button
                   key={item.type}
                   onClick={() => {
