@@ -575,6 +575,9 @@ function NewDealContent() {
       // store에도 추가 (로컬 캐시용)
       addDeal(completeDeal);
 
+      // 페이지 이동 전에 sessionStorage에도 저장 (store 동기화 문제 방지)
+      sessionStorage.setItem(`pending-deal-${response.deal.did}`, JSON.stringify(completeDeal));
+
       router.replace(`/deals/${response.deal.did}`);
     } catch (error: any) {
       console.error('거래 생성 실패:', error);

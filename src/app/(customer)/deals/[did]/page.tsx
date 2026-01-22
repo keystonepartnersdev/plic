@@ -114,7 +114,26 @@ export default function DealDetailPage() {
     // 이미 deal이 설정되어 있으면 skip
     if (deal) return;
 
-    // store에서 직접 가져오기 (dependency 변경 방지)
+    // 1. 먼저 sessionStorage 확인 (거래 생성 직후 이동한 경우)
+    const pendingDealKey = `pending-deal-${did}`;
+    const pendingDeal = sessionStorage.getItem(pendingDealKey);
+    if (pendingDeal) {
+      try {
+        const parsedDeal = JSON.parse(pendingDeal);
+        setDeal(parsedDeal);
+        sessionStorage.removeItem(pendingDealKey);
+        // store에도 추가 (아직 없을 수 있으므로)
+        const { deals: currentDeals, addDeal } = useDealStore.getState();
+        if (!currentDeals.find(d => d.did === did)) {
+          addDeal(parsedDeal);
+        }
+        return;
+      } catch (e) {
+        sessionStorage.removeItem(pendingDealKey);
+      }
+    }
+
+    // 2. store에서 찾기
     const { deals: storeDeals } = useDealStore.getState();
     const foundDeal = storeDeals.find((d) => d.did === did);
 
@@ -135,7 +154,7 @@ export default function DealDetailPage() {
         }
       }
     } else {
-      // store에 없으면 API에서 가져오기
+      // 3. store에 없으면 API에서 가져오기
       dealsAPI.get(did).then(response => {
         if (response.deal) {
           setDeal(response.deal);
