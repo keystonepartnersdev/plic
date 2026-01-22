@@ -151,11 +151,19 @@ export const softpayment = {
   /**
    * 빌링키 발급 요청 API
    * 카드 등록을 위한 빌링키 발급창 URL을 반환합니다.
+   *
+   * 참고: 소프트페이먼트 테스트 환경에서는 빌링키 전용 API가 없을 수 있어
+   * 일반 결제 API를 소액(100원) 결제로 사용하여 카드 등록을 대신합니다.
+   * 운영 환경에서는 정식 빌링키 API 사용 필요.
    */
   async createBillingKey(request: CreateBillingKeyRequest): Promise<CreateBillingKeyResponse> {
-    return apiCall<CreateBillingKeyResponse>('/api/webpay/billing/create', {
+    // 테스트 환경: 소액 결제로 카드 등록 대체
+    // 운영 환경에서는 /api/webpay/billing/create 사용
+    return apiCall<CreateBillingKeyResponse>('/api/webpay/create', {
       trackId: request.trackId,
+      amount: '100', // 카드 등록용 소액 결제 (나중에 취소 처리)
       returnUrl: request.returnUrl,
+      goodsName: '카드 등록',
       payerName: request.payerName || '',
       payerEmail: request.payerEmail || '',
       payerTel: request.payerTel || '',

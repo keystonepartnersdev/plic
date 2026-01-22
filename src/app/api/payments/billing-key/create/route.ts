@@ -44,11 +44,13 @@ export async function POST(request: NextRequest) {
 
     if (!softpayment.isSuccess(response.resCode)) {
       const isRetryable = softpayment.isRetryable(response.resCode);
+      console.log('[BillingKey Create] Failed with resCode:', response.resCode, 'message:', response.message);
       return NextResponse.json(
         {
           error: softpayment.getResultMessage(response.resCode),
           resCode: response.resCode,
           retryable: isRetryable,
+          rawResponse: response, // 디버깅용
         },
         { status: isRetryable ? 503 : 400 }
       );
