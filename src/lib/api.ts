@@ -339,6 +339,10 @@ export const authAPI = {
       thirdParty: boolean;
       marketing: boolean;
     };
+    // 카카오 본인인증 정보
+    phoneVerified?: boolean;
+    kakaoId?: number;
+    ci?: string;
   }) => request<{ message: string; uid: string }>('/auth/signup', {
     method: 'POST',
     body: JSON.stringify(data),

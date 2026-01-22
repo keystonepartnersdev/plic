@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Building2, Upload, X, AlertCircle, FileText } from 'lucide-react';
+import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Building2, Upload, X, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
 import { Header } from '@/components/common';
 import { authAPI } from '@/lib/api';
 import { uploadFile, validateFile } from '@/lib/upload';
 import { TUserType } from '@/types';
 import { cn } from '@/lib/utils';
 
-type Step = 'agreement' | 'info' | 'businessInfo' | 'verify' | 'complete';
+type Step = 'agreement' | 'phoneVerify' | 'info' | 'businessInfo' | 'complete';
 
 interface Agreement {
   id: string;
@@ -19,8 +19,21 @@ interface Agreement {
   checked: boolean;
 }
 
-export default function SignupPage() {
+interface KakaoVerificationResult {
+  kakaoId: number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  birthyear?: string;
+  birthday?: string;
+  gender?: 'male' | 'female';
+  ci?: string;
+  verifiedAt: string;
+}
+
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [step, setStep] = useState<Step>('agreement');
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +49,10 @@ export default function SignupPage() {
 
   // 회원 유형 (사업자 회원만 가입 가능)
   const userType: TUserType = 'business';
+
+  // 카카오 인증 결과
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(null);
 
   // 회원 정보
   const [name, setName] = useState('');
@@ -54,8 +71,51 @@ export default function SignupPage() {
   const [businessLicensePreview, setBusinessLicensePreview] = useState<string>('');
   const [uploadingLicense, setUploadingLicense] = useState(false);
 
-  // 이메일 인증
-  const [verificationCode, setVerificationCode] = useState('');
+  // 카카오 인증 결과 처리
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const verificationKey = searchParams.get('verificationKey');
+    const errorParam = searchParams.get('error');
+    const errorMessage = searchParams.get('message');
+
+    if (errorParam) {
+      setError(errorMessage || '카카오 인증에 실패했습니다.');
+      setStep('phoneVerify');
+      // URL 파라미터 정리
+      router.replace('/auth/signup', { scroll: false });
+      return;
+    }
+
+    if (verified === 'true' && verificationKey) {
+      // 인증 결과 조회
+      fetchVerificationResult(verificationKey);
+    }
+  }, [searchParams]);
+
+  const fetchVerificationResult = async (key: string) => {
+    try {
+      const response = await fetch(`/api/kakao/result?key=${key}`);
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setKakaoVerification(data.data);
+        setIsPhoneVerified(true);
+
+        // 인증된 정보로 자동 채우기
+        if (data.data.name) setName(data.data.name);
+        if (data.data.phone) setPhone(data.data.phone);
+        if (data.data.email) setEmail(data.data.email);
+
+        // info 단계로 이동
+        setStep('info');
+      }
+    } catch (err) {
+      console.error('인증 결과 조회 실패:', err);
+    }
+
+    // URL 파라미터 정리
+    router.replace('/auth/signup', { scroll: false });
+  };
 
   const allRequiredChecked = agreements.filter((a) => a.required).every((a) => a.checked);
   const allChecked = agreements.every((a) => a.checked);
@@ -109,13 +169,20 @@ export default function SignupPage() {
     email.length > 0 &&
     isValidEmail(email) &&
     isValidPassword(password) &&
-    password === passwordConfirm;
+    password === passwordConfirm &&
+    isPhoneVerified;
 
   const canProceedBusinessInfo =
     businessName.length >= 2 &&
     isValidBusinessNumber(businessNumber) &&
     representativeName.length >= 2 &&
     (businessLicenseKey || businessLicenseFile);
+
+  // 카카오 본인인증 시작
+  const handleKakaoVerification = () => {
+    // 카카오 인증 페이지로 리다이렉트
+    window.location.href = '/api/kakao/auth?returnTo=/auth/signup';
+  };
 
   // 사업자등록증 파일 선택
   const handleLicenseFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,6 +248,10 @@ export default function SignupPage() {
           thirdParty: agreements.find((a) => a.id === 'thirdParty')?.checked || false,
           marketing: agreements.find((a) => a.id === 'marketing')?.checked || false,
         },
+        // 카카오 인증 정보 추가
+        phoneVerified: isPhoneVerified,
+        kakaoId: kakaoVerification?.kakaoId,
+        ci: kakaoVerification?.ci,
       };
 
       // 사업자인 경우 사업자 정보 추가
@@ -195,7 +266,8 @@ export default function SignupPage() {
 
       await authAPI.signup(signupData);
 
-      setStep('verify');
+      // 휴대폰 인증 완료 시 이메일 인증 스킵하고 바로 완료
+      setStep('complete');
     } catch (err: any) {
       setError(err.message || '회원가입 중 오류가 발생했습니다.');
     } finally {
@@ -203,69 +275,15 @@ export default function SignupPage() {
     }
   };
 
-  // 이메일 인증 확인
-  const handleVerify = async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      await authAPI.confirm({ email, code: verificationCode });
-      setStep('complete');
-    } catch (err: any) {
-      setError(err.message || '인증코드가 올바르지 않습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 인증코드 재발송
-  const handleResendCode = async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const cleanPhone = phone.replace(/-/g, '');
-      await authAPI.signup({
-        email,
-        password,
-        name,
-        phone: cleanPhone,
-        userType,
-        businessInfo: userType === 'business' ? {
-          businessName,
-          businessNumber: businessNumber.replace(/-/g, ''),
-          representativeName,
-          businessLicenseKey: businessLicenseKey || undefined,
-        } : undefined,
-        agreements: {
-          service: true,
-          privacy: true,
-          thirdParty: true,
-          marketing: agreements.find((a) => a.id === 'marketing')?.checked || false,
-        },
-      });
-      alert('인증코드가 재발송되었습니다.');
-    } catch (err: any) {
-      alert('인증코드가 재발송되었습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleBack = () => {
-    if (step === 'info') setStep('agreement');
+    if (step === 'phoneVerify') setStep('agreement');
+    else if (step === 'info') setStep('phoneVerify');
     else if (step === 'businessInfo') setStep('info');
-    else if (step === 'verify') setStep('businessInfo');
     else router.back();
   };
 
   const handleNextFromInfo = () => {
-    // 사업자 회원만 가입 가능하므로 항상 businessInfo로 이동
-    if (true) {
-      setStep('businessInfo');
-    } else {
-      handleSignup();
-    }
+    setStep('businessInfo');
   };
 
   return (
@@ -322,7 +340,7 @@ export default function SignupPage() {
             </div>
 
             <button
-              onClick={() => setStep('info')}
+              onClick={() => setStep('phoneVerify')}
               disabled={!allRequiredChecked}
               className="w-full h-14 mt-8 bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg rounded-xl transition-colors"
             >
@@ -331,11 +349,79 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* Step 2: 회원 정보 입력 */}
+        {/* Step 2: 휴대폰 본인인증 */}
+        {step === 'phoneVerify' && (
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">본인인증</h2>
+            <p className="text-gray-500 mb-6">안전한 서비스 이용을 위해 본인인증이 필요합니다.</p>
+
+            {/* 인증 상태 표시 */}
+            {isPhoneVerified ? (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-green-800">본인인증 완료</p>
+                    <p className="text-sm text-green-600">
+                      {kakaoVerification?.name} / {kakaoVerification?.phone}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* 카카오 인증 버튼 */}
+                <button
+                  onClick={handleKakaoVerification}
+                  className="w-full h-14 bg-[#FEE500] hover:bg-[#FDD835] text-gray-900 font-semibold rounded-xl flex items-center justify-center gap-3 transition-colors"
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.47 1.607 4.647 4.035 5.906l-.857 3.179c-.058.215.189.39.379.27l3.746-2.357c.883.142 1.79.218 2.697.218 5.523 0 10-3.477 10-7.716S17.523 3 12 3z"/>
+                  </svg>
+                  카카오로 본인인증
+                </button>
+
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <p className="text-sm text-gray-600">
+                    카카오 계정으로 간편하게 본인인증을 진행할 수 있습니다.
+                    인증 후 이름과 휴대폰 번호가 자동으로 입력됩니다.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 bg-red-50 rounded-xl mt-4">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {isPhoneVerified && (
+              <button
+                onClick={() => setStep('info')}
+                className="w-full h-14 mt-6 bg-primary-400 hover:bg-primary-500 text-white font-semibold text-lg rounded-xl transition-colors"
+              >
+                다음
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: 회원 정보 입력 */}
         {step === 'info' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">회원 정보 입력</h2>
             <p className="text-gray-500 mb-6">서비스 이용에 필요한 정보를 입력해주세요.</p>
+
+            {/* 본인인증 완료 표시 */}
+            {isPhoneVerified && (
+              <div className="p-3 bg-green-50 border border-green-100 rounded-xl mb-4 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-700 font-medium">본인인증 완료</span>
+              </div>
+            )}
 
             {/* 이름 */}
             <div className="mb-4">
@@ -347,9 +433,16 @@ export default function SignupPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="실명 입력"
-                  className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  readOnly={isPhoneVerified && !!kakaoVerification?.name}
+                  className={cn(
+                    "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                    isPhoneVerified && kakaoVerification?.name && "bg-gray-50 text-gray-600"
+                  )}
                 />
               </div>
+              {isPhoneVerified && kakaoVerification?.name && (
+                <p className="text-xs text-gray-400 mt-1">본인인증으로 확인된 이름입니다.</p>
+              )}
             </div>
 
             {/* 휴대폰 번호 */}
@@ -363,9 +456,16 @@ export default function SignupPage() {
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   placeholder="010-0000-0000"
                   maxLength={13}
-                  className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  readOnly={isPhoneVerified && !!kakaoVerification?.phone}
+                  className={cn(
+                    "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                    isPhoneVerified && kakaoVerification?.phone && "bg-gray-50 text-gray-600"
+                  )}
                 />
               </div>
+              {isPhoneVerified && kakaoVerification?.phone && (
+                <p className="text-xs text-gray-400 mt-1">본인인증으로 확인된 번호입니다.</p>
+              )}
             </div>
 
             {/* 이메일 */}
@@ -384,7 +484,6 @@ export default function SignupPage() {
               {email && !isValidEmail(email) && (
                 <p className="text-sm text-red-500 mt-1">올바른 이메일 형식이 아닙니다.</p>
               )}
-              <p className="text-xs text-gray-400 mt-1">이메일로 인증코드가 발송됩니다.</p>
             </div>
 
             {/* 비밀번호 */}
@@ -442,7 +541,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* Step 4: 사업자 정보 입력 (사업자 회원만) */}
+        {/* Step 4: 사업자 정보 입력 */}
         {step === 'businessInfo' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">사업자 정보 입력</h2>
@@ -562,52 +661,7 @@ export default function SignupPage() {
           </div>
         )}
 
-        {/* Step 5: 이메일 인증 */}
-        {step === 'verify' && (
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">이메일 인증</h2>
-            <p className="text-gray-500 mb-6">
-              <strong className="text-gray-900">{email}</strong>로 발송된<br />
-              인증코드 6자리를 입력해주세요.
-            </p>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">인증코드</label>
-              <input
-                type="text"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="6자리 입력"
-                maxLength={6}
-                className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-center text-xl tracking-widest"
-              />
-            </div>
-
-            <button
-              onClick={handleResendCode}
-              disabled={isLoading}
-              className="w-full text-sm text-primary-400 mb-4"
-            >
-              인증코드 재발송
-            </button>
-
-            {error && (
-              <div className="p-3 bg-red-50 rounded-xl mb-4">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-
-            <button
-              onClick={handleVerify}
-              disabled={verificationCode.length !== 6 || isLoading}
-              className="w-full h-14 bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg rounded-xl transition-colors"
-            >
-              {isLoading ? '확인 중...' : '인증 완료'}
-            </button>
-          </div>
-        )}
-
-        {/* Step 6: 완료 */}
+        {/* Step 5: 완료 */}
         {step === 'complete' && (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -641,5 +695,18 @@ export default function SignupPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Suspense 바운더리로 감싸서 export
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    }>
+      <SignupContent />
+    </Suspense>
   );
 }
