@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, Plus, Trash2, Star, AlertCircle, Loader2 } from 'lucide-react';
@@ -42,6 +42,7 @@ function CardsPageContent() {
   const [cardNickname, setCardNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const callbackProcessedRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -50,6 +51,7 @@ function CardsPageContent() {
   // 빌링키 발급 콜백 처리
   useEffect(() => {
     if (!mounted || !currentUser) return;
+    if (callbackProcessedRef.current) return; // 이미 처리됨
 
     const success = searchParams.get('success');
     const error = searchParams.get('error');
@@ -59,6 +61,7 @@ function CardsPageContent() {
     const issuerCode = searchParams.get('issuerCode');
 
     if (error) {
+      callbackProcessedRef.current = true;
       alert(`카드 등록 실패: ${decodeURIComponent(error)}`);
       // URL 파라미터 제거
       router.replace('/mypage/cards');
@@ -66,6 +69,7 @@ function CardsPageContent() {
     }
 
     if (success === 'true' && billingKey) {
+      callbackProcessedRef.current = true;
       // 빌링키 발급 성공 - 카드 추가
       const card: IRegisteredCard = {
         cardId: `CARD${Date.now()}`,
