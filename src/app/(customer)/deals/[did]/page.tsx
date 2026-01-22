@@ -730,9 +730,9 @@ export default function DealDetailPage() {
               onClick={() => {
                 setShowRevisionModal(true);
                 setRevisionRecipient({
-                  bank: deal.recipient.bank,
-                  accountNumber: deal.recipient.accountNumber,
-                  accountHolder: deal.recipient.accountHolder,
+                  bank: deal.recipient?.bank || '',
+                  accountNumber: deal.recipient?.accountNumber || '',
+                  accountHolder: deal.recipient?.accountHolder || '',
                   senderName: deal.senderName || '',
                 });
               }}
@@ -812,15 +812,15 @@ export default function DealDetailPage() {
         <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-500">은행</span>
-            <span className="font-medium">{deal.recipient.bank}</span>
+            <span className="font-medium">{deal.recipient?.bank || '-'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">계좌번호</span>
-            <span className="font-medium">{deal.recipient.accountNumber}</span>
+            <span className="font-medium">{deal.recipient?.accountNumber || '-'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">예금주</span>
-            <span className="font-medium">{deal.recipient.accountHolder}</span>
+            <span className="font-medium">{deal.recipient?.accountHolder || '-'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">보내는 분</span>
