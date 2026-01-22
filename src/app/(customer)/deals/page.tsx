@@ -245,8 +245,8 @@ export default function DealsPage() {
 }
 
 function DealCard({ deal }: { deal: IDeal }) {
-  const statusConfig = DealHelper.getStatusConfig(deal.status);
-  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
+  const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+  const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
 
   const statusColors: Record<string, string> = {
     blue: 'bg-blue-100 text-blue-700',
@@ -298,7 +298,7 @@ function DealCard({ deal }: { deal: IDeal }) {
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400 font-medium">받는 분</p>
-          <p className="text-sm text-gray-700 font-semibold">{deal.recipient.accountHolder}</p>
+          <p className="text-sm text-gray-700 font-semibold">{deal.recipient?.accountHolder || '-'}</p>
         </div>
       </div>
 
