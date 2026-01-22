@@ -42,6 +42,9 @@ const BANKS = [
   '광주은행', '전북은행', '제주은행', '새마을금고', '신협',
 ];
 
+// 최소 송금 금액
+const MIN_AMOUNT = 10000;
+
 function NewDealContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -590,7 +593,8 @@ function NewDealContent() {
     }
   };
 
-  const canProceedAmount = numericAmount > 0 && !isOverLimit;
+  const isBelowMinimum = numericAmount > 0 && numericAmount < MIN_AMOUNT;
+  const canProceedAmount = numericAmount >= MIN_AMOUNT && !isOverLimit;
   const canProceedRecipient =
     recipient.bank &&
     recipient.accountNumber.length >= 10 &&
@@ -695,7 +699,7 @@ function NewDealContent() {
                   placeholder="0"
                   className={cn(
                     "w-full text-3xl font-bold bg-transparent border-none outline-none",
-                    isOverLimit ? "text-red-500" : "text-gray-900"
+                    isOverLimit ? "text-red-500" : isBelowMinimum ? "text-yellow-600" : "text-gray-900"
                   )}
                 />
                 <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400">원</span>
@@ -763,6 +767,18 @@ function NewDealContent() {
                 </div>
               )}
             </div>
+
+            {/* 최소 금액 안내 */}
+            {isBelowMinimum && (
+              <div className="rounded-xl p-4 mb-6 bg-yellow-50">
+                <div className="flex items-start gap-2 text-yellow-700">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm">
+                    최소 송금 금액은 <strong>{MIN_AMOUNT.toLocaleString()}원</strong>입니다.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* 선택된 거래 유형 표시 - 클릭 시 이전 페이지로 이동 및 금액 저장 */}
             <button
