@@ -532,7 +532,7 @@ function NewDealContent() {
         .filter((a) => a.uploadStatus === 'completed')
         .map((a) => a.fileKey || a.base64Data || a.name);
 
-      const response = await dealsAPI.create({
+      const dealData = {
         dealName: `${selectedTypeConfig?.name} - ${recipient.accountHolder}`,
         dealType,
         amount: numericAmount,
@@ -540,16 +540,28 @@ function NewDealContent() {
           bank: recipient.bank,
           accountNumber: recipient.accountNumber,
           accountHolder: recipient.accountHolder,
+          isVerified: recipient.isVerified,
         },
         senderName: senderName || currentUser?.name || '',
         attachments: attachmentData,
-      });
+      };
+
+      const response = await dealsAPI.create(dealData);
 
       // Draft 제출 완료 후 삭제
       submitDraft();
 
+      // API 응답에 누락된 필드가 있을 수 있으므로 보낸 데이터와 병합
+      const completeDeal = {
+        ...response.deal,
+        recipient: response.deal.recipient || dealData.recipient,
+        attachments: response.deal.attachments || dealData.attachments,
+        senderName: response.deal.senderName || dealData.senderName,
+        history: response.deal.history || [],
+      };
+
       // store에도 추가 (로컬 캐시용)
-      addDeal(response.deal);
+      addDeal(completeDeal);
 
       router.replace(`/deals/${response.deal.did}`);
     } catch (error: any) {
