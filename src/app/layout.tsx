@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   description: "카드 매입대금 정산대행 서비스. 카드 한도만큼 현금 즉시 송금, 분할결제부터 포인트 적립까지!",
   keywords: ["PLIC", "카드결제", "송금", "정산대행", "분할결제"],
   authors: [{ name: "PLIC" }],
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   openGraph: {
     title: "PLIC - 카드로 결제, 계좌로 송금",
     description: "카드 매입대금 정산대행 서비스",
@@ -43,7 +47,7 @@ export default function RootLayout({
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#ed843d" />
+        <meta name="theme-color" content="#2563EB" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

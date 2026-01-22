@@ -6,10 +6,7 @@ export default function LeftPanel() {
   return (
     <div className="text-center">
       {/* 로고 */}
-      <div className="flex items-center justify-center gap-3 mb-6">
-        <div className="w-14 h-14 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-lg">
-          <span className="text-white font-black text-2xl">P</span>
-        </div>
+      <div className="flex items-center justify-center mb-6">
         <h1 className="text-5xl font-black text-gradient">PLIC</h1>
       </div>
 

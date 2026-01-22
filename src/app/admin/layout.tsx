@@ -101,12 +101,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <aside className="w-64 bg-white border-r border-gray-100 fixed h-full shadow-sm">
         {/* 로고 */}
         <div className="h-16 flex items-center justify-center border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-md">
-              <span className="text-white font-black text-sm">P</span>
-            </div>
-            <h1 className="text-xl font-black text-gradient">PLIC Admin</h1>
-          </div>
+          <h1 className="text-xl font-black text-gradient">PLIC Admin</h1>
         </div>
 
         {/* 사용자 정보 */}

@@ -61,11 +61,6 @@ export default function LoginPage() {
       <div className="px-5 py-8">
         {/* 로고 - PLIC 디자인 시스템 적용 */}
         <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-black text-xl">P</span>
-            </div>
-          </div>
           <h1 className="text-4xl font-black text-gradient mb-2">PLIC</h1>
           <p className="text-gray-500 font-medium">카드로 결제, 계좌로 송금</p>
         </div>

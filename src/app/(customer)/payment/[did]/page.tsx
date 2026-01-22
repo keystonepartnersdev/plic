@@ -116,7 +116,7 @@ export default function PaymentPage() {
                 <div className="text-sm text-yellow-800">
                   <p className="font-medium mb-1">검토 진행 중</p>
                   <p className="text-yellow-700">
-                    영업일 기준 1~2일 내에 검토가 완료됩니다.
+                    영업일 기준 당일 내에 검토가 완료됩니다.
                     승인 완료 시 알림을 보내드립니다.
                   </p>
                 </div>

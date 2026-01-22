@@ -89,12 +89,7 @@ export default function HomePage() {
       {/* 헤더 영역 - PLIC 디자인 시스템 적용 */}
       <header className="bg-white/90 backdrop-blur-md px-5 py-4 sticky top-0 z-50 border-b border-gray-100">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#2563EB] to-[#3B82F6] rounded-full flex items-center justify-center shadow-md">
-              <span className="text-white font-black text-sm">P</span>
-            </div>
-            <h1 className="text-2xl font-black text-gradient">PLIC</h1>
-          </div>
+          <h1 className="text-2xl font-black text-gradient">PLIC</h1>
           {isLoggedIn ? (
             <Link href="/mypage" className="text-sm text-gray-600 hover:text-[#2563EB] font-medium transition-colors duration-300">
               {currentUser?.name}님
@@ -361,7 +356,7 @@ export default function HomePage() {
             현재 회원님의 계정은 <strong className="text-[#2563EB]">가승인</strong> 상태로,
             사업자등록증 검수가 진행 중입니다.
             <br /><br />
-            검수는 영업일 기준 1~2일 내에 완료되며, 승인 완료 시 바로 서비스 이용이 가능합니다.
+            검수는 영업일 기준 당일 내에 완료되며, 승인 완료 시 바로 서비스 이용이 가능합니다.
             빠르게 처리해 드리겠습니다. 감사합니다.
           </p>
         ) : (
