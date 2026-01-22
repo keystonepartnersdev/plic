@@ -110,6 +110,8 @@ function NewDealContent() {
     const accountMap = new Map<string, PreviousAccount>();
 
     userDeals.forEach((deal) => {
+      if (!deal.recipient?.bank || !deal.recipient?.accountNumber) return;
+
       const key = `${deal.recipient.bank}-${deal.recipient.accountNumber}`;
       const existing = accountMap.get(key);
 
@@ -123,7 +125,7 @@ function NewDealContent() {
         accountMap.set(key, {
           bank: deal.recipient.bank,
           accountNumber: deal.recipient.accountNumber,
-          accountHolder: deal.recipient.accountHolder,
+          accountHolder: deal.recipient.accountHolder || '',
           dealCount: 1,
           totalAmount: deal.amount,
           lastUsedAt: deal.createdAt,

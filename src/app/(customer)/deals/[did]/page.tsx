@@ -49,8 +49,8 @@ export default function DealDetailPage() {
   const [isVerifying, setIsVerifying] = useState(false);
 
   // 스토어에서 활성 할인코드/쿠폰 가져오기
-  const availableDiscountCodes = getActiveCodes();
-  const availableCoupons = getActiveCoupons();
+  const availableDiscountCodes = getActiveCodes() || [];
+  const availableCoupons = getActiveCoupons() || [];
 
   // 전체 할인 금액 계산 (퍼센트 합산 → 금액 순차 적용)
   const calculateTotalDiscount = (): { total: number; details: Map<string, number> } => {
@@ -197,7 +197,7 @@ export default function DealDetailPage() {
             actor: 'user',
             actorId: currentUser?.uid,
           },
-          ...deal.history,
+          ...(deal.history || []),
         ],
       });
     }
@@ -403,7 +403,7 @@ export default function DealDetailPage() {
   // 보완 요청 - 서류 재첨부 (실제 저장)
   const handleDocumentRevisionConfirm = () => {
     // 기존 첨부파일과 신규 첨부파일 병합
-    const newAttachments = [...deal!.attachments];
+    const newAttachments = [...(deal?.attachments || [])];
     let filesProcessed = 0;
 
     revisionAttachments.forEach(file => {
@@ -415,8 +415,8 @@ export default function DealDetailPage() {
         filesProcessed++;
 
         // 모든 파일이 읽혀진 후에 업데이트
-        if (filesProcessed === revisionAttachments.length) {
-          updateDeal(deal!.did, {
+        if (filesProcessed === revisionAttachments.length && deal) {
+          updateDeal(deal.did, {
             status: 'reviewing',
             revisionType: undefined,
             attachments: newAttachments,
@@ -428,7 +428,7 @@ export default function DealDetailPage() {
                 actor: 'user',
                 actorId: currentUser?.uid,
               },
-              ...deal!.history,
+              ...(deal.history || []),
             ],
           });
 
@@ -509,7 +509,9 @@ export default function DealDetailPage() {
 
   // 보완 요청 - 수취인 정보 수정 (실제 저장)
   const handleRecipientRevisionConfirm = () => {
-    updateDeal(deal!.did, {
+    if (!deal) return;
+
+    updateDeal(deal.did, {
       status: 'reviewing',
       revisionType: undefined,
       recipient: {
@@ -525,7 +527,7 @@ export default function DealDetailPage() {
           actor: 'user',
           actorId: currentUser?.uid,
         },
-        ...deal!.history,
+        ...(deal.history || []),
       ],
     });
 
@@ -543,10 +545,10 @@ export default function DealDetailPage() {
 
   // 기존 첨부파일 삭제 (실제 삭제)
   const confirmDeleteAttachment = () => {
-    if (deleteConfirmIndex === null) return;
+    if (deleteConfirmIndex === null || !deal) return;
 
-    const newAttachments = deal!.attachments.filter((_, i) => i !== deleteConfirmIndex);
-    updateDeal(deal!.did, {
+    const newAttachments = (deal.attachments || []).filter((_, i) => i !== deleteConfirmIndex);
+    updateDeal(deal.did, {
       attachments: newAttachments,
     });
 
@@ -842,7 +844,7 @@ export default function DealDetailPage() {
       <div className="bg-white px-5 py-4 mb-2">
         <h3 className="font-semibold text-gray-900 mb-3">첨부 서류</h3>
         <div className="space-y-2">
-          {deal.attachments.map((attachment, index) => {
+          {(deal.attachments || []).map((attachment, index) => {
             const isImage = attachment.startsWith('data:image/') || attachment.startsWith('blob:');
             const fileName = `첨부파일 ${index + 1}`;
 
@@ -1047,14 +1049,14 @@ export default function DealDetailPage() {
       <div className="bg-white px-5 py-4">
         <h3 className="font-semibold text-gray-900 mb-3">거래 이력</h3>
         <div className="space-y-4">
-          {deal.history.map((item, index) => (
+          {(deal.history || []).map((item, index) => (
             <div key={index} className="flex gap-3">
               <div className="flex flex-col items-center">
                 <div className={cn(
                   'w-2 h-2 rounded-full',
                   index === 0 ? 'bg-primary-400' : 'bg-gray-300'
                 )} />
-                {index < deal.history.length - 1 && (
+                {index < (deal.history || []).length - 1 && (
                   <div className="w-0.5 flex-1 bg-gray-200 my-1" />
                 )}
               </div>
@@ -1094,11 +1096,11 @@ export default function DealDetailPage() {
             </div>
 
             {/* 기존 첨부 파일 미리보기 */}
-            {deal.attachments.length > 0 && (
+            {(deal.attachments || []).length > 0 && (
               <div className="mb-8">
                 <p className="text-sm font-medium text-gray-900 mb-4">기존 첨부 파일</p>
                 <div className="space-y-4">
-                  {deal.attachments.map((attachment, index) => (
+                  {(deal.attachments || []).map((attachment, index) => (
                     <div key={index} className="flex items-center gap-4 p-5 bg-gray-50 rounded-lg">
                       <FileText className="w-8 h-8 text-gray-400 flex-shrink-0" />
                       <span className="text-sm text-gray-600 flex-1 truncate">파일 {index + 1}</span>
@@ -1136,8 +1138,9 @@ export default function DealDetailPage() {
                       const newFiles = Array.from(e.target.files);
 
                       // 개수 검증
-                      if (deal.attachments.length + revisionAttachments.length + newFiles.length > maxFiles) {
-                        alert(`최대 ${maxFiles}개까지만 첨부할 수 있습니다. (현재: 기존 ${deal.attachments.length}개 + 추가 예정 ${revisionAttachments.length}개)`);
+                      const currentAttachments = deal.attachments || [];
+                      if (currentAttachments.length + revisionAttachments.length + newFiles.length > maxFiles) {
+                        alert(`최대 ${maxFiles}개까지만 첨부할 수 있습니다. (현재: 기존 ${currentAttachments.length}개 + 추가 예정 ${revisionAttachments.length}개)`);
                         return;
                       }
 
