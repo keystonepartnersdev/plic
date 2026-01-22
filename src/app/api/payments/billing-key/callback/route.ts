@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
 
     if (!resultParam) {
       return NextResponse.redirect(
-        `${baseUrl}/mypage/cards?error=${encodeURIComponent('카드 등록 데이터가 없습니다.')}`
+        `${baseUrl}/mypage/cards?error=${encodeURIComponent('카드 등록 데이터가 없습니다.')}`,
+        { status: 303 }
       );
     }
 
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest) {
 
     if (!result.success || result.resCode !== '0000') {
       return NextResponse.redirect(
-        `${baseUrl}/mypage/cards?error=${encodeURIComponent(result.message || '카드 인증에 실패했습니다.')}`
+        `${baseUrl}/mypage/cards?error=${encodeURIComponent(result.message || '카드 인증에 실패했습니다.')}`,
+        { status: 303 }
       );
     }
 
@@ -40,7 +42,8 @@ export async function POST(request: NextRequest) {
 
     if (!trxId || !authorizationId) {
       return NextResponse.redirect(
-        `${baseUrl}/mypage/cards?error=${encodeURIComponent('인증 데이터가 불완전합니다.')}`
+        `${baseUrl}/mypage/cards?error=${encodeURIComponent('인증 데이터가 불완전합니다.')}`,
+        { status: 303 }
       );
     }
 
@@ -55,7 +58,8 @@ export async function POST(request: NextRequest) {
     if (!softpayment.isSuccess(approveResponse.resCode)) {
       const errorMsg = softpayment.getResultMessage(approveResponse.resCode);
       return NextResponse.redirect(
-        `${baseUrl}/mypage/cards?error=${encodeURIComponent(errorMsg)}`
+        `${baseUrl}/mypage/cards?error=${encodeURIComponent(errorMsg)}`,
+        { status: 303 }
       );
     }
 
@@ -96,11 +100,12 @@ export async function POST(request: NextRequest) {
       userId: shopValueInfo?.value1 || '',
     });
 
-    return NextResponse.redirect(`${baseUrl}/mypage/cards?${params.toString()}`);
+    return NextResponse.redirect(`${baseUrl}/mypage/cards?${params.toString()}`, { status: 303 });
   } catch (error) {
     console.error('[BillingKey Callback] Error:', error);
     return NextResponse.redirect(
-      `${baseUrl}/mypage/cards?error=${encodeURIComponent('카드 등록 처리 중 오류가 발생했습니다.')}`
+      `${baseUrl}/mypage/cards?error=${encodeURIComponent('카드 등록 처리 중 오류가 발생했습니다.')}`,
+      { status: 303 }
     );
   }
 }
@@ -113,9 +118,10 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      `${baseUrl}/mypage/cards?error=${encodeURIComponent(error)}`
+      `${baseUrl}/mypage/cards?error=${encodeURIComponent(error)}`,
+      { status: 303 }
     );
   }
 
-  return NextResponse.redirect(`${baseUrl}/mypage/cards`);
+  return NextResponse.redirect(`${baseUrl}/mypage/cards`, { status: 303 });
 }

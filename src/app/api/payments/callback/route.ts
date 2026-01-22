@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
 
     if (!resultParam) {
       return NextResponse.redirect(
-        `${baseUrl}/payment/result?error=${encodeURIComponent('결제 인증 데이터가 없습니다.')}`
+        `${baseUrl}/payment/result?error=${encodeURIComponent('결제 인증 데이터가 없습니다.')}`,
+        { status: 303 }
       );
     }
 
@@ -30,7 +31,8 @@ export async function POST(request: NextRequest) {
 
     if (!result.success || result.resCode !== '0000') {
       return NextResponse.redirect(
-        `${baseUrl}/payment/result?error=${encodeURIComponent(result.message || '인증에 실패했습니다.')}`
+        `${baseUrl}/payment/result?error=${encodeURIComponent(result.message || '인증에 실패했습니다.')}`,
+        { status: 303 }
       );
     }
 
@@ -38,7 +40,8 @@ export async function POST(request: NextRequest) {
 
     if (!trxId || !amount || !authorizationId) {
       return NextResponse.redirect(
-        `${baseUrl}/payment/result?error=${encodeURIComponent('인증 데이터가 불완전합니다.')}`
+        `${baseUrl}/payment/result?error=${encodeURIComponent('인증 데이터가 불완전합니다.')}`,
+        { status: 303 }
       );
     }
 
@@ -54,7 +57,8 @@ export async function POST(request: NextRequest) {
     if (!softpayment.isSuccess(approveResponse.resCode)) {
       const errorMsg = softpayment.getResultMessage(approveResponse.resCode);
       return NextResponse.redirect(
-        `${baseUrl}/payment/result?error=${encodeURIComponent(errorMsg)}`
+        `${baseUrl}/payment/result?error=${encodeURIComponent(errorMsg)}`,
+        { status: 303 }
       );
     }
 
@@ -73,11 +77,12 @@ export async function POST(request: NextRequest) {
       dealId: dealId,
     });
 
-    return NextResponse.redirect(`${baseUrl}/payment/result?${params.toString()}`);
+    return NextResponse.redirect(`${baseUrl}/payment/result?${params.toString()}`, { status: 303 });
   } catch (error) {
     console.error('[Payment Callback] Error:', error);
     return NextResponse.redirect(
-      `${baseUrl}/payment/result?error=${encodeURIComponent('결제 처리 중 오류가 발생했습니다.')}`
+      `${baseUrl}/payment/result?error=${encodeURIComponent('결제 처리 중 오류가 발생했습니다.')}`,
+      { status: 303 }
     );
   }
 }
@@ -90,9 +95,10 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      `${baseUrl}/payment/result?error=${encodeURIComponent(error)}`
+      `${baseUrl}/payment/result?error=${encodeURIComponent(error)}`,
+      { status: 303 }
     );
   }
 
-  return NextResponse.redirect(`${baseUrl}/payment/result`);
+  return NextResponse.redirect(`${baseUrl}/payment/result`, { status: 303 });
 }
