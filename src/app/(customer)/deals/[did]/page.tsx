@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ export default function DealDetailPage() {
   const [mounted, setMounted] = useState(false);
   const [deal, setDeal] = useState<IDeal | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<{ url: string; name: string; index: number; isNew?: boolean } | null>(null);
+  const dealFetchedRef = useRef(false);
 
   // 할인 스토어에서 데이터 가져오기
   const { getDiscountByCode, getActiveCodes, getActiveCoupons, markAsUsed, fetchUserCoupons, validateDiscountCode } = useDiscountStore();
@@ -111,8 +112,9 @@ export default function DealDetailPage() {
       return;
     }
 
-    // 이미 deal이 설정되어 있으면 skip
-    if (deal) return;
+    // ref로 한 번만 실행되도록 보장
+    if (dealFetchedRef.current) return;
+    dealFetchedRef.current = true;
 
     // 1. 먼저 sessionStorage 확인 (거래 생성 직후 이동한 경우)
     const pendingDealKey = `pending-deal-${did}`;
@@ -157,7 +159,16 @@ export default function DealDetailPage() {
       // 3. store에 없으면 API에서 가져오기
       dealsAPI.get(did).then(response => {
         if (response.deal) {
-          setDeal(response.deal);
+          // API 응답에 필수 필드가 없으면 기본값 설정
+          const completeDeal = {
+            ...response.deal,
+            status: response.deal.status || 'awaiting_payment',
+            recipient: response.deal.recipient || {},
+            attachments: response.deal.attachments || [],
+            history: response.deal.history || [],
+            isPaid: response.deal.isPaid || false,
+          };
+          setDeal(completeDeal);
         } else {
           router.replace('/deals');
         }
@@ -165,7 +176,7 @@ export default function DealDetailPage() {
         router.replace('/deals');
       });
     }
-  }, [mounted, isLoggedIn, did, router, deal, getDiscountByCode, availableCoupons]);
+  }, [mounted, isLoggedIn, did, router]);
 
   // 결제대기 상태일 때 쿠폰 목록 API에서 가져오기
   useEffect(() => {
