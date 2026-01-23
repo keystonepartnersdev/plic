@@ -267,13 +267,9 @@ export default function PaymentPage() {
     }
   };
 
-  // 결제 핸들러 (결제 방법에 따라 분기)
+  // 결제 핸들러 - 일반 카드결제만 지원 (빌링키 API 미지원)
   const handlePayment = async () => {
-    if (paymentMethod === 'registered' && selectedCard) {
-      await handleBillingKeyPayment();
-    } else {
-      await handleNewCardPayment();
-    }
+    await handleNewCardPayment();
   };
 
   return (
@@ -313,120 +309,23 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      {/* 결제 방법 선택 */}
+      {/* 결제 방법 - 일반 카드결제만 지원 (빌링키 API 미지원) */}
       <div className="bg-white px-5 py-6 mb-2">
         <h3 className="font-semibold text-gray-900 mb-4">결제 방법</h3>
         <div className="space-y-3">
-          {/* 등록된 카드로 결제 */}
-          {registeredCards.length > 0 && (
-            <button
-              onClick={() => {
-                setPaymentMethod('registered');
-                setShowCardSelector(true);
-              }}
-              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
-                paymentMethod === 'registered'
-                  ? 'border-primary-400 bg-primary-50'
-                  : 'border-gray-200 bg-gray-50'
-              }`}
-            >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                paymentMethod === 'registered' ? 'bg-primary-100' : 'bg-gray-100'
-              }`}>
-                <CreditCard className={`w-6 h-6 ${
-                  paymentMethod === 'registered' ? 'text-primary-500' : 'text-gray-400'
-                }`} />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-medium text-gray-900">등록된 카드</p>
-                {selectedCard ? (
-                  <p className="text-sm text-gray-500">
-                    {selectedCard.cardCompany} ****{selectedCard.cardNumberLast4}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500">카드를 선택해주세요</p>
-                )}
-              </div>
-              {paymentMethod === 'registered' && (
-                <Check className="w-5 h-5 text-primary-500" />
-              )}
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </button>
-          )}
-
-          {/* 새 카드로 결제 */}
-          <button
-            onClick={() => {
-              setPaymentMethod('new');
-              setShowCardSelector(false);
-            }}
-            className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-colors ${
-              paymentMethod === 'new'
-                ? 'border-primary-400 bg-primary-50'
-                : 'border-gray-200 bg-gray-50'
-            }`}
-          >
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              paymentMethod === 'new' ? 'bg-primary-100' : 'bg-gray-100'
-            }`}>
-              <CreditCard className={`w-6 h-6 ${
-                paymentMethod === 'new' ? 'text-primary-500' : 'text-gray-400'
-              }`} />
+          {/* 카드 결제 */}
+          <div className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-primary-400 bg-primary-50">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary-100">
+              <CreditCard className="w-6 h-6 text-primary-500" />
             </div>
             <div className="flex-1 text-left">
-              <p className="font-medium text-gray-900">새 카드로 결제</p>
+              <p className="font-medium text-gray-900">카드 결제</p>
               <p className="text-sm text-gray-500">결제창에서 카드 정보 입력</p>
             </div>
-            {paymentMethod === 'new' && (
-              <Check className="w-5 h-5 text-primary-500" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* 카드 선택 모달 */}
-      {showCardSelector && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl mx-4 p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">결제 카드 선택</h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {registeredCards.map((card) => (
-                <button
-                  key={card.cardId}
-                  onClick={() => {
-                    setSelectedCard(card);
-                    setShowCardSelector(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-colors ${
-                    selectedCard?.cardId === card.cardId
-                      ? 'border-primary-400 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <CreditCard className="w-6 h-6 text-gray-400" />
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-gray-900">
-                      {card.cardNickname || `${card.cardCompany} 카드`}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {card.cardCompany} ****{card.cardNumberLast4}
-                    </p>
-                  </div>
-                  {selectedCard?.cardId === card.cardId && (
-                    <Check className="w-5 h-5 text-primary-500" />
-                  )}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowCardSelector(false)}
-              className="w-full mt-4 h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
-            >
-              닫기
-            </button>
+            <Check className="w-5 h-5 text-primary-500" />
           </div>
         </div>
-      )}
+      </div>
 
       {/* 안내 사항 */}
       <div className="bg-white px-5 py-6 mb-2">
@@ -469,7 +368,7 @@ export default function PaymentPage() {
             "
           >
             {isLoading
-              ? (paymentMethod === 'registered' ? '결제 처리 중...' : '결제창 이동 중...')
+              ? '결제창 이동 중...'
               : `${deal.finalAmount.toLocaleString()}원 결제하기`
             }
           </button>

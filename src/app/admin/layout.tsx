@@ -24,18 +24,19 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
+// implemented: false로 설정하면 밝은 회색으로 표시되고 클릭 시 "준비중" 안내
 const menuItems = [
-  { href: '/admin', icon: LayoutDashboard, label: '대시보드', permission: null },
-  { href: '/admin/users', icon: Users, label: '회원정보', permission: 'user.view' },
-  { href: '/admin/deals', icon: FileText, label: '거래정보', permission: 'deal.view' },
-  { href: '/admin/codes', icon: Tag, label: '코드관리', permission: 'code.view' },
-  { href: '/admin/contents/banners', icon: Image, label: '배너관리', permission: 'content.banner.manage' },
-  { href: '/admin/contents/notices', icon: Bell, label: '공지사항', permission: 'content.notice.manage' },
-  { href: '/admin/contents/faqs', icon: HelpCircle, label: 'FAQ관리', permission: 'content.faq.manage' },
-  { href: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'analytics.view' },
-  { href: '/admin/api-logs', icon: Bug, label: 'API Logs', permission: 'analytics.view' },
-  { href: '/admin/admins', icon: UserCog, label: '어드민관리', permission: 'admin.view' },
-  { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view' },
+  { href: '/admin', icon: LayoutDashboard, label: '대시보드', permission: null, implemented: true },
+  { href: '/admin/users', icon: Users, label: '회원정보', permission: 'user.view', implemented: true },
+  { href: '/admin/deals', icon: FileText, label: '거래정보', permission: 'deal.view', implemented: true },
+  { href: '/admin/codes', icon: Tag, label: '코드관리', permission: 'code.view', implemented: false }, // 할인코드/쿠폰 적용 기능 미구현
+  { href: '/admin/contents/banners', icon: Image, label: '배너관리', permission: 'content.banner.manage', implemented: true },
+  { href: '/admin/contents/notices', icon: Bell, label: '공지사항', permission: 'content.notice.manage', implemented: true },
+  { href: '/admin/contents/faqs', icon: HelpCircle, label: 'FAQ관리', permission: 'content.faq.manage', implemented: true },
+  { href: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'analytics.view', implemented: true },
+  { href: '/admin/api-logs', icon: Bug, label: 'API Logs', permission: 'analytics.view', implemented: true },
+  { href: '/admin/admins', icon: UserCog, label: '어드민관리', permission: 'admin.view', implemented: true },
+  { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view', implemented: false }, // 설정값 저장만 되고 실제 적용 안 됨
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -121,6 +122,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               const isActive = pathname === item.href ||
                 (item.href !== '/admin' && pathname.startsWith(item.href));
               const Icon = item.icon;
+              const isImplemented = item.implemented !== false;
+
+              // 미구현 기능
+              if (!isImplemented) {
+                return (
+                  <li key={item.href}>
+                    <button
+                      onClick={() => alert('준비중인 기능입니다.')}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 w-full text-left text-gray-300 cursor-not-allowed"
+                    >
+                      <Icon className="w-5 h-5" strokeWidth={2} />
+                      <span>{item.label}</span>
+                      <span className="ml-auto text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded">준비중</span>
+                    </button>
+                  </li>
+                );
+              }
 
               return (
                 <li key={item.href}>

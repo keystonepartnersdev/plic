@@ -99,7 +99,8 @@ export default function MyPage() {
       group: '내 정보',
       items: [
         { href: '/mypage/edit', icon: User, label: '개인정보 수정' },
-        { href: '/mypage/cards', icon: CreditCard, label: '결제카드 관리', badge: registeredCards.length > 0 ? `${registeredCards.length}개` : undefined },
+        // 빌링키 API 미지원으로 결제카드 관리 임시 숨김
+        // { href: '/mypage/cards', icon: CreditCard, label: '결제카드 관리', badge: registeredCards.length > 0 ? `${registeredCards.length}개` : undefined },
         { href: '/mypage/accounts', icon: Building2, label: '거래 계좌내역' },
       ],
     },
@@ -216,12 +217,7 @@ export default function MyPage() {
                 <item.icon className="w-5 h-5 text-gray-400 group-hover:text-[#2563EB] transition-colors duration-300" strokeWidth={2} />
                 <span className="text-gray-700 font-medium group-hover:text-gray-900 transition-colors duration-300">{item.label}</span>
               </div>
-              <div className="flex items-center gap-2">
-                {item.badge && (
-                  <span className="text-sm text-[#2563EB] font-semibold">{item.badge}</span>
-                )}
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all duration-300" strokeWidth={2} />
-              </div>
+              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#2563EB] group-hover:translate-x-1 transition-all duration-300" strokeWidth={2} />
             </Link>
           ))}
         </div>

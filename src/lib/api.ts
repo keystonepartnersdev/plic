@@ -286,9 +286,17 @@ async function request<T>(
       });
     }
 
-    // 401 에러 (토큰 없음 또는 갱신 실패)
+    // 401 에러 처리
     if (response.status === 401) {
-      tokenManager.clearTokens();
+      // 로그인 요청이 아닌 경우에만 토큰 삭제 (인증된 API 호출 실패)
+      if (!endpoint.includes('/auth/login')) {
+        tokenManager.clearTokens();
+      }
+      // 백엔드 에러 메시지가 있으면 그대로 사용, 없으면 기본 메시지
+      const errorMessage = data?.error || data?.message;
+      if (errorMessage) {
+        throw new Error(errorMessage);
+      }
       throw new Error('인증이 필요합니다. 다시 로그인해주세요.');
     }
 
