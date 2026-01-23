@@ -112,6 +112,51 @@ export default function AdminDealDetailPage() {
       return;
     }
 
+    // 취소 요청일 경우 - 결제 완료된 거래는 PG 취소 먼저 진행
+    if (newStatus === 'cancelled' && deal.isPaid && deal.pgTransactionId) {
+      const confirmed = window.confirm(
+        `이 거래는 결제가 완료된 상태입니다.\n` +
+        `PG 결제 취소를 진행하시겠습니까?\n\n` +
+        `결제금액: ${deal.finalAmount?.toLocaleString()}원\n` +
+        `거래번호: ${deal.pgTransactionId}`
+      );
+
+      if (!confirmed) return;
+
+      setIsProcessing(true);
+      try {
+        // PG 결제 취소 API 호출
+        console.log('[Admin] Cancelling PG payment:', deal.pgTransactionId);
+        const cancelResponse = await fetch(`/api/payments/${deal.pgTransactionId}/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: deal.finalAmount,
+            dealNumber: deal.did,
+          }),
+        });
+
+        const cancelData = await cancelResponse.json();
+
+        if (!cancelResponse.ok || !cancelData.success) {
+          throw new Error(cancelData.error || 'PG 결제 취소에 실패했습니다.');
+        }
+
+        console.log('[Admin] PG cancel success:', cancelData);
+        alert(`PG 결제 취소 완료\n취소 금액: ${cancelData.cancelledAmount?.toLocaleString()}원`);
+
+        // PG 취소 성공 후 거래 상태 변경
+        await adminAPI.updateDealStatus(deal.did, 'cancelled', 'PG 결제 취소 완료');
+        await fetchDeal();
+      } catch (err: any) {
+        console.error('PG 결제 취소 실패:', err);
+        alert(`PG 결제 취소 실패: ${err.message}\n\n수동으로 PG사에서 취소 처리가 필요합니다.`);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     setIsProcessing(true);
     try {
       await adminAPI.updateDealStatus(deal.did, newStatus);

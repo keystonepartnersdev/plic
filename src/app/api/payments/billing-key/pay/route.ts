@@ -7,6 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,10 +67,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const trxId = response.data?.trxId;
+    const resultTrackId = response.data?.trackId || trackId;
+
+    // 결제 성공 시 DB에 결제 정보 저장 (pgTransactionId 포함)
+    if (dealId && trxId) {
+      try {
+        console.log('[BillingKey Pay] Updating deal in DB:', { dealId, trxId });
+
+        await docClient.send(new UpdateCommand({
+          TableName: DEALS_TABLE,
+          Key: { did: dealId },
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, updatedAt = :updatedAt',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+          },
+          ExpressionAttributeValues: {
+            ':isPaid': true,
+            ':paidAt': new Date().toISOString(),
+            ':status': 'reviewing',
+            ':pgTrxId': trxId,
+            ':pgTrackId': resultTrackId,
+            ':updatedAt': new Date().toISOString(),
+          },
+        }));
+
+        console.log('[BillingKey Pay] Deal updated successfully');
+      } catch (dbError) {
+        // DB 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
+        console.error('[BillingKey Pay] Failed to update deal in DB:', dbError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      trxId: response.data?.trxId,
-      trackId: response.data?.trackId,
+      trxId,
+      trackId: resultTrackId,
       amount: response.data?.amount,
       transactionDate: response.data?.transactionDate,
       authCd: response.data?.payInfo?.authCd,

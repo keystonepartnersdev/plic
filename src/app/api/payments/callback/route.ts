@@ -8,6 +8,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
 
 export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -64,12 +70,43 @@ export async function POST(request: NextRequest) {
 
     // shopValueInfo에서 dealId 추출
     const dealId = result.data?.shopValueInfo?.value1 || '';
+    const approvedTrxId = approveResponse.data?.trxId || trxId;
+    const trackId = approveResponse.data?.trackId || '';
+
+    // 승인 성공 시 DB에 결제 정보 저장 (pgTransactionId 포함)
+    if (dealId) {
+      try {
+        console.log('[Payment Callback] Updating deal in DB:', { dealId, trxId: approvedTrxId });
+
+        await docClient.send(new UpdateCommand({
+          TableName: DEALS_TABLE,
+          Key: { did: dealId },
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, updatedAt = :updatedAt',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+          },
+          ExpressionAttributeValues: {
+            ':isPaid': true,
+            ':paidAt': new Date().toISOString(),
+            ':status': 'reviewing',
+            ':pgTrxId': approvedTrxId,
+            ':pgTrackId': trackId,
+            ':updatedAt': new Date().toISOString(),
+          },
+        }));
+
+        console.log('[Payment Callback] Deal updated successfully');
+      } catch (dbError) {
+        // DB 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
+        console.error('[Payment Callback] Failed to update deal in DB:', dbError);
+      }
+    }
 
     // 승인 성공 - 결과 데이터와 함께 리다이렉트
     const params = new URLSearchParams({
       success: 'true',
-      trxId: approveResponse.data?.trxId || '',
-      trackId: approveResponse.data?.trackId || '',
+      trxId: approvedTrxId,
+      trackId: trackId,
       amount: approveResponse.data?.amount || '',
       authCd: approveResponse.data?.payInfo?.authCd || '',
       cardNo: approveResponse.data?.payInfo?.cardInfo?.cardNo || '',
