@@ -72,22 +72,30 @@ async function requestToken(serviceId: string, scopes: string[]): Promise<{ sess
  * 토큰 조회 (캐시 사용)
  * @param serviceId 서비스 ID ('CLOSEDOWN' | 'ACCOUNTCHECK')
  */
+// 팝빌 서비스 ID 매핑
+const SERVICE_IDS = {
+  CLOSEDOWN: 'CLOSEDOWN',      // 휴폐업조회
+  ACCOUNTCHECK: 'EasyFinBank', // 계좌실명조회
+} as const;
+
 export async function getToken(serviceId: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {
-  const cacheKey = `${LINK_ID}_${serviceId}`;
+  const actualServiceId = SERVICE_IDS[serviceId];
+  const cacheKey = `${LINK_ID}_${actualServiceId}`;
   const cached = tokenCache.get(cacheKey);
 
   // 캐시 유효성 검사 (만료 1분 전까지 유효)
   if (cached && new Date(cached.expiration.getTime() - 60000) > new Date()) {
-    console.log('[Linkhub] Using cached token for', serviceId);
+    console.log('[Linkhub] Using cached token for', actualServiceId);
     return cached.token;
   }
 
-  console.log('[Linkhub] Requesting new token for', serviceId);
+  console.log('[Linkhub] Requesting new token for', actualServiceId);
 
   // 서비스별 scope 설정
+  // 170: 휴폐업조회, 141: 계좌조회
   const scopes = serviceId === 'CLOSEDOWN' ? ['170'] : ['141'];
 
-  const tokenResponse = await requestToken(serviceId, scopes);
+  const tokenResponse = await requestToken(actualServiceId, scopes);
 
   // 캐시 저장
   tokenCache.set(cacheKey, {
