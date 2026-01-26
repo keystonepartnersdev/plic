@@ -16,6 +16,11 @@ export interface IBusinessInfo {
   verificationStatus: TBusinessVerificationStatus;
   verificationMemo?: string;      // 인증 관련 메모 (거절 사유 등)
   verifiedAt?: string;            // 인증 완료 일시
+
+  // 팝빌 사업자 상태 조회 정보
+  popbillVerifiedAt?: string;     // 팝빌 조회 일시
+  popbillState?: '01' | '02' | '03';  // 01: 사업중, 02: 휴업, 03: 폐업
+  popbillStateName?: string;      // 사업자 상태명 (사업중/휴업/폐업)
 }
 
 /**

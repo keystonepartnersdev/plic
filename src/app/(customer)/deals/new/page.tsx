@@ -73,6 +73,8 @@ function NewDealContent() {
     isVerified: false,
   });
   const [verificationFailed, setVerificationFailed] = useState(false);
+  const [verificationError, setVerificationError] = useState<string>('');
+  const [verifiedHolderName, setVerifiedHolderName] = useState<string>(''); // 실제 예금주명 (팝빌 조회)
   const [senderName, setSenderName] = useState('');
 
   // Step 4: 서류 첨부
@@ -494,21 +496,64 @@ function NewDealContent() {
   const handleVerifyAccount = async () => {
     setIsLoading(true);
     setVerificationFailed(false);
+    setVerificationError('');
+    setVerifiedHolderName('');
 
-    // TODO: 실제 계좌 인증 API 연동 필요
-    // 현재는 기본 입력값 확인 후 항상 성공 처리
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // 기본 입력값 확인만 수행
+    // 기본 입력값 확인
     if (!recipient.bank || !recipient.accountNumber || !recipient.accountHolder) {
       setVerificationFailed(true);
+      setVerificationError('은행, 계좌번호, 예금주를 모두 입력해주세요.');
       setIsLoading(false);
       return;
     }
 
-    // 임시: 항상 인증 성공 처리
-    setRecipient({ ...recipient, isVerified: true, verifiedAt: new Date().toISOString() });
-    setIsLoading(false);
+    try {
+      // 팝빌 계좌 예금주 조회 API 호출
+      const response = await fetch('/api/popbill/account/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankName: recipient.bank,
+          accountNumber: recipient.accountNumber,
+          accountHolder: recipient.accountHolder,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        // API 오류
+        setVerificationFailed(true);
+        setVerificationError(result.error?.message || '계좌 조회에 실패했습니다.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 실제 예금주명 저장
+      setVerifiedHolderName(result.data.accountHolder);
+
+      // 예금주 일치 여부 확인
+      if (result.data.isMatch) {
+        // 일치: 인증 성공
+        setRecipient({
+          ...recipient,
+          isVerified: true,
+          verifiedAt: new Date().toISOString(),
+        });
+      } else {
+        // 불일치: 인증 실패, 실제 예금주 안내
+        setVerificationFailed(true);
+        setVerificationError(
+          `입력한 예금주(${recipient.accountHolder})와 실제 예금주(${result.data.accountHolder})가 일치하지 않습니다. 예금주명을 수정해주세요.`
+        );
+      }
+    } catch (error) {
+      console.error('계좌 인증 오류:', error);
+      setVerificationFailed(true);
+      setVerificationError('계좌 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -840,7 +885,12 @@ function NewDealContent() {
               </label>
               <select
                 value={recipient.bank}
-                onChange={(e) => setRecipient({ ...recipient, bank: e.target.value, isVerified: false })}
+                onChange={(e) => {
+                  setRecipient({ ...recipient, bank: e.target.value, isVerified: false });
+                  setVerificationFailed(false);
+                  setVerificationError('');
+                  setVerifiedHolderName('');
+                }}
                 className="
                   w-full h-14 px-4
                   border border-gray-200 rounded-xl
@@ -870,6 +920,8 @@ function NewDealContent() {
                     isVerified: false
                   });
                   setVerificationFailed(false);
+                  setVerificationError('');
+                  setVerifiedHolderName('');
                 }}
                 placeholder="- 없이 숫자만 입력"
                 className="
@@ -889,11 +941,15 @@ function NewDealContent() {
                 <input
                   type="text"
                   value={recipient.accountHolder}
-                  onChange={(e) => setRecipient({
-                    ...recipient,
-                    accountHolder: e.target.value,
-                    isVerified: false
-                  })}
+                  onChange={(e) => {
+                    setRecipient({
+                      ...recipient,
+                      accountHolder: e.target.value,
+                      isVerified: false
+                    });
+                    setVerificationFailed(false);
+                    setVerificationError('');
+                  }}
                   placeholder="예금주명 입력"
                   className="
                     flex-1 h-14 px-4
@@ -934,10 +990,27 @@ function NewDealContent() {
 
             {verificationFailed && (
               <div className="p-4 bg-red-50 rounded-xl mb-6">
-                <p className="text-red-700 font-medium flex items-center gap-2">
-                  <X className="w-5 h-5" />
-                  계좌 정보가 올바르지 않습니다.
-                </p>
+                <div className="flex items-start gap-2">
+                  <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-700 font-medium">계좌 확인 실패</p>
+                    {verificationError && (
+                      <p className="text-sm text-red-600 mt-1">{verificationError}</p>
+                    )}
+                    {verifiedHolderName && !recipient.isVerified && (
+                      <button
+                        onClick={() => {
+                          setRecipient({ ...recipient, accountHolder: verifiedHolderName, isVerified: false });
+                          setVerificationFailed(false);
+                          setVerificationError('');
+                        }}
+                        className="mt-2 text-sm text-red-700 underline hover:no-underline"
+                      >
+                        실제 예금주({verifiedHolderName})로 자동 수정
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

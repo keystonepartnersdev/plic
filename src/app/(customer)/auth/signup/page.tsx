@@ -71,6 +71,12 @@ function SignupContent() {
   const [businessLicensePreview, setBusinessLicensePreview] = useState<string>('');
   const [uploadingLicense, setUploadingLicense] = useState(false);
 
+  // 사업자 인증 상태 (팝빌)
+  const [businessVerifying, setBusinessVerifying] = useState(false);
+  const [businessVerified, setBusinessVerified] = useState(false);
+  const [businessState, setBusinessState] = useState<'01' | '02' | '03' | null>(null); // 01: 사업중, 02: 휴업, 03: 폐업
+  const [businessStateName, setBusinessStateName] = useState<string>('');
+
   // 카카오 인증 결과 처리
   useEffect(() => {
     const verified = searchParams.get('verified');
@@ -176,7 +182,9 @@ function SignupContent() {
     businessName.length >= 2 &&
     isValidBusinessNumber(businessNumber) &&
     representativeName.length >= 2 &&
-    (businessLicenseKey || businessLicenseFile);
+    (businessLicenseKey || businessLicenseFile) &&
+    businessVerified &&
+    businessState === '01'; // 사업중인 경우만 가입 가능
 
   // 카카오 본인인증 시작
   const handleKakaoVerification = () => {
@@ -225,6 +233,63 @@ function SignupContent() {
     if (businessLicensePreview) {
       URL.revokeObjectURL(businessLicensePreview);
       setBusinessLicensePreview('');
+    }
+  };
+
+  // 사업자등록번호 변경 시 인증 상태 초기화
+  const handleBusinessNumberChange = (value: string) => {
+    const formatted = formatBusinessNumber(value);
+    setBusinessNumber(formatted);
+    // 번호 변경 시 인증 상태 초기화
+    if (businessVerified) {
+      setBusinessVerified(false);
+      setBusinessState(null);
+      setBusinessStateName('');
+    }
+  };
+
+  // 사업자 상태 조회 (팝빌 API)
+  const handleVerifyBusiness = async () => {
+    if (!isValidBusinessNumber(businessNumber)) {
+      setError('사업자등록번호 10자리를 입력해주세요.');
+      return;
+    }
+
+    setBusinessVerifying(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/popbill/business/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessNumber: businessNumber.replace(/-/g, '') }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setError(result.error?.message || '사업자 조회에 실패했습니다.');
+        setBusinessVerified(false);
+        return;
+      }
+
+      // 조회 성공
+      setBusinessVerified(true);
+      setBusinessState(result.data.state);
+      setBusinessStateName(result.data.stateName);
+
+      // 휴업/폐업인 경우 에러 메시지 표시
+      if (result.data.state === '02') {
+        setError('휴업 상태의 사업자는 가입할 수 없습니다.');
+      } else if (result.data.state === '03') {
+        setError('폐업된 사업자는 가입할 수 없습니다.');
+      }
+    } catch (err) {
+      console.error('사업자 조회 오류:', err);
+      setError('사업자 조회 중 오류가 발생했습니다.');
+      setBusinessVerified(false);
+    } finally {
+      setBusinessVerifying(false);
     }
   };
 
@@ -562,16 +627,61 @@ function SignupContent() {
             {/* 사업자등록번호 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-              <input
-                type="text"
-                value={businessNumber}
-                onChange={(e) => setBusinessNumber(formatBusinessNumber(e.target.value))}
-                placeholder="000-00-00000"
-                maxLength={12}
-                className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={businessNumber}
+                  onChange={(e) => handleBusinessNumberChange(e.target.value)}
+                  placeholder="000-00-00000"
+                  maxLength={12}
+                  className={cn(
+                    "flex-1 h-14 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                    businessVerified && businessState === '01'
+                      ? "border-green-300 bg-green-50"
+                      : businessVerified && businessState !== '01'
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-200"
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyBusiness}
+                  disabled={!isValidBusinessNumber(businessNumber) || businessVerifying || (businessVerified && businessState === '01')}
+                  className={cn(
+                    "h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap",
+                    businessVerified && businessState === '01'
+                      ? "bg-green-100 text-green-700 cursor-default"
+                      : "bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
+                  )}
+                >
+                  {businessVerifying ? '확인 중...' : businessVerified && businessState === '01' ? '확인완료' : '사업자 확인'}
+                </button>
+              </div>
               {businessNumber && !isValidBusinessNumber(businessNumber) && (
                 <p className="text-sm text-red-500 mt-1">사업자등록번호 10자리를 입력해주세요.</p>
+              )}
+              {/* 사업자 상태 표시 */}
+              {businessVerified && (
+                <div className={cn(
+                  "mt-2 p-3 rounded-lg flex items-center gap-2",
+                  businessState === '01' ? "bg-green-50" : "bg-red-50"
+                )}>
+                  {businessState === '01' ? (
+                    <>
+                      <Check className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-green-700 font-medium">
+                        사업자 상태: {businessStateName}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-red-600" />
+                      <span className="text-sm text-red-700 font-medium">
+                        사업자 상태: {businessStateName} - 가입 불가
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
 

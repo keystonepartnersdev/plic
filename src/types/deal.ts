@@ -32,6 +32,10 @@ export interface IRecipientAccount {
   accountHolder: string;
   isVerified: boolean;
   verifiedAt?: string;
+
+  // 팝빌 계좌 예금주 조회 정보
+  verifiedHolder?: string;  // 팝빌 조회 결과 실제 예금주명
+  bankCode?: string;        // 팝빌 은행코드
 }
 
 export interface IDealHistory {
