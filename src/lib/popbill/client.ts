@@ -190,7 +190,15 @@ export const popbill = {
       }
 
       // 조회 결과 확인 (result 필드가 상태코드)
-      if ('result' in result && result.result !== '0000' && result.result !== '00') {
+      // 성공 코드: '0000', '00', '0100', '100' 등 (0100/100 = 조회 성공)
+      const isSuccess = !('result' in result) ||
+        result.result === '0000' ||
+        result.result === '00' ||
+        result.result === '0100' ||
+        result.result === '100' ||
+        (result.resultMessage && result.resultMessage.includes('성공'));
+
+      if (!isSuccess) {
         return {
           success: false,
           error: {
