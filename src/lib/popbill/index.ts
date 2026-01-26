@@ -1,8 +1,7 @@
 /**
- * 팝빌 API 모듈
+ * 팝빌 API 모듈 (공식 SDK 사용)
  */
 
 export { popbill, default } from './client';
-export { getToken, clearTokenCache } from './auth';
 export * from './types';
 export * from './constants';
