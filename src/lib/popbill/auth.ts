@@ -7,8 +7,8 @@ import crypto from 'crypto';
 import { LINKHUB_API_URL, TIMEOUTS } from './constants';
 import { LinkhubTokenResponse } from './types';
 
-const LINK_ID = process.env.POPBILL_LINK_ID || '';
-const SECRET_KEY = process.env.POPBILL_SECRET_KEY || '';
+const LINK_ID = (process.env.POPBILL_LINK_ID || '').trim();
+const SECRET_KEY = (process.env.POPBILL_SECRET_KEY || '').trim();
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
 
 // 토큰 캐시 (메모리)

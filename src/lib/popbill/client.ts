@@ -22,7 +22,7 @@ import {
 } from './types';
 
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
-const CORP_NUM = process.env.POPBILL_CORP_NUM || ''; // 연동사업자 사업자번호 (팝빌 계정)
+const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim(); // 연동사업자 사업자번호 (팝빌 계정)
 
 /**
  * 팝빌 API URL 반환
