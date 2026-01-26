@@ -20,6 +20,7 @@ import {
 
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
 const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim();
+const USER_ID = (process.env.POPBILL_USER_ID || '').trim();
 
 /**
  * 팝빌 API URL 반환
@@ -47,7 +48,7 @@ async function apiCall<T>(
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Authorization': `Bearer ${token}`,
-      'x-pb-userid': 'PLIC_SYSTEM',
+      'x-pb-userid': USER_ID,
     },
     body: body ? JSON.stringify(body) : undefined,
   });

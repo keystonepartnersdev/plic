@@ -65,11 +65,14 @@ export const BANK_CODES: Record<string, string> = {
   '토스뱅크': '0092',
 };
 
-// 사업자 상태 코드
+// 사업자 상태 코드 (팝빌 응답: '01' 또는 '1')
 export const BUSINESS_STATE_CODES: Record<string, string> = {
   '01': '사업중',
+  '1': '사업중',
   '02': '휴업',
+  '2': '휴업',
   '03': '폐업',
+  '3': '폐업',
 };
 
 // 타임아웃 설정 (ms)

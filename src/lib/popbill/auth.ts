@@ -9,6 +9,7 @@ import { LINKHUB_AUTH_URL, POPBILL_SERVICE_ID } from './constants';
 
 const LINK_ID = (process.env.POPBILL_LINK_ID || '').trim();
 const SECRET_KEY = (process.env.POPBILL_SECRET_KEY || '').trim();
+const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim(); // 회원 사업자번호
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
 const LINKHUB_API_VERSION = '2.0';
 
@@ -33,8 +34,8 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
   const uri = `/${serviceId}/Token`;
   const xDate = new Date().toISOString();
 
-  // Request body
-  const tokenRequest = JSON.stringify({ access_id: LINK_ID, scope: scopes });
+  // Request body - access_id는 회원 사업자번호
+  const tokenRequest = JSON.stringify({ access_id: CORP_NUM, scope: scopes });
 
   // Body digest (SHA256 -> Base64)
   const sha256 = crypto.createHash('sha256');
@@ -55,6 +56,7 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
     authHost,
     uri,
     linkId: LINK_ID,
+    corpNum: CORP_NUM,
     isTest: IS_TEST,
     bodyDigest,
   });
