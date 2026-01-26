@@ -354,7 +354,7 @@ export default function PaymentPage() {
 
       {/* 결제 버튼 - Portal로 mobile-frame에 고정 */}
       {portalTarget && createPortal(
-        <div className="absolute bottom-[71px] left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="absolute bottom-[155px] left-0 right-0 px-5 z-20 pointer-events-none">
           <button
             onClick={handlePayment}
             disabled={isLoading}
