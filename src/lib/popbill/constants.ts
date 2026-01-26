@@ -8,10 +8,13 @@ export const POPBILL_API_URL = {
   PROD: 'https://popbill.linkhub.co.kr',
 } as const;
 
-// Linkhub 토큰 URL
-export const LINKHUB_API_URL = {
-  TEST: 'https://auth-test.linkhub.co.kr',
-  PROD: 'https://auth.linkhub.co.kr',
+// Linkhub 토큰 URL (테스트/프로덕션 공용)
+export const LINKHUB_AUTH_URL = 'auth.linkhub.co.kr';
+
+// 팝빌 서비스 ID
+export const POPBILL_SERVICE_ID = {
+  TEST: 'POPBILL_TEST',
+  PROD: 'POPBILL',
 } as const;
 
 // 은행 코드 (팝빌 계좌실명조회용)

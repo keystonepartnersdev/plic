@@ -5,6 +5,7 @@
  */
 
 import crypto from 'crypto';
+import { LINKHUB_AUTH_URL, POPBILL_SERVICE_ID } from './constants';
 
 const LINK_ID = (process.env.POPBILL_LINK_ID || '').trim();
 const SECRET_KEY = (process.env.POPBILL_SECRET_KEY || '').trim();
@@ -22,9 +23,13 @@ const tokenCache: Map<string, TokenCache> = new Map();
 
 /**
  * Linkhub 토큰 발급
+ * @param scopes 필요한 권한 scope 배열
  */
-async function requestToken(serviceId: string, scopes: string[]): Promise<{ session_token: string; serviceID: string; expiration: string }> {
-  const authHost = IS_TEST ? 'auth-test.linkhub.co.kr' : 'auth.linkhub.co.kr';
+async function requestToken(scopes: string[]): Promise<{ session_token: string; serviceID: string; expiration: string }> {
+  // 인증 서버는 테스트/프로덕션 공용
+  const authHost = LINKHUB_AUTH_URL;
+  // 서비스 ID는 테스트/프로덕션 구분
+  const serviceId = IS_TEST ? POPBILL_SERVICE_ID.TEST : POPBILL_SERVICE_ID.PROD;
   const uri = `/${serviceId}/Token`;
   const xDate = new Date().toISOString();
 
@@ -86,32 +91,29 @@ async function requestToken(serviceId: string, scopes: string[]): Promise<{ sess
 
 /**
  * 토큰 조회 (캐시 사용)
- * @param serviceId 서비스 ID ('CLOSEDOWN' | 'ACCOUNTCHECK')
+ * @param serviceType 서비스 타입 ('CLOSEDOWN' | 'ACCOUNTCHECK')
  */
-// 팝빌 서비스 ID 매핑
-const SERVICE_IDS = {
-  CLOSEDOWN: 'CLOSEDOWN',      // 휴폐업조회
-  ACCOUNTCHECK: 'AccountCheck', // 예금주조회
+// 서비스별 scope 매핑
+const SERVICE_SCOPES = {
+  CLOSEDOWN: ['170'],           // 휴폐업조회
+  ACCOUNTCHECK: ['182', '183'], // 예금주조회
 } as const;
 
-export async function getToken(serviceId: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {
-  const actualServiceId = SERVICE_IDS[serviceId];
-  const cacheKey = `${LINK_ID}_${actualServiceId}`;
+export async function getToken(serviceType: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {
+  const serviceId = IS_TEST ? POPBILL_SERVICE_ID.TEST : POPBILL_SERVICE_ID.PROD;
+  const scopes = SERVICE_SCOPES[serviceType];
+  const cacheKey = `${LINK_ID}_${serviceId}_${serviceType}`;
   const cached = tokenCache.get(cacheKey);
 
   // 캐시 유효성 검사 (만료 1분 전까지 유효)
   if (cached && new Date(cached.expiration.getTime() - 60000) > new Date()) {
-    console.log('[Linkhub] Using cached token for', actualServiceId);
+    console.log('[Linkhub] Using cached token for', serviceType);
     return cached.token;
   }
 
-  console.log('[Linkhub] Requesting new token for', actualServiceId);
+  console.log('[Linkhub] Requesting new token for', serviceType, 'scopes:', scopes);
 
-  // 서비스별 scope 설정
-  // 170: 휴폐업조회, 182/183: 예금주조회
-  const scopes = serviceId === 'CLOSEDOWN' ? ['170'] : ['182', '183'];
-
-  const tokenResponse = await requestToken(actualServiceId, scopes);
+  const tokenResponse = await requestToken(scopes);
 
   // 캐시 저장
   tokenCache.set(cacheKey, {
