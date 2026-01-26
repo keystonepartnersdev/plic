@@ -93,12 +93,11 @@ export const popbill = {
       const token = await getToken('CLOSEDOWN');
 
       // 휴폐업 조회 API 호출 (단건)
-      // POST /CloseDown/Check?CorpNum={연동사업자번호}
+      // GET /CloseDown?CN={CheckCorpNum}
       const result = await apiCall<{ state: string; stateDate?: string; taxType?: string; typeDate?: string } | { code: number; message: string }>(
-        `/CloseDown/Check?CorpNum=${CORP_NUM}`,
+        `/CloseDown?CN=${cleanCorpNum}`,
         token,
-        'POST',
-        [cleanCorpNum]
+        'GET'
       );
 
       // 에러 응답 처리
@@ -170,10 +169,10 @@ export const popbill = {
       // 토큰 발급
       const token = await getToken('ACCOUNTCHECK');
 
-      // 계좌실명조회 API 호출
-      // POST /EasyFin/Bank/AccountCheck?CorpNum={연동사업자번호}&BankCode={은행코드}&AccountNumber={계좌번호}
-      const result = await apiCall<{ accountName: string; resultCode: string; resultMessage: string } | { code: number; message: string }>(
-        `/EasyFin/Bank/AccountCheck?CorpNum=${CORP_NUM}&BankCode=${bankCode}&AccountNumber=${cleanAccountNumber}`,
+      // 예금주 성명조회 API 호출
+      // POST /EasyFin/AccountCheck?c={BankCode}&n={AccountNumber}
+      const result = await apiCall<{ accountName: string; result: string; resultMessage: string; bankCode: string; accountNumber: string; checkDT: string } | { code: number; message: string }>(
+        `/EasyFin/AccountCheck?c=${bankCode}&n=${encodeURIComponent(cleanAccountNumber)}`,
         token,
         'POST'
       );
@@ -189,12 +188,12 @@ export const popbill = {
         };
       }
 
-      // 조회 결과 확인
-      if (result.resultCode !== '0000' && result.resultCode !== '00') {
+      // 조회 결과 확인 (result 필드가 상태코드)
+      if ('result' in result && result.result !== '0000' && result.result !== '00') {
         return {
           success: false,
           error: {
-            code: parseInt(result.resultCode) || -12000003,
+            code: parseInt(result.result) || -12000003,
             message: result.resultMessage || '계좌 조회에 실패했습니다.',
           },
         };

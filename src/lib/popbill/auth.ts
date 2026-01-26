@@ -91,7 +91,7 @@ async function requestToken(serviceId: string, scopes: string[]): Promise<{ sess
 // 팝빌 서비스 ID 매핑
 const SERVICE_IDS = {
   CLOSEDOWN: 'CLOSEDOWN',      // 휴폐업조회
-  ACCOUNTCHECK: 'EasyFinBank', // 계좌실명조회
+  ACCOUNTCHECK: 'AccountCheck', // 예금주조회
 } as const;
 
 export async function getToken(serviceId: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {
@@ -108,8 +108,8 @@ export async function getToken(serviceId: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise
   console.log('[Linkhub] Requesting new token for', actualServiceId);
 
   // 서비스별 scope 설정
-  // 170: 휴폐업조회, 141: 계좌조회
-  const scopes = serviceId === 'CLOSEDOWN' ? ['170'] : ['141'];
+  // 170: 휴폐업조회, 182/183: 예금주조회
+  const scopes = serviceId === 'CLOSEDOWN' ? ['170'] : ['182', '183'];
 
   const tokenResponse = await requestToken(actualServiceId, scopes);
 
