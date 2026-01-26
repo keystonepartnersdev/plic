@@ -37,9 +37,10 @@ async function apiCall<T>(
   method: 'GET' | 'POST' = 'POST',
   body?: Record<string, unknown> | string[]
 ): Promise<T> {
-  const url = `${getPopbillUrl()}${endpoint}`;
+  const baseUrl = getPopbillUrl();
+  const url = `${baseUrl}${endpoint}`;
 
-  console.log('[Popbill API] Request:', { url, method, body });
+  console.log('[Popbill API] Request:', { baseUrl, endpoint, url, method, body, tokenLength: token?.length });
 
   const response = await fetch(url, {
     method,
@@ -51,9 +52,15 @@ async function apiCall<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  console.log('[Popbill API] Response raw:', { status: response.status, body: responseText });
 
-  console.log('[Popbill API] Response:', { status: response.status, data });
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Invalid JSON response: ${responseText}`);
+  }
 
   return data as T;
 }

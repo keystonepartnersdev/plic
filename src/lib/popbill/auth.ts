@@ -44,7 +44,15 @@ async function requestToken(serviceId: string, scopes: string[]): Promise<{ sess
   hmac.update(digestTarget);
   const signature = hmac.digest('base64');
 
-  console.log('[Linkhub] Token request:', { serviceId, scopes, authHost, uri });
+  console.log('[Linkhub] Token request:', {
+    serviceId,
+    scopes,
+    authHost,
+    uri,
+    linkId: LINK_ID,
+    isTest: IS_TEST,
+    bodyDigest,
+  });
 
   const response = await fetch(`https://${authHost}${uri}`, {
     method: 'POST',
@@ -57,9 +65,17 @@ async function requestToken(serviceId: string, scopes: string[]): Promise<{ sess
     body: tokenRequest,
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  console.log('[Linkhub] Token response raw:', { status: response.status, body: responseText });
 
-  console.log('[Linkhub] Token response:', { status: response.status, data });
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Invalid JSON response: ${responseText}`);
+  }
+
+  console.log('[Linkhub] Token response parsed:', data);
 
   if (!response.ok || data.code) {
     throw new Error(data.message || `Token request failed: ${response.status}`);
