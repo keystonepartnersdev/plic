@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { MobileLayout, BottomNav, Footer } from '@/components/common';
+import { MobileLayout, BottomNav } from '@/components/common';
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -14,8 +14,6 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
       <div id="scroll-container" className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide relative">
         {children}
       </div>
-      {/* 사업자 정보 푸터 - BottomNav 바로 위에 고정 */}
-      <Footer />
       {/* 하단 네비게이션 - 프레임 내부 하단 고정 */}
       <BottomNav />
     </MobileLayout>
