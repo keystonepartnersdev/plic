@@ -25,7 +25,7 @@ const tokenCache: Map<string, TokenCache> = new Map();
  * Linkhub 토큰 발급
  * @param scopes 필요한 권한 scope 배열
  */
-async function requestToken(scopes: string[]): Promise<{ session_token: string; serviceID: string; expiration: string }> {
+async function requestToken(scopes: readonly string[]): Promise<{ session_token: string; serviceID: string; expiration: string }> {
   // 인증 서버는 테스트/프로덕션 공용
   const authHost = LINKHUB_AUTH_URL;
   // 서비스 ID는 테스트/프로덕션 구분
