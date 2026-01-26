@@ -112,7 +112,7 @@ export default function DealsPage() {
   };
 
   return (
-    <div className="relative bg-gray-50 pb-24">
+    <div className="relative bg-gray-50">
       <Header title="거래내역" />
 
       <div className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-5 sticky top-14 z-10">
