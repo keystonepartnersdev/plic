@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 일회성 조회 후 삭제
-    deleteVerificationResult(key);
+    // 삭제하지 않음 - TTL로 자동 정리됨 (여러 번 조회 가능)
+    // deleteVerificationResult(key);
 
     return NextResponse.json({
       success: true,
