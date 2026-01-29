@@ -9,13 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
-const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'ap-northeast-2',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-});
+// AWS 기본 자격 증명 공급자 사용 (환경변수 또는 IAM 역할)
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const USERS_TABLE = 'plic-users';
@@ -63,10 +58,12 @@ export async function POST(request: NextRequest) {
       success: true,
       exists: false,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API] /api/auth/kakao-login error:', error);
+    console.error('[API] Error name:', error?.name);
+    console.error('[API] Error message:', error?.message);
     return NextResponse.json(
-      { success: false, error: '서버 오류가 발생했습니다.' },
+      { success: false, error: '서버 오류가 발생했습니다.', details: error?.message },
       { status: 500 }
     );
   }
