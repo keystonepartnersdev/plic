@@ -112,7 +112,16 @@ function LoginContent() {
         }
       }
 
-      // 회원이 없거나 가입이 완료되지 않은 경우 - 회원가입으로
+      // 가입이 완료되지 않은 경우 (이메일 미인증)
+      if (checkData.incomplete) {
+        setKakaoAutoLoginStatus('');
+        setError('이메일 인증이 완료되지 않았습니다. 가입 시 입력한 이메일의 인증 메일을 확인해주세요.');
+        setEmail(kakaoEmail);
+        router.replace('/auth/login', { scroll: false });
+        return;
+      }
+
+      // 회원이 없는 경우 - 회원가입으로
       sessionStorage.setItem('signup_kakao_verified', 'true');
       sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
       sessionStorage.setItem('signup_agreements', JSON.stringify([
@@ -122,12 +131,7 @@ function LoginContent() {
         { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
       ]));
 
-      if (checkData.incomplete) {
-        setKakaoAutoLoginStatus('가입 완료가 필요합니다...');
-      } else {
-        setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
-      }
-
+      setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
       router.replace('/auth/signup');
     } catch (err) {
       console.error('카카오 로그인 처리 실패:', err);
