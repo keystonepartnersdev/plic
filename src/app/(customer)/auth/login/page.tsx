@@ -212,7 +212,7 @@ function LoginContent() {
         {/* 로고 - PLIC 디자인 시스템 적용 */}
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black text-gradient mb-2">PLIC</h1>
-          <p className="text-gray-500 font-medium">카드로 결제, 계좌로 송금</p>
+          <p className="text-gray-500 font-medium">카드로 송금하다</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

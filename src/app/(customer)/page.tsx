@@ -105,10 +105,10 @@ export default function HomePage() {
       {/* 히어로 섹션 - PLIC 디자인 시스템 적용 */}
       <section className="bg-gradient-to-b from-blue-50 to-white px-5 py-8">
         <h2 className="text-2xl font-black text-gray-900 mb-2">
-          현금 결제를 카드로!
+          카드로 송금하다
         </h2>
         <p className="text-gray-600 mb-6 font-medium">
-          카드 한도만큼 현금 즉시 송금
+          현금이나 계좌이체로 지불해야 하는 금액,<br />카드로 편하게 결제하세요
         </p>
 
         {/* 결제대기 송금 알림 배너 (우선 표시) - PLIC 디자인 시스템 적용 */}
@@ -250,35 +250,35 @@ export default function HomePage() {
 
       {/* 혜택 섹션 - PLIC 디자인 시스템 적용 */}
       <section className="px-5 py-8 bg-white">
-        <h3 className="font-black text-xl text-gray-900 mb-6">PLIC만의 특별한 혜택</h3>
+        <h3 className="font-black text-xl text-gray-900 mb-6">왜 PLIC인가요?</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-              <Sparkles className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
+              <Clock className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
             </div>
-            <h4 className="font-bold text-gray-900 mb-1">포인트 적립</h4>
-            <p className="text-sm text-gray-600">카드 포인트/마일리지 적립</p>
+            <h4 className="font-bold text-gray-900 mb-1">결제일까지 여유</h4>
+            <p className="text-sm text-gray-600">카드로 결제하고 여유로운 자금흐름</p>
           </div>
           <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
               <Shield className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
             </div>
-            <h4 className="font-bold text-gray-900 mb-1">안전한 거래</h4>
-            <p className="text-sm text-gray-600">서류 검증 후 송금 진행</p>
+            <h4 className="font-bold text-gray-900 mb-1">원금 100% 송금</h4>
+            <p className="text-sm text-gray-600">수취인에게 원금 그대로 도착</p>
           </div>
           <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-              <Clock className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
+              <Sparkles className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
             </div>
-            <h4 className="font-bold text-gray-900 mb-1">빠른 처리</h4>
-            <p className="text-sm text-gray-600">승인 후 즉시 송금</p>
+            <h4 className="font-bold text-gray-900 mb-1">카드 혜택 그대로</h4>
+            <p className="text-sm text-gray-600">포인트, 할인, 할부 혜택 유지</p>
           </div>
           <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-lg transition-all duration-300 group">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
               <CreditCard className="w-6 h-6 text-[#2563EB]" strokeWidth={2} />
             </div>
-            <h4 className="font-bold text-gray-900 mb-1">분할 결제</h4>
-            <p className="text-sm text-gray-600">최대 3개 카드로 분할</p>
+            <h4 className="font-bold text-gray-900 mb-1">어떤 계좌든 OK</h4>
+            <p className="text-sm text-gray-600">국내 모든 은행 계좌로 송금</p>
           </div>
         </div>
       </section>

@@ -13,17 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PLIC - 카드로 결제, 계좌로 송금",
-  description: "카드 매입대금 정산대행 서비스. 카드 한도만큼 현금 즉시 송금, 분할결제부터 포인트 적립까지!",
-  keywords: ["PLIC", "카드결제", "송금", "정산대행", "분할결제"],
+  title: "PLIC - 카드로 송금하다",
+  description: "현금이나 계좌이체로 지불해야 하는 금액, 카드로 편하게 결제하세요. 결제일까지 여유, 원금 100% 송금, 카드 혜택 그대로!",
+  keywords: ["PLIC", "카드결제", "송금", "카드송금", "사업자송금", "법인카드"],
   authors: [{ name: "PLIC" }],
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "PLIC - 카드로 결제, 계좌로 송금",
-    description: "카드 매입대금 정산대행 서비스",
+    title: "PLIC - 카드로 송금하다",
+    description: "현금이나 계좌이체로 지불해야 하는 금액, 카드로 편하게 결제하세요",
     type: "website",
     locale: "ko_KR",
   },
