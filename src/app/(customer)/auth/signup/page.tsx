@@ -60,24 +60,9 @@ function SignupContent() {
   // 회원 유형 (사업자 회원만 가입 가능)
   const userType: TUserType = 'business';
 
-  // 카카오 인증 결과 (sessionStorage에서 복원)
-  const [isKakaoVerified, setIsKakaoVerified] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('signup_kakao_verified') === 'true';
-    }
-    return false;
-  });
-  const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('signup_kakao_data');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return null;
-  });
+  // 카카오 인증 결과 (useEffect에서 URL 파라미터 확인 후 복원)
+  const [isKakaoVerified, setIsKakaoVerified] = useState(false);
+  const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(null);
 
   // 카카오 인증 상태 저장
   useEffect(() => {
