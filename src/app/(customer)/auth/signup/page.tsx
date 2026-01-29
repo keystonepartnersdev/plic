@@ -136,8 +136,8 @@ function SignupContent() {
         // 카카오에서 가져온 이메일로 자동 채우기
         if (data.data.email) setEmail(data.data.email);
 
-        // info 단계로 이동
-        setStep('info');
+        // step은 변경하지 않음 - 항상 약관동의부터 시작
+        // 카카오 인증 완료 상태는 phoneVerify 단계에서 "완료" 표시로 보여짐
       }
     } catch (err) {
       console.error('인증 결과 조회 실패:', err);
