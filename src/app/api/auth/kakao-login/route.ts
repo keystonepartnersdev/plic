@@ -33,17 +33,29 @@ export async function POST(request: NextRequest) {
         }),
       });
 
+      // 500 에러 = 사용자 없음 또는 서버 오류 → 회원가입으로 유도
+      if (loginRes.status >= 500) {
+        console.log('[API] Backend returned 500, treating as user not exists');
+        return NextResponse.json({
+          success: true,
+          exists: false,
+        });
+      }
+
       const loginData = await loginRes.json();
+      const errorMessage = (loginData.error || loginData.message || '').toLowerCase();
 
-      // 에러 메시지 분석
-      const errorMessage = loginData.error || '';
+      console.log('[API] Login check response:', loginRes.status, errorMessage);
 
-      // 사용자가 없는 경우
+      // 사용자가 없는 경우 (다양한 에러 메시지 패턴)
       if (
-        errorMessage.includes('User does not exist') ||
+        loginRes.status === 404 ||
+        errorMessage.includes('user does not exist') ||
+        errorMessage.includes('user not found') ||
         errorMessage.includes('존재하지 않') ||
         errorMessage.includes('찾을 수 없') ||
-        errorMessage.includes('등록되지 않')
+        errorMessage.includes('등록되지 않') ||
+        errorMessage.includes('usernotfoundexception')
       ) {
         return NextResponse.json({
           success: true,
@@ -55,7 +67,8 @@ export async function POST(request: NextRequest) {
       if (
         errorMessage.includes('not confirmed') ||
         errorMessage.includes('인증되지 않') ||
-        errorMessage.includes('User is not confirmed')
+        errorMessage.includes('user is not confirmed') ||
+        errorMessage.includes('usernotconfirmedexception')
       ) {
         return NextResponse.json({
           success: true,
@@ -65,13 +78,27 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 다른 에러 (비밀번호 틀림 등) = 사용자 존재
-      // "Incorrect username or password", "비밀번호가 올바르지 않습니다" 등
+      // 401 에러 + 비밀번호 관련 메시지 = 사용자 존재
+      if (
+        loginRes.status === 401 &&
+        (errorMessage.includes('incorrect') ||
+         errorMessage.includes('password') ||
+         errorMessage.includes('비밀번호'))
+      ) {
+        return NextResponse.json({
+          success: true,
+          exists: true,
+          user: { email },
+        });
+      }
+
+      // 기타 에러 - 안전하게 사용자 없음으로 처리 (회원가입 유도)
+      console.log('[API] Unknown error, treating as user not exists:', errorMessage);
       return NextResponse.json({
         success: true,
-        exists: true,
-        user: { email },
+        exists: false,
       });
+
     } catch (fetchError: any) {
       console.error('[API] Login check fetch error:', fetchError);
       // 네트워크 에러 시 사용자 없음으로 처리 (회원가입으로 유도)
