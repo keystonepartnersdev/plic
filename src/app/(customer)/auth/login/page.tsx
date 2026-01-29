@@ -8,6 +8,12 @@ import { Header } from '@/components/common';
 import { authAPI, tokenManager } from '@/lib/api';
 import { useUserStore } from '@/stores';
 
+// 카카오 ID로부터 결정적 비밀번호 생성 (회원가입과 동일한 로직)
+const generateKakaoPassword = (kakaoId: number): string => {
+  const idStr = kakaoId.toString(16).padStart(12, '0');
+  return `Kk${idStr.substring(0, 10)}Px1!`;
+};
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -18,7 +24,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isKakaoUser, setIsKakaoUser] = useState(false);
+  const [kakaoAutoLoginStatus, setKakaoAutoLoginStatus] = useState<string>('');
 
   // 카카오 인증 결과 처리
   useEffect(() => {
@@ -34,57 +40,102 @@ function LoginContent() {
     }
 
     if (verified === 'true' && verificationKey) {
-      checkKakaoUser(verificationKey);
+      handleKakaoAutoLogin(verificationKey);
     }
   }, [searchParams]);
 
-  // 카카오 인증 후 회원 확인
-  const checkKakaoUser = async (key: string) => {
+  // 카카오 자동 로그인 처리
+  const handleKakaoAutoLogin = async (key: string) => {
+    setKakaoAutoLoginStatus('카카오 인증 확인 중...');
+    setError('');
+
     try {
       // 카카오 인증 결과 조회
       const resultRes = await fetch(`/api/kakao/result?key=${key}`);
       const resultData = await resultRes.json();
 
-      if (!resultData.success || !resultData.data?.email) {
-        // 이메일 정보가 없으면 회원가입으로
-        router.replace('/auth/signup');
+      if (!resultData.success || !resultData.data?.email || !resultData.data?.kakaoId) {
+        // 인증 정보가 부족하면 회원가입으로
+        setError('카카오 인증 정보를 가져올 수 없습니다.');
+        router.replace('/auth/login', { scroll: false });
         return;
       }
 
       const kakaoEmail = resultData.data.email;
+      const kakaoId = resultData.data.kakaoId;
 
-      // 회원 존재 여부 확인
-      const loginRes = await fetch('/api/auth/kakao-login', {
+      setKakaoAutoLoginStatus('회원 정보 확인 중...');
+
+      // 회원 존재 여부 및 완전 가입 여부 확인
+      const checkRes = await fetch('/api/auth/kakao-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: kakaoEmail }),
+        body: JSON.stringify({ email: kakaoEmail, kakaoId }),
       });
-      const loginData = await loginRes.json();
+      const checkData = await checkRes.json();
 
-      if (loginData.success && loginData.exists) {
-        // 회원이 존재함 - 비밀번호 입력 요청
-        setEmail(kakaoEmail);
-        setIsKakaoUser(true);
-        setError('');
-      } else {
-        // 회원이 없음 - 회원가입 페이지로 이동 (카카오 인증 정보 유지)
-        // 카카오 인증 정보를 sessionStorage에 저장
-        sessionStorage.setItem('signup_kakao_verified', 'true');
-        sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
-        sessionStorage.setItem('signup_agreements', JSON.stringify([
-          { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-          { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-          { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-          { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-        ]));
-        router.replace('/auth/signup');
+      if (!checkData.success) {
+        setError(checkData.error || '회원 확인에 실패했습니다.');
+        router.replace('/auth/login', { scroll: false });
         return;
       }
+
+      // 회원이 존재하고 완전히 가입된 경우 - 자동 로그인
+      if (checkData.exists && !checkData.incomplete) {
+        setKakaoAutoLoginStatus('자동 로그인 중...');
+
+        // 결정적 비밀번호 생성
+        const kakaoPassword = generateKakaoPassword(kakaoId);
+
+        try {
+          // 일반 로그인 API 호출
+          const loginResult = await authAPI.login({
+            email: kakaoEmail,
+            password: kakaoPassword,
+          });
+
+          // 사용자 정보 저장
+          setUser(loginResult.user);
+
+          setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
+
+          // 홈으로 이동
+          router.replace('/');
+          return;
+        } catch (loginErr: any) {
+          console.error('카카오 자동 로그인 실패:', loginErr);
+          // 비밀번호가 맞지 않는 경우 (기존 회원이 일반 가입한 경우)
+          setError('카카오 계정으로 가입된 회원이 아닙니다. 이메일/비밀번호로 로그인해주세요.');
+          setEmail(kakaoEmail);
+          router.replace('/auth/login', { scroll: false });
+          return;
+        }
+      }
+
+      // 회원이 없거나 가입이 완료되지 않은 경우 - 회원가입으로
+      sessionStorage.setItem('signup_kakao_verified', 'true');
+      sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
+      sessionStorage.setItem('signup_agreements', JSON.stringify([
+        { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
+        { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
+        { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
+        { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
+      ]));
+
+      if (checkData.incomplete) {
+        setKakaoAutoLoginStatus('가입 완료가 필요합니다...');
+      } else {
+        setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
+      }
+
+      router.replace('/auth/signup');
     } catch (err) {
       console.error('카카오 로그인 처리 실패:', err);
       setError('카카오 로그인 처리 중 오류가 발생했습니다.');
+      router.replace('/auth/login', { scroll: false });
+    } finally {
+      setKakaoAutoLoginStatus('');
     }
-    router.replace('/auth/login', { scroll: false });
   };
 
   // 카카오 인증 시작
@@ -128,6 +179,16 @@ function LoginContent() {
     }
   };
 
+  // 카카오 자동 로그인 중 로딩 화면
+  if (kakaoAutoLoginStatus) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-400 mb-4" />
+        <p className="text-gray-600 font-medium">{kakaoAutoLoginStatus}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <Header title="로그인" showBack />
@@ -139,16 +200,6 @@ function LoginContent() {
           <p className="text-gray-500 font-medium">카드로 결제, 계좌로 송금</p>
         </div>
 
-        {/* 카카오 회원 안내 */}
-        {isKakaoUser && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl mb-6">
-            <p className="text-sm text-yellow-800 font-medium">
-              카카오 계정({email})으로 가입된 회원입니다.<br />
-              비밀번호를 입력해주세요.
-            </p>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">이메일</label>
@@ -159,8 +210,7 @@ function LoginContent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="example@email.com"
-                readOnly={isKakaoUser}
-                className={`w-full h-14 pl-12 pr-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB] text-lg transition-all duration-300 ${isKakaoUser ? 'bg-gray-50' : ''}`}
+                className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB] text-lg transition-all duration-300"
               />
             </div>
           </div>
@@ -173,7 +223,6 @@ function LoginContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="비밀번호 입력"
-                autoFocus={isKakaoUser}
                 className="w-full h-14 pl-4 pr-12 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB] text-lg transition-all duration-300"
               />
               <button

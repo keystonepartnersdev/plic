@@ -214,19 +214,25 @@ function SignupContent() {
     return hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
   };
 
+  // 카카오 ID로부터 결정적 비밀번호 생성 (Cognito 정책 충족)
+  const generateKakaoPassword = (kakaoId: number): string => {
+    const idStr = kakaoId.toString(16).padStart(12, '0');
+    return `Kk${idStr.substring(0, 10)}Px1!`;
+  };
+
   const isValidBusinessNumber = (num: string) => {
     const digits = num.replace(/-/g, '');
     return digits.length === 10;
   };
 
+  // 카카오 인증된 사용자는 비밀번호 입력 불필요 (자동 생성됨)
   const canProceedInfo =
     name.length >= 2 &&
     phone.replace(/-/g, '').length === 11 &&
     email.length > 0 &&
     isValidEmail(email) &&
-    isValidPassword(password) &&
-    password === passwordConfirm &&
-    isKakaoVerified;
+    isKakaoVerified &&
+    (kakaoVerification?.kakaoId ? true : (isValidPassword(password) && password === passwordConfirm));
 
   const canProceedBusinessInfo =
     businessName.length >= 2 &&
@@ -351,9 +357,14 @@ function SignupContent() {
     try {
       const cleanPhone = phone.replace(/-/g, '');
 
+      // 카카오 인증된 경우 결정적 비밀번호 생성
+      const finalPassword = kakaoVerification?.kakaoId
+        ? generateKakaoPassword(kakaoVerification.kakaoId)
+        : password;
+
       const signupData: Parameters<typeof authAPI.signup>[0] = {
         email,
-        password,
+        password: finalPassword,
         name,
         phone: cleanPhone,
         userType,
@@ -597,44 +608,57 @@ function SignupContent() {
               )}
             </div>
 
-            {/* 비밀번호 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="8자리 이상"
-                  className="w-full h-14 pl-4 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+            {/* 비밀번호 - 카카오 인증 시 자동 생성 */}
+            {kakaoVerification?.kakaoId ? (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                <p className="text-sm text-blue-700 font-medium">
+                  카카오 계정으로 로그인하시면 별도 비밀번호가 필요 없습니다.
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  카카오 인증으로 자동 로그인됩니다.
+                </p>
               </div>
-              {password && !isValidPassword(password) && (
-                <p className="text-sm text-red-500 mt-1">비밀번호는 8자 이상, 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.</p>
-              )}
-            </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="8자리 이상"
+                      className="w-full h-14 pl-4 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {password && !isValidPassword(password) && (
+                    <p className="text-sm text-red-500 mt-1">비밀번호는 8자 이상, 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.</p>
+                  )}
+                </div>
 
-            {/* 비밀번호 확인 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 확인</label>
-              <input
-                type="password"
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                placeholder="비밀번호 재입력"
-                className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-              />
-              {passwordConfirm && password !== passwordConfirm && (
-                <p className="text-sm text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
-              )}
-            </div>
+                {/* 비밀번호 확인 */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 확인</label>
+                  <input
+                    type="password"
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    placeholder="비밀번호 재입력"
+                    className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  />
+                  {passwordConfirm && password !== passwordConfirm && (
+                    <p className="text-sm text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
+                  )}
+                </div>
+              </>
+            )}
 
             {error && (
               <div className="p-3 bg-red-50 rounded-xl mb-4">

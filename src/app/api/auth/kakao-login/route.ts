@@ -2,8 +2,7 @@
  * 카카오 로그인 API
  * POST /api/auth/kakao-login
  *
- * 카카오 인증 후 회원 존재 여부 확인
- * 백엔드 API를 통해 사용자 존재 여부를 확인합니다.
+ * 카카오 인증 후 회원 존재 여부 및 완전 가입 여부 확인
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,7 +12,7 @@ const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.co
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email } = body;
+    const { email, kakaoId } = body;
 
     if (!email) {
       return NextResponse.json(
@@ -36,18 +35,6 @@ export async function POST(request: NextRequest) {
 
       const loginData = await loginRes.json();
 
-      // 로그인 성공 (이론적으로 불가능하지만)
-      if (loginData.success) {
-        return NextResponse.json({
-          success: true,
-          exists: true,
-          user: {
-            email,
-            name: loginData.data?.user?.name,
-          },
-        });
-      }
-
       // 에러 메시지 분석
       const errorMessage = loginData.error || '';
 
@@ -61,6 +48,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           exists: false,
+        });
+      }
+
+      // 이메일 미인증 (가입 중단됨)
+      if (
+        errorMessage.includes('not confirmed') ||
+        errorMessage.includes('인증되지 않') ||
+        errorMessage.includes('User is not confirmed')
+      ) {
+        return NextResponse.json({
+          success: true,
+          exists: false,
+          incomplete: true,
+          message: '이메일 인증이 완료되지 않았습니다. 다시 가입해주세요.',
         });
       }
 
