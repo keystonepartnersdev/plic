@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Building2, Upload, X, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
+import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Building2, Upload, X as XIcon, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
 import { Header } from '@/components/common';
 import { authAPI } from '@/lib/api';
 import { uploadFile, validateFile } from '@/lib/upload';
@@ -17,6 +17,7 @@ interface Agreement {
   label: string;
   required: boolean;
   checked: boolean;
+  link?: string; // 약관 상세보기 링크
 }
 
 interface KakaoVerificationResult {
@@ -80,31 +81,34 @@ function SignupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 약관 기본값 정의
+  const defaultAgreements: Agreement[] = [
+    { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false, link: '/terms/service' },
+    { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false, link: '/terms/privacy' },
+    { id: 'thirdParty', label: '전자금융거래 이용약관 (필수)', required: true, checked: false, link: '/terms/electronic' },
+    { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false, link: '/terms/marketing' },
+  ];
+
   // 약관 동의 - sessionStorage에서 복원 또는 초기값
   const [agreements, setAgreements] = useState<Agreement[]>(() => {
     if (typeof window === 'undefined') {
-      return [
-        { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-        { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-        { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-        { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-      ];
+      return defaultAgreements;
     }
     // sessionStorage에서 복원 시도
     const saved = sessionStorage.getItem('signup_agreements');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // 저장된 데이터에 link 정보 추가 (이전 버전 호환)
+        return parsed.map((a: Agreement) => {
+          const defaultItem = defaultAgreements.find(d => d.id === a.id);
+          return { ...a, link: defaultItem?.link };
+        });
       } catch {
         // 파싱 실패 시 기본값
       }
     }
-    return [
-      { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-      { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-      { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-      { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-    ];
+    return defaultAgreements;
   });
 
   // 약관 동의 상태 저장 (항상 저장 - initialized 상관없이)
@@ -167,12 +171,7 @@ function SignupContent() {
       sessionStorage.removeItem('signup_step');
       sessionStorage.removeItem('signup_agreements'); // 이전 약관 동의도 초기화
       // 약관 체크 상태도 초기화
-      setAgreements([
-        { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-        { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-        { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-        { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-      ]);
+      setAgreements(defaultAgreements);
     }
 
     // 카카오 인증 데이터가 있는 경우 - 카카오 데이터 로드
@@ -548,22 +547,30 @@ function SignupContent() {
                 <div key={agreement.id} className="flex items-center justify-between p-3">
                   <button
                     onClick={() => toggleOne(agreement.id)}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-3 flex-1"
                   >
                     <div className={cn(
-                      'w-5 h-5 rounded flex items-center justify-center',
+                      'w-5 h-5 rounded flex items-center justify-center flex-shrink-0',
                       agreement.checked ? 'bg-primary-400' : 'border-2 border-gray-300'
                     )}>
                       {agreement.checked && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <span className={cn(
-                      'text-sm',
+                      'text-sm text-left',
                       agreement.required ? 'text-gray-900' : 'text-gray-500'
                     )}>
                       {agreement.label}
                     </span>
                   </button>
-                  <ChevronRight className="w-5 h-5 text-gray-300" />
+                  {agreement.link && (
+                    <Link
+                      href={agreement.link}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
