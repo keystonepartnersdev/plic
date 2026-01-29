@@ -221,7 +221,7 @@ interface VerificationResult {
 
 // DynamoDB 클라이언트 초기화
 const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'ap-northeast-2',
+  region: 'ap-northeast-2',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
