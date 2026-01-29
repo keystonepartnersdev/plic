@@ -140,12 +140,21 @@ export const useAdminStore = create(
     {
       name: 'plic-admin-storage',
       storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, error) => {
         // localStorage에서 복원 후 어드민 계정 병합 및 잠금 해제
-        if (state) {
-          state.adminList = mergeAndUnlockAdmins(state.adminList);
+        if (state && !error) {
+          const mergedAdmins = mergeAndUnlockAdmins(state.adminList);
+          // 직접 set 호출하여 상태 업데이트
+          useAdminStore.setState({ adminList: mergedAdmins });
         }
       },
     }
   )
 );
+
+// 초기화 시 어드민 계정 병합 실행 (클라이언트 사이드에서만)
+if (typeof window !== 'undefined') {
+  const currentState = useAdminStore.getState();
+  const mergedAdmins = mergeAndUnlockAdmins(currentState.adminList);
+  useAdminStore.setState({ adminList: mergedAdmins });
+}
