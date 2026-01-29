@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
 import { authAPI, tokenManager } from '@/lib/api';
 import { useUserStore } from '@/stores';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setUser } = useUserStore();
 
   const [email, setEmail] = useState('');
@@ -17,6 +18,51 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [kakaoEmail, setKakaoEmail] = useState<string | null>(null);
+
+  // 카카오 인증 결과 처리
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const verificationKey = searchParams.get('verificationKey');
+    const errorParam = searchParams.get('error');
+    const errorMessage = searchParams.get('message');
+
+    if (errorParam) {
+      setError(errorMessage || '카카오 인증에 실패했습니다.');
+      router.replace('/auth/login', { scroll: false });
+      return;
+    }
+
+    if (verified === 'true' && verificationKey) {
+      fetchKakaoResult(verificationKey);
+    }
+  }, [searchParams]);
+
+  const fetchKakaoResult = async (key: string) => {
+    try {
+      const response = await fetch(`/api/kakao/result?key=${key}`);
+      const data = await response.json();
+
+      if (data.success && data.data?.email) {
+        // 카카오 이메일로 자동 채움
+        setEmail(data.data.email);
+        setKakaoEmail(data.data.email);
+        setError('카카오 계정으로 인증되었습니다. 비밀번호를 입력해주세요.');
+      } else if (data.success && !data.data?.email) {
+        // 이메일 정보가 없으면 회원가입으로
+        router.replace('/auth/signup');
+        return;
+      }
+    } catch (err) {
+      console.error('카카오 인증 결과 조회 실패:', err);
+    }
+    router.replace('/auth/login', { scroll: false });
+  };
+
+  // 카카오 인증 시작
+  const handleKakaoLogin = () => {
+    window.location.href = '/api/kakao/auth?returnTo=/auth/login';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,15 +164,23 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-3">
-          <button className="w-full h-14 bg-[#FEE500] text-gray-900 font-semibold rounded-full flex items-center justify-center gap-2 hover:shadow-lg transition-all duration-300">
+          <button
+            type="button"
+            onClick={handleKakaoLogin}
+            className="w-full h-14 bg-[#FEE500] text-gray-900 font-semibold rounded-full flex items-center justify-center gap-2 hover:shadow-lg transition-all duration-300"
+          >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.47 1.607 4.647 4.035 5.906l-.857 3.179c-.058.215.189.39.379.27l3.746-2.357c.883.142 1.79.218 2.697.218 5.523 0 10-3.477 10-7.716S17.523 3 12 3z"/>
             </svg>
             카카오로 시작하기
           </button>
-          <button className="w-full h-14 bg-[#03C75A] text-white font-semibold rounded-full flex items-center justify-center gap-2 hover:shadow-lg transition-all duration-300">
+          <button
+            type="button"
+            disabled
+            className="w-full h-14 bg-[#03C75A] text-white font-semibold rounded-full flex items-center justify-center gap-2 hover:shadow-lg transition-all duration-300 opacity-50 cursor-not-allowed"
+          >
             <span className="text-lg font-bold">N</span>
-            네이버로 시작하기
+            네이버로 시작하기 (준비중)
           </button>
         </div>
 
@@ -140,5 +194,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
