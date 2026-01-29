@@ -60,9 +60,34 @@ function SignupContent() {
   // 회원 유형 (사업자 회원만 가입 가능)
   const userType: TUserType = 'business';
 
-  // 카카오 인증 결과
-  const [isKakaoVerified, setIsKakaoVerified] = useState(false);
-  const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(null);
+  // 카카오 인증 결과 (sessionStorage에서 복원)
+  const [isKakaoVerified, setIsKakaoVerified] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('signup_kakao_verified') === 'true';
+    }
+    return false;
+  });
+  const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('signup_kakao_data');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return null;
+  });
+
+  // 카카오 인증 상태 저장
+  useEffect(() => {
+    if (isKakaoVerified) {
+      sessionStorage.setItem('signup_kakao_verified', 'true');
+      if (kakaoVerification) {
+        sessionStorage.setItem('signup_kakao_data', JSON.stringify(kakaoVerification));
+      }
+    }
+  }, [isKakaoVerified, kakaoVerification]);
 
   // 회원 정보
   const [name, setName] = useState('');
@@ -340,6 +365,8 @@ function SignupContent() {
 
       // 회원가입 완료 - sessionStorage 정리
       sessionStorage.removeItem('signup_agreements');
+      sessionStorage.removeItem('signup_kakao_verified');
+      sessionStorage.removeItem('signup_kakao_data');
       setStep('complete');
     } catch (err: any) {
       setError(err.message || '회원가입 중 오류가 발생했습니다.');
@@ -447,6 +474,7 @@ function SignupContent() {
               <div className="space-y-4">
                 {/* 카카오 인증 버튼 */}
                 <button
+                  type="button"
                   onClick={handleKakaoVerification}
                   className="w-full h-14 bg-[#FEE500] hover:bg-[#FDD835] text-gray-900 font-semibold rounded-xl flex items-center justify-center gap-3 transition-colors"
                 >
