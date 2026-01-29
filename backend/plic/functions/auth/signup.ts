@@ -1,14 +1,21 @@
 // backend/functions/auth/signup.ts
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { CognitoIdentityProviderClient, SignUpCommand, AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
+import {
+  CognitoIdentityProviderClient,
+  SignUpCommand,
+  AdminGetUserCommand,
+  AdminDeleteUserCommand,
+  AdminConfirmSignUpCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || '';
 const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 
@@ -44,6 +51,9 @@ interface SignupRequest {
     thirdParty: boolean;
     marketing: boolean;
   };
+  // 카카오 인증 정보
+  kakaoVerified?: boolean;
+  kakaoId?: number;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -62,7 +72,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     const body: SignupRequest = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements } = body;
+    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerified, kakaoId } = body;
 
     // 필수 필드 검증
     if (!email || !password || !name || !phone) {
@@ -136,24 +146,85 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       await cognitoClient.send(signUpCommand);
     } catch (cognitoError: any) {
       if (cognitoError.name === 'UsernameExistsException') {
-        return response(409, {
-          success: false,
-          error: '이미 등록된 이메일입니다.',
-        });
-      }
-      if (cognitoError.name === 'InvalidPasswordException') {
+        // 미완료 가입 계정인지 확인하고 삭제 후 재시도
+        try {
+          const getUserResult = await cognitoClient.send(new AdminGetUserCommand({
+            UserPoolId: USER_POOL_ID,
+            Username: email,
+          }));
+
+          // UNCONFIRMED 상태면 삭제하고 재가입 허용
+          if (getUserResult.UserStatus === 'UNCONFIRMED') {
+            console.log(`[Signup] 미완료 계정 삭제: ${email}`);
+
+            // Cognito에서 삭제
+            await cognitoClient.send(new AdminDeleteUserCommand({
+              UserPoolId: USER_POOL_ID,
+              Username: email,
+            }));
+
+            // DynamoDB에서도 삭제 (이메일로 조회 후 삭제)
+            try {
+              const queryResult = await docClient.send(new QueryCommand({
+                TableName: USERS_TABLE,
+                IndexName: 'email-index',
+                KeyConditionExpression: 'email = :email',
+                ExpressionAttributeValues: { ':email': email },
+              }));
+
+              if (queryResult.Items && queryResult.Items.length > 0) {
+                await docClient.send(new DeleteCommand({
+                  TableName: USERS_TABLE,
+                  Key: { uid: queryResult.Items[0].uid },
+                }));
+              }
+            } catch (dbError) {
+              console.error('[Signup] DynamoDB 삭제 실패 (무시):', dbError);
+            }
+
+            // 재시도: Cognito 회원가입
+            const retrySignUpCommand = new SignUpCommand({
+              ClientId: USER_POOL_CLIENT_ID,
+              Username: email,
+              Password: password,
+              UserAttributes: [
+                { Name: 'email', Value: email },
+                { Name: 'name', Value: name },
+                { Name: 'phone_number', Value: `+82${phone.slice(1)}` },
+                { Name: 'custom:uid', Value: uid },
+                { Name: 'custom:userType', Value: userType || 'personal' },
+              ],
+            });
+
+            await cognitoClient.send(retrySignUpCommand);
+            // 성공 - 아래 DynamoDB 저장으로 계속 진행
+          } else {
+            // CONFIRMED 상태면 실제로 이미 가입된 계정
+            return response(409, {
+              success: false,
+              error: '이미 등록된 이메일입니다.',
+            });
+          }
+        } catch (adminError: any) {
+          console.error('[Signup] 미완료 계정 처리 실패:', adminError);
+          return response(409, {
+            success: false,
+            error: '이미 등록된 이메일입니다.',
+          });
+        }
+      } else if (cognitoError.name === 'InvalidPasswordException') {
         return response(400, {
           success: false,
           error: '비밀번호는 8자 이상이며, 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.',
         });
-      }
-      if (cognitoError.name === 'InvalidParameterException') {
+      } else if (cognitoError.name === 'InvalidParameterException') {
         return response(400, {
           success: false,
           error: cognitoError.message || '입력값이 올바르지 않습니다.',
         });
+      } else {
+        throw cognitoError;
       }
-      throw cognitoError;
     }
 
     // DynamoDB에 사용자 정보 저장
@@ -165,8 +236,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       name,
       phone,
       userType: userType || 'personal',
-      authType: 'direct',
-      socialProvider: 'none',
+      authType: kakaoVerified ? 'kakao' : 'direct',
+      socialProvider: kakaoVerified ? 'kakao' : 'none',
+      kakaoId: kakaoId || null,
       isVerified: false,
       status: 'pending',
       grade: 'basic',
@@ -201,16 +273,37 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
     }
 
+    // 카카오 인증 사용자는 자동 확인 (이메일 인증 스킵)
+    if (kakaoVerified && kakaoId) {
+      try {
+        await cognitoClient.send(new AdminConfirmSignUpCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: email,
+        }));
+        console.log(`[Signup] 카카오 사용자 자동 확인 완료: ${email}`);
+        userItem.isVerified = true;
+        userItem.status = 'active';
+      } catch (confirmError: any) {
+        console.error('[Signup] 카카오 사용자 자동 확인 실패:', confirmError);
+        // 실패해도 계속 진행 (나중에 수동 인증 가능)
+      }
+    }
+
     await docClient.send(new PutCommand({
       TableName: USERS_TABLE,
       Item: userItem,
     }));
 
+    const successMessage = kakaoVerified
+      ? '회원가입이 완료되었습니다. 바로 로그인할 수 있습니다.'
+      : '회원가입이 완료되었습니다. 이메일로 전송된 인증코드를 확인해주세요.';
+
     return response(200, {
       success: true,
       data: {
-        message: '회원가입이 완료되었습니다. 이메일로 전송된 인증코드를 확인해주세요.',
+        message: successMessage,
         uid,
+        autoConfirmed: kakaoVerified || false,
       },
     });
   } catch (error: any) {
