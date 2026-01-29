@@ -139,24 +139,11 @@ function LoginContent() {
         }
       }
 
-      // 회원이 없는 경우 - 회원가입으로 (sessionStorage에 카카오 데이터 저장)
-      sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
+      // 회원이 없는 경우 - 회원가입 페이지로 카카오 인증 데이터와 함께 이동
+      // verificationKey를 그대로 전달하여 회원가입에서 다시 인증하지 않아도 됨
       setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
-      router.replace('/auth/signup');
+      router.replace(`/auth/signup?verified=true&verificationKey=${key}&fromLogin=true`);
       return;
-
-      // 아래 코드는 실행되지 않음 (위에서 return)
-      sessionStorage.setItem('signup_kakao_verified', 'true');
-      sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
-      sessionStorage.setItem('signup_agreements', JSON.stringify([
-        { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-        { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-        { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-        { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-      ]));
-
-      setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
-      router.replace('/auth/signup?kakaoAuth=complete');
     } catch (err) {
       console.error('카카오 로그인 처리 실패:', err);
       setError('카카오 로그인 처리 중 오류가 발생했습니다.');

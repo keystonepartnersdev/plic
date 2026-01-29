@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Building2, Upload, X, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
@@ -26,31 +26,91 @@ interface KakaoVerificationResult {
   verifiedAt: string;
 }
 
+// 초기 step 결정 (컴포넌트 외부에서 동기적으로)
+function getInitialStep(): Step {
+  if (typeof window === 'undefined') return 'agreement';
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const verified = urlParams.get('verified');
+  const verificationKey = urlParams.get('verificationKey');
+  const fromLogin = urlParams.get('fromLogin');
+
+  // 로그인에서 온 신규 회원 → 항상 약관동의부터
+  if (fromLogin === 'true') {
+    sessionStorage.removeItem('signup_step'); // 이전 step 제거
+    return 'agreement';
+  }
+
+  // 카카오 인증 콜백으로 돌아온 경우 → 저장된 step 복원
+  if (verified === 'true' && verificationKey) {
+    const savedStep = sessionStorage.getItem('signup_step');
+    if (savedStep && ['agreement', 'phoneVerify', 'info', 'businessInfo'].includes(savedStep)) {
+      return savedStep as Step;
+    }
+    return 'phoneVerify'; // 기본값
+  }
+
+  // 일반 접근 → 저장된 step 복원 또는 agreement
+  const savedStep = sessionStorage.getItem('signup_step');
+  if (savedStep && ['agreement', 'phoneVerify', 'info', 'businessInfo'].includes(savedStep)) {
+    return savedStep as Step;
+  }
+
+  return 'agreement';
+}
+
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // 초기 step을 URL 기반으로 결정 (렌더링 전에 동기적으로)
+  const [step, setStepState] = useState<Step>(getInitialStep);
+
+  // step 변경 시 sessionStorage에도 저장
+  const setStep = (newStep: Step) => {
+    setStepState(newStep);
+    if (newStep !== 'complete') {
+      sessionStorage.setItem('signup_step', newStep);
+    }
+  };
+
   // 초기화 완료 여부
   const [initialized, setInitialized] = useState(false);
-
-  const [step, setStep] = useState<Step>('agreement');
+  const initRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 약관 동의 - 항상 초기값으로 시작, useEffect에서 복원
-  const [agreements, setAgreements] = useState<Agreement[]>([
-    { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-    { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-    { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-    { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-  ]);
-
-  // 약관 동의 상태 저장 (초기화 후에만)
-  useEffect(() => {
-    if (initialized) {
-      sessionStorage.setItem('signup_agreements', JSON.stringify(agreements));
+  // 약관 동의 - sessionStorage에서 복원 또는 초기값
+  const [agreements, setAgreements] = useState<Agreement[]>(() => {
+    if (typeof window === 'undefined') {
+      return [
+        { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
+        { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
+        { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
+        { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
+      ];
     }
-  }, [agreements, initialized]);
+    // sessionStorage에서 복원 시도
+    const saved = sessionStorage.getItem('signup_agreements');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // 파싱 실패 시 기본값
+      }
+    }
+    return [
+      { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
+      { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
+      { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
+      { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
+    ];
+  });
+
+  // 약관 동의 상태 저장 (항상 저장 - initialized 상관없이)
+  useEffect(() => {
+    sessionStorage.setItem('signup_agreements', JSON.stringify(agreements));
+  }, [agreements]);
 
   // 회원 유형 (사업자 회원만 가입 가능)
   const userType: TUserType = 'business';
@@ -58,6 +118,8 @@ function SignupContent() {
   // 카카오 인증 결과 (useEffect에서 URL 파라미터 확인 후 복원)
   const [isKakaoVerified, setIsKakaoVerified] = useState(false);
   const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(null);
+  // 카카오 인증 키 (백엔드로 전달용)
+  const [kakaoVerificationKey, setKakaoVerificationKey] = useState<string | null>(null);
 
   // 카카오 인증 상태는 sessionStorage에 저장하지 않음 (URL 파라미터로만 처리)
 
@@ -84,53 +146,60 @@ function SignupContent() {
   const [businessState, setBusinessState] = useState<string | null>(null); // 01/1: 사업중, 02/2: 휴업, 03/3: 폐업
   const [businessStateName, setBusinessStateName] = useState<string>('');
 
-  // 페이지 진입 시 상태 초기화
+  // 페이지 진입 시 초기화
   useEffect(() => {
-    const verified = searchParams.get('verified');
-    const verificationKey = searchParams.get('verificationKey');
-    const errorParam = searchParams.get('error');
+    if (initRef.current) return;
+    initRef.current = true;
 
-    // 항상 약관동의(agreement) 단계로 시작
-    setStep('agreement');
+    const urlParams = new URLSearchParams(window.location.search);
+    const verified = urlParams.get('verified');
+    const verificationKey = urlParams.get('verificationKey');
+    const fromLogin = urlParams.get('fromLogin');
+    const errorParam = urlParams.get('error');
+    const errorMessage = urlParams.get('message');
 
-    // 카카오 인증 콜백으로 돌아온 경우가 아니면
-    if (!verified && !verificationKey && !errorParam) {
-      // sessionStorage에서 카카오 데이터 확인 (로그인 페이지에서 온 경우)
-      const savedKakaoData = sessionStorage.getItem('signup_kakao_data');
-      if (savedKakaoData) {
-        try {
-          const data = JSON.parse(savedKakaoData);
-          setKakaoVerification(data);
-          setIsKakaoVerified(true);
-          if (data.email) setEmail(data.email);
-          // 읽은 후 삭제 (다음 방문 시 다시 인증 필요)
-          sessionStorage.removeItem('signup_kakao_data');
-        } catch (e) {
-          console.error('카카오 데이터 파싱 실패:', e);
-        }
-      }
+    console.log('[Signup] Init - fromLogin:', fromLogin, 'verified:', verified);
+
+    // 로그인에서 온 신규 회원 → 무조건 약관동의부터 시작
+    if (fromLogin === 'true') {
+      console.log('[Signup] From login - forcing agreement step');
+      setStep('agreement');
+      sessionStorage.removeItem('signup_step');
+      sessionStorage.removeItem('signup_agreements'); // 이전 약관 동의도 초기화
+      // 약관 체크 상태도 초기화
+      setAgreements([
+        { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
+        { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
+        { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
+        { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
+      ]);
     }
-    setInitialized(true);
-  }, []); // 마운트 시 한 번만 실행
 
-  // 카카오 인증 결과 처리 (DynamoDB에서 조회)
-  useEffect(() => {
-    const verified = searchParams.get('verified');
-    const verificationKey = searchParams.get('verificationKey');
-    const errorParam = searchParams.get('error');
-    const errorMessage = searchParams.get('message');
-
-    if (errorParam) {
-      setError(errorMessage || '카카오 인증에 실패했습니다.');
-      setStep('phoneVerify');
-      router.replace('/auth/signup', { scroll: false });
+    // 카카오 인증 데이터가 있는 경우 - 카카오 데이터 로드
+    if (verified === 'true' && verificationKey) {
+      // 백엔드 전달용으로 verificationKey 저장
+      setKakaoVerificationKey(verificationKey);
+      fetchVerificationResult(verificationKey);
+      setInitialized(true);
+      // URL 정리
+      window.history.replaceState({}, '', '/auth/signup');
       return;
     }
 
-    if (verified === 'true' && verificationKey) {
-      fetchVerificationResult(verificationKey);
+    // 에러가 있는 경우
+    if (errorParam) {
+      setError(errorMessage || '카카오 인증에 실패했습니다.');
+      window.history.replaceState({}, '', '/auth/signup');
+      setInitialized(true);
+      return;
     }
-  }, [searchParams]);
+
+    // 일반적인 페이지 진입 - 카카오 관련만 초기화 (약관은 유지)
+    setIsKakaoVerified(false);
+    setKakaoVerification(null);
+
+    setInitialized(true);
+  }, []);
 
   const fetchVerificationResult = async (key: string) => {
     try {
@@ -141,13 +210,18 @@ function SignupContent() {
         setKakaoVerification(data.data);
         setIsKakaoVerified(true);
         if (data.data.email) setEmail(data.data.email);
-        // 회원가입 페이지에서 카카오 인증 버튼을 눌러서 돌아온 경우 → phoneVerify 단계 유지
-        setStep('phoneVerify');
+        console.log('[Signup] Kakao data loaded:', data.data.email);
+      } else {
+        setError('카카오 인증 결과를 가져올 수 없습니다. 다시 시도해주세요.');
+        setIsKakaoVerified(false);
+        setKakaoVerification(null);
       }
     } catch (err) {
       console.error('인증 결과 조회 실패:', err);
+      setError('카카오 인증 결과 조회에 실패했습니다.');
+      setIsKakaoVerified(false);
+      setKakaoVerification(null);
     }
-    router.replace('/auth/signup', { scroll: false });
   };
 
   const allRequiredChecked = agreements.filter((a) => a.required).every((a) => a.checked);
@@ -155,11 +229,17 @@ function SignupContent() {
 
   const toggleAll = () => {
     const newChecked = !allChecked;
-    setAgreements(agreements.map((a) => ({ ...a, checked: newChecked })));
+    const newAgreements = agreements.map((a) => ({ ...a, checked: newChecked }));
+    setAgreements(newAgreements);
+    // 즉시 sessionStorage에 저장 (useEffect 의존 안함)
+    sessionStorage.setItem('signup_agreements', JSON.stringify(newAgreements));
   };
 
   const toggleOne = (id: string) => {
-    setAgreements(agreements.map((a) => (a.id === id ? { ...a, checked: !a.checked } : a)));
+    const newAgreements = agreements.map((a) => (a.id === id ? { ...a, checked: !a.checked } : a));
+    setAgreements(newAgreements);
+    // 즉시 sessionStorage에 저장 (useEffect 의존 안함)
+    sessionStorage.setItem('signup_agreements', JSON.stringify(newAgreements));
   };
 
   const formatPhone = (value: string) => {
@@ -332,6 +412,36 @@ function SignupContent() {
     setError('');
 
     try {
+      // sessionStorage에서 최신 약관 동의 상태 읽기 (state보다 확실함)
+      let agreementsData = {
+        service: false,
+        privacy: false,
+        thirdParty: false,
+        marketing: false,
+      };
+
+      const savedAgreements = sessionStorage.getItem('signup_agreements');
+      if (savedAgreements) {
+        try {
+          const parsed = JSON.parse(savedAgreements) as Agreement[];
+          agreementsData = {
+            service: parsed.find((a) => a.id === 'service')?.checked || false,
+            privacy: parsed.find((a) => a.id === 'privacy')?.checked || false,
+            thirdParty: parsed.find((a) => a.id === 'thirdParty')?.checked || false,
+            marketing: parsed.find((a) => a.id === 'marketing')?.checked || false,
+          };
+        } catch (e) {
+          console.error('약관 동의 상태 파싱 실패:', e);
+        }
+      }
+
+      // 필수 약관 동의 확인
+      if (!agreementsData.service || !agreementsData.privacy || !agreementsData.thirdParty) {
+        setError('필수 약관에 동의하지 않았습니다. 뒤로 가기 버튼을 눌러 약관동의부터 다시 진행해주세요.');
+        setIsLoading(false);
+        return;
+      }
+
       const cleanPhone = phone.replace(/-/g, '');
 
       // 카카오 인증된 경우 결정적 비밀번호 생성
@@ -345,16 +455,20 @@ function SignupContent() {
         name,
         phone: cleanPhone,
         userType,
-        agreements: {
-          service: agreements.find((a) => a.id === 'service')?.checked || false,
-          privacy: agreements.find((a) => a.id === 'privacy')?.checked || false,
-          thirdParty: agreements.find((a) => a.id === 'thirdParty')?.checked || false,
-          marketing: agreements.find((a) => a.id === 'marketing')?.checked || false,
-        },
-        // 카카오 인증 정보 추가
+        agreements: agreementsData,
+        // 카카오 인증 정보 추가 (백엔드에서 직접 DynamoDB 조회)
         kakaoVerified: isKakaoVerified,
         kakaoId: kakaoVerification?.kakaoId,
+        kakaoVerificationKey: kakaoVerificationKey || undefined,
       };
+
+      // 디버깅용 로그
+      console.log('[Signup] Kakao data at signup:', {
+        isKakaoVerified,
+        kakaoId: kakaoVerification?.kakaoId,
+        kakaoEmail: kakaoVerification?.email,
+        kakaoVerificationKey,
+      });
 
       // 사업자인 경우 사업자 정보 추가
       if (userType === 'business') {
@@ -370,9 +484,10 @@ function SignupContent() {
 
       // 회원가입 완료 - sessionStorage 정리
       sessionStorage.removeItem('signup_agreements');
+      sessionStorage.removeItem('signup_step');
       sessionStorage.removeItem('signup_kakao_verified');
       sessionStorage.removeItem('signup_kakao_data');
-      setStep('complete');
+      setStepState('complete'); // setStep 대신 직접 호출 (sessionStorage 저장 안함)
     } catch (err: any) {
       setError(err.message || '회원가입 중 오류가 발생했습니다.');
     } finally {

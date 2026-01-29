@@ -8,7 +8,7 @@ import {
   AdminConfirmSignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, DeleteCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
@@ -18,6 +18,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || '';
 const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
+const KAKAO_VERIFICATIONS_TABLE = 'plic-kakao-verifications';
 
 // CORS 헤더
 const corsHeaders = {
@@ -51,9 +52,11 @@ interface SignupRequest {
     thirdParty: boolean;
     marketing: boolean;
   };
-  // 카카오 인증 정보
+  // 카카오 인증 정보 (프론트엔드에서 전달 - deprecated)
   kakaoVerified?: boolean;
   kakaoId?: number;
+  // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
+  kakaoVerificationKey?: string;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -72,7 +75,29 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     const body: SignupRequest = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerified, kakaoId } = body;
+    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
+    let { kakaoVerified, kakaoId } = body;
+
+    // kakaoVerificationKey가 있으면 DynamoDB에서 직접 카카오 인증 정보 조회
+    if (kakaoVerificationKey) {
+      try {
+        const verificationResult = await docClient.send(new GetCommand({
+          TableName: KAKAO_VERIFICATIONS_TABLE,
+          Key: { verificationKey: kakaoVerificationKey },
+        }));
+
+        if (verificationResult.Item && verificationResult.Item.kakaoId) {
+          console.log(`[Signup] 카카오 인증 키로 조회 성공: ${verificationResult.Item.email}`);
+          kakaoVerified = true;
+          kakaoId = verificationResult.Item.kakaoId;
+        } else {
+          console.log(`[Signup] 카카오 인증 키 조회 실패 또는 만료: ${kakaoVerificationKey}`);
+        }
+      } catch (verifyError: any) {
+        console.error('[Signup] 카카오 인증 키 조회 오류:', verifyError);
+        // 실패해도 계속 진행 (일반 가입으로)
+      }
+    }
 
     // 필수 필드 검증
     if (!email || !password || !name || !phone) {

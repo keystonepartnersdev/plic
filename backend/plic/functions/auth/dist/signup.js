@@ -87,6 +87,7 @@ var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(dynamoClient);
 var USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 var USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || "";
 var USERS_TABLE = process.env.USERS_TABLE || "plic-users";
+var KAKAO_VERIFICATIONS_TABLE = "plic-kakao-verifications";
 var corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type,Authorization",
@@ -109,7 +110,25 @@ var handler = async (event) => {
       });
     }
     const body = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerified, kakaoId } = body;
+    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
+    let { kakaoVerified, kakaoId } = body;
+    if (kakaoVerificationKey) {
+      try {
+        const verificationResult = await docClient.send(new import_lib_dynamodb.GetCommand({
+          TableName: KAKAO_VERIFICATIONS_TABLE,
+          Key: { verificationKey: kakaoVerificationKey }
+        }));
+        if (verificationResult.Item && verificationResult.Item.kakaoId) {
+          console.log(`[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4\uB85C \uC870\uD68C \uC131\uACF5: ${verificationResult.Item.email}`);
+          kakaoVerified = true;
+          kakaoId = verificationResult.Item.kakaoId;
+        } else {
+          console.log(`[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4 \uC870\uD68C \uC2E4\uD328 \uB610\uB294 \uB9CC\uB8CC: ${kakaoVerificationKey}`);
+        }
+      } catch (verifyError) {
+        console.error("[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4 \uC870\uD68C \uC624\uB958:", verifyError);
+      }
+    }
     if (!email || !password || !name || !phone) {
       return response(400, {
         success: false,
