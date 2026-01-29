@@ -69,7 +69,7 @@ function SignupContent() {
   // 사업자 인증 상태 (팝빌)
   const [businessVerifying, setBusinessVerifying] = useState(false);
   const [businessVerified, setBusinessVerified] = useState(false);
-  const [businessState, setBusinessState] = useState<'01' | '02' | '03' | null>(null); // 01: 사업중, 02: 휴업, 03: 폐업
+  const [businessState, setBusinessState] = useState<string | null>(null); // 01/1: 사업중, 02/2: 휴업, 03/3: 폐업
   const [businessStateName, setBusinessStateName] = useState<string>('');
 
   // 카카오 인증 결과 처리
@@ -177,7 +177,7 @@ function SignupContent() {
     representativeName.length >= 2 &&
     (businessLicenseKey || businessLicenseFile) &&
     businessVerified &&
-    businessState === '01'; // 사업중인 경우만 가입 가능
+    ((businessState === '01' || businessState === '1') || businessState === '1'); // 사업중인 경우만 가입 가능
 
   // 카카오 본인인증 시작
   const handleKakaoVerification = () => {
@@ -621,7 +621,7 @@ function SignupContent() {
                   maxLength={12}
                   className={cn(
                     "flex-1 h-14 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-                    businessVerified && businessState === '01'
+                    businessVerified && (businessState === '01' || businessState === '1')
                       ? "border-green-300 bg-green-50"
                       : businessVerified && businessState !== '01'
                       ? "border-red-300 bg-red-50"
@@ -631,15 +631,15 @@ function SignupContent() {
                 <button
                   type="button"
                   onClick={handleVerifyBusiness}
-                  disabled={!isValidBusinessNumber(businessNumber) || businessVerifying || (businessVerified && businessState === '01')}
+                  disabled={!isValidBusinessNumber(businessNumber) || businessVerifying || (businessVerified && (businessState === '01' || businessState === '1'))}
                   className={cn(
                     "h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap",
-                    businessVerified && businessState === '01'
+                    businessVerified && (businessState === '01' || businessState === '1')
                       ? "bg-green-100 text-green-700 cursor-default"
                       : "bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
                   )}
                 >
-                  {businessVerifying ? '확인 중...' : businessVerified && businessState === '01' ? '확인완료' : '사업자 확인'}
+                  {businessVerifying ? '확인 중...' : businessVerified && (businessState === '01' || businessState === '1') ? '확인완료' : '사업자 확인'}
                 </button>
               </div>
               {businessNumber && !isValidBusinessNumber(businessNumber) && (
@@ -649,9 +649,9 @@ function SignupContent() {
               {businessVerified && (
                 <div className={cn(
                   "mt-2 p-3 rounded-lg flex items-center gap-2",
-                  businessState === '01' ? "bg-green-50" : "bg-red-50"
+                  (businessState === '01' || businessState === '1') ? "bg-green-50" : "bg-red-50"
                 )}>
-                  {businessState === '01' ? (
+                  {(businessState === '01' || businessState === '1') ? (
                     <>
                       <Check className="w-4 h-4 text-green-600" />
                       <span className="text-sm text-green-700 font-medium">
