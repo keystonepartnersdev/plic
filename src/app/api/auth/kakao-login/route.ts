@@ -67,14 +67,16 @@ export async function POST(request: NextRequest) {
       if (
         errorMessage.includes('not confirmed') ||
         errorMessage.includes('인증되지 않') ||
+        errorMessage.includes('인증이 완료되지 않') ||
+        errorMessage.includes('완료되지 않았습니다') ||
         errorMessage.includes('user is not confirmed') ||
         errorMessage.includes('usernotconfirmedexception')
       ) {
         return NextResponse.json({
           success: true,
-          exists: false,
+          exists: true,  // 카카오 인증 사용자는 존재하는 것으로 처리
           incomplete: true,
-          message: '이메일 인증이 완료되지 않았습니다. 다시 가입해주세요.',
+          message: '이메일 인증이 완료되지 않았습니다.',
         });
       }
 

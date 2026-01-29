@@ -112,13 +112,32 @@ function LoginContent() {
         }
       }
 
-      // 가입이 완료되지 않은 경우 (이메일 미인증)
+      // 가입이 완료되지 않은 경우 (이메일 미인증) - 카카오 사용자는 로그인 시도
       if (checkData.incomplete) {
-        setKakaoAutoLoginStatus('');
-        setError('이메일 인증이 완료되지 않았습니다. 가입 시 입력한 이메일의 인증 메일을 확인해주세요.');
-        setEmail(kakaoEmail);
-        router.replace('/auth/login', { scroll: false });
-        return;
+        setKakaoAutoLoginStatus('카카오 인증 사용자 로그인 시도 중...');
+
+        // 카카오 인증 사용자이므로 결정적 비밀번호로 로그인 시도
+        const kakaoPassword = generateKakaoPassword(kakaoId);
+
+        try {
+          const loginResult = await authAPI.login({
+            email: kakaoEmail,
+            password: kakaoPassword,
+          });
+
+          setUser(loginResult.user);
+          setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
+          router.replace('/');
+          return;
+        } catch (incompleteLoginErr: any) {
+          console.error('미인증 사용자 로그인 실패:', incompleteLoginErr);
+          setKakaoAutoLoginStatus('');
+          // 이메일 인증이 필요한 경우
+          setError('이메일 인증이 필요합니다. 가입 시 입력한 이메일의 인증 링크를 확인해주세요. (인증 메일 발송까지 최대 5분 소요)');
+          setEmail(kakaoEmail);
+          router.replace('/auth/login', { scroll: false });
+          return;
+        }
       }
 
       // 회원이 없는 경우 - 회원가입으로
