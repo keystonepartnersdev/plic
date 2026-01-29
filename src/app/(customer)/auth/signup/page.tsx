@@ -30,32 +30,27 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // 초기화 완료 여부
+  const [initialized, setInitialized] = useState(false);
+
   const [step, setStep] = useState<Step>('agreement');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 약관 동의 (sessionStorage에서 복원)
-  const [agreements, setAgreements] = useState<Agreement[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('signup_agreements');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return [
-      { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-      { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-      { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-      { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-    ];
-  });
+  // 약관 동의 - 항상 초기값으로 시작, useEffect에서 복원
+  const [agreements, setAgreements] = useState<Agreement[]>([
+    { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
+    { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
+    { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
+    { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
+  ]);
 
-  // 약관 동의 상태 저장
+  // 약관 동의 상태 저장 (초기화 후에만)
   useEffect(() => {
-    sessionStorage.setItem('signup_agreements', JSON.stringify(agreements));
-  }, [agreements]);
+    if (initialized) {
+      sessionStorage.setItem('signup_agreements', JSON.stringify(agreements));
+    }
+  }, [agreements, initialized]);
 
   // 회원 유형 (사업자 회원만 가입 가능)
   const userType: TUserType = 'business';
@@ -112,8 +107,18 @@ function SignupContent() {
       setIsKakaoVerified(false);
       setKakaoVerification(null);
       setStep('agreement');
+      setInitialized(true);
     } else if (kakaoAuth === 'complete') {
       // 로그인 페이지에서 카카오 인증 완료 후 온 경우
+      // sessionStorage에서 약관 동의 복원
+      const savedAgreements = sessionStorage.getItem('signup_agreements');
+      if (savedAgreements) {
+        try {
+          setAgreements(JSON.parse(savedAgreements));
+        } catch (e) {
+          console.error('약관 데이터 파싱 실패:', e);
+        }
+      }
       // sessionStorage에서 카카오 데이터 복원
       const savedKakaoData = sessionStorage.getItem('signup_kakao_data');
       if (savedKakaoData) {
@@ -126,8 +131,14 @@ function SignupContent() {
           console.error('카카오 데이터 파싱 실패:', e);
         }
       }
+      setInitialized(true);
       // URL 정리
       router.replace('/auth/signup', { scroll: false });
+    } else if (verified === 'true' || verificationKey || errorParam) {
+      // 카카오 인증 콜백으로 돌아온 경우 - 두 번째 useEffect에서 처리
+      setInitialized(true);
+    } else {
+      setInitialized(true);
     }
   }, []); // 마운트 시 한 번만 실행
 
@@ -415,6 +426,15 @@ function SignupContent() {
   const handleNextFromInfo = () => {
     setStep('businessInfo');
   };
+
+  // 초기화 완료 전 로딩 표시
+  if (!initialized) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
