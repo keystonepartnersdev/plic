@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
     // 인증 결과 추출
     const verificationResult = extractVerificationResult(userInfo);
 
-    // 인증 결과 캐시에 저장
+    // 인증 결과를 DynamoDB에 저장
     const verificationKey = generateVerificationKey();
-    saveVerificationResult(verificationKey, verificationResult);
+    await saveVerificationResult(verificationKey, verificationResult);
 
     // 성공 URL로 리다이렉트
     const successUrl = new URL(returnTo, request.url);

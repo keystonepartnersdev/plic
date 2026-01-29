@@ -90,20 +90,30 @@ function SignupContent() {
     const verificationKey = searchParams.get('verificationKey');
     const errorParam = searchParams.get('error');
 
-    // 카카오 인증 콜백으로 돌아온 경우가 아니면 모든 상태 초기화
+    // 항상 약관동의(agreement) 단계로 시작
+    setStep('agreement');
+
+    // 카카오 인증 콜백으로 돌아온 경우가 아니면
     if (!verified && !verificationKey && !errorParam) {
-      // 항상 sessionStorage 클리어하고 초기 상태로 시작
-      sessionStorage.removeItem('signup_agreements');
-      sessionStorage.removeItem('signup_kakao_verified');
-      sessionStorage.removeItem('signup_kakao_data');
-      setIsKakaoVerified(false);
-      setKakaoVerification(null);
-      setStep('agreement');
+      // sessionStorage에서 카카오 데이터 확인 (로그인 페이지에서 온 경우)
+      const savedKakaoData = sessionStorage.getItem('signup_kakao_data');
+      if (savedKakaoData) {
+        try {
+          const data = JSON.parse(savedKakaoData);
+          setKakaoVerification(data);
+          setIsKakaoVerified(true);
+          if (data.email) setEmail(data.email);
+          // 읽은 후 삭제 (다음 방문 시 다시 인증 필요)
+          sessionStorage.removeItem('signup_kakao_data');
+        } catch (e) {
+          console.error('카카오 데이터 파싱 실패:', e);
+        }
+      }
     }
     setInitialized(true);
   }, []); // 마운트 시 한 번만 실행
 
-  // 카카오 인증 결과 처리
+  // 카카오 인증 결과 처리 (DynamoDB에서 조회)
   useEffect(() => {
     const verified = searchParams.get('verified');
     const verificationKey = searchParams.get('verificationKey');
@@ -113,13 +123,11 @@ function SignupContent() {
     if (errorParam) {
       setError(errorMessage || '카카오 인증에 실패했습니다.');
       setStep('phoneVerify');
-      // URL 파라미터 정리
       router.replace('/auth/signup', { scroll: false });
       return;
     }
 
     if (verified === 'true' && verificationKey) {
-      // 인증 결과 조회
       fetchVerificationResult(verificationKey);
     }
   }, [searchParams]);
@@ -132,18 +140,13 @@ function SignupContent() {
       if (data.success && data.data) {
         setKakaoVerification(data.data);
         setIsKakaoVerified(true);
-
-        // 카카오에서 가져온 이메일로 자동 채우기
         if (data.data.email) setEmail(data.data.email);
-
-        // step은 변경하지 않음 - 항상 약관동의부터 시작
-        // 카카오 인증 완료 상태는 phoneVerify 단계에서 "완료" 표시로 보여짐
+        // 회원가입 페이지에서 카카오 인증 버튼을 눌러서 돌아온 경우 → phoneVerify 단계 유지
+        setStep('phoneVerify');
       }
     } catch (err) {
       console.error('인증 결과 조회 실패:', err);
     }
-
-    // URL 파라미터 정리
     router.replace('/auth/signup', { scroll: false });
   };
 

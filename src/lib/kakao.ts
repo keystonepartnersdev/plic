@@ -9,7 +9,13 @@
  * - KAKAO_ADMIN_KEY: Admin 키 (선택)
  * - NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY: JavaScript 키 (클라이언트 노출용)
  * - NEXT_PUBLIC_BASE_URL: 사이트 기본 URL
+ * - AWS_ACCESS_KEY_ID: AWS 액세스 키
+ * - AWS_SECRET_ACCESS_KEY: AWS 시크릿 키
+ * - AWS_REGION: AWS 리전
  */
+
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 
 // 카카오 API 엔드포인트
 const KAKAO_AUTH_URL = 'https://kauth.kakao.com';
@@ -213,32 +219,67 @@ interface VerificationResult {
   verifiedAt: string;
 }
 
-const verificationCache = new Map<string, { result: VerificationResult; expiresAt: number }>();
+// DynamoDB 클라이언트 초기화
+const dynamoClient = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'ap-northeast-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+const VERIFICATION_TABLE = 'plic-kakao-verifications';
 
 export function generateVerificationKey(): string {
   return `kakao_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export function saveVerificationResult(key: string, result: VerificationResult): void {
-  // 10분 후 만료
-  const expiresAt = Date.now() + 10 * 60 * 1000;
-  verificationCache.set(key, { result, expiresAt });
+export async function saveVerificationResult(key: string, result: VerificationResult): Promise<void> {
+  // 10분 후 만료 (DynamoDB TTL)
+  const ttl = Math.floor(Date.now() / 1000) + 600;
+
+  await docClient.send(new PutCommand({
+    TableName: VERIFICATION_TABLE,
+    Item: {
+      verificationKey: key,
+      ...result,
+      ttl,
+      createdAt: new Date().toISOString(),
+    },
+  }));
 }
 
-export function getVerificationResult(key: string): VerificationResult | null {
-  const cached = verificationCache.get(key);
-  if (!cached) return null;
+export async function getVerificationResult(key: string): Promise<VerificationResult | null> {
+  try {
+    const response = await docClient.send(new GetCommand({
+      TableName: VERIFICATION_TABLE,
+      Key: { verificationKey: key },
+    }));
 
-  if (Date.now() > cached.expiresAt) {
-    verificationCache.delete(key);
+    if (!response.Item) return null;
+
+    return {
+      kakaoId: response.Item.kakaoId,
+      nickname: response.Item.nickname,
+      email: response.Item.email,
+      verifiedAt: response.Item.verifiedAt,
+    };
+  } catch (error) {
+    console.error('DynamoDB 조회 오류:', error);
     return null;
   }
-
-  return cached.result;
 }
 
-export function deleteVerificationResult(key: string): void {
-  verificationCache.delete(key);
+export async function deleteVerificationResult(key: string): Promise<void> {
+  try {
+    await docClient.send(new DeleteCommand({
+      TableName: VERIFICATION_TABLE,
+      Key: { verificationKey: key },
+    }));
+  } catch (error) {
+    console.error('DynamoDB 삭제 오류:', error);
+  }
 }
 
 /**

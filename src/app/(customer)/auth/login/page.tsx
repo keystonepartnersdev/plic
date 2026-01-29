@@ -50,12 +50,11 @@ function LoginContent() {
     setError('');
 
     try {
-      // 카카오 인증 결과 조회
+      // DynamoDB에서 카카오 인증 결과 조회
       const resultRes = await fetch(`/api/kakao/result?key=${key}`);
       const resultData = await resultRes.json();
 
       if (!resultData.success || !resultData.data?.email || !resultData.data?.kakaoId) {
-        // 인증 정보가 부족하면 회원가입으로
         setError('카카오 인증 정보를 가져올 수 없습니다.');
         router.replace('/auth/login', { scroll: false });
         return;
@@ -140,9 +139,10 @@ function LoginContent() {
         }
       }
 
-      // 회원이 없는 경우 - 회원가입으로 (verificationKey를 URL로 전달)
+      // 회원이 없는 경우 - 회원가입으로 (sessionStorage에 카카오 데이터 저장)
+      sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
       setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
-      router.replace(`/auth/signup?verified=true&verificationKey=${key}`);
+      router.replace('/auth/signup');
       return;
 
       // 아래 코드는 실행되지 않음 (위에서 return)

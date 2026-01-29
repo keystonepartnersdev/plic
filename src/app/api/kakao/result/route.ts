@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = getVerificationResult(key);
+    const result = await getVerificationResult(key);
 
     if (!result) {
       return NextResponse.json(
@@ -26,8 +26,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 삭제하지 않음 - TTL로 자동 정리됨 (여러 번 조회 가능)
-    // deleteVerificationResult(key);
+    // DynamoDB TTL로 자동 정리됨
 
     return NextResponse.json({
       success: true,
