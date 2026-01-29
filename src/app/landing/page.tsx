@@ -160,7 +160,7 @@ function Hero() {
         transition={{ duration: 0.8, delay: 0.4 }}
         className="hidden lg:block absolute pointer-events-none"
         style={{
-          top: '400px',
+          top: '500px',
           left: 'calc((100vw - 1280px) / 2 + 24px)',
         }}
       >
@@ -177,14 +177,14 @@ function Hero() {
         transition={{ duration: 0.8, delay: 0.4 }}
         className="hidden lg:block absolute pointer-events-none"
         style={{
-          top: '280px',
+          top: '340px',
           right: '10px',
         }}
       >
         <img
           src="/landing/test.png"
           alt="PLIC App"
-          style={{ width: '800px' }}
+          style={{ width: '1280px' }}
         />
       </motion.div>
     </section>
