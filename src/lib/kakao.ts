@@ -18,6 +18,7 @@ const KAKAO_API_URL = 'https://kapi.kakao.com';
 // 환경변수에서 설정값 가져오기
 export const getKakaoConfig = () => {
   const restApiKey = process.env.KAKAO_REST_API_KEY;
+  const clientSecret = process.env.KAKAO_CLIENT_SECRET;
   const adminKey = process.env.KAKAO_ADMIN_KEY;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
@@ -27,6 +28,7 @@ export const getKakaoConfig = () => {
 
   return {
     restApiKey: restApiKey || '',
+    clientSecret: clientSecret || '',
     adminKey: adminKey || '',
     baseUrl,
     redirectUri: `${baseUrl}/api/kakao/callback`,
@@ -66,19 +68,26 @@ export interface KakaoTokenResponse {
 }
 
 export async function getKakaoAccessToken(code: string): Promise<KakaoTokenResponse> {
-  const { restApiKey, redirectUri } = getKakaoConfig();
+  const { restApiKey, clientSecret, redirectUri } = getKakaoConfig();
+
+  const params: Record<string, string> = {
+    grant_type: 'authorization_code',
+    client_id: restApiKey,
+    redirect_uri: redirectUri,
+    code,
+  };
+
+  // 클라이언트 시크릿이 설정된 경우 추가
+  if (clientSecret) {
+    params.client_secret = clientSecret;
+  }
 
   const response = await fetch(`${KAKAO_AUTH_URL}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
     },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: restApiKey,
-      redirect_uri: redirectUri,
-      code,
-    }),
+    body: new URLSearchParams(params),
   });
 
   if (!response.ok) {
