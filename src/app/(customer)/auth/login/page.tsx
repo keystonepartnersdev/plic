@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
 import { authAPI, tokenManager } from '@/lib/api';
 import { useUserStore } from '@/stores';
 
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setUser } = useUserStore();
 
   const [email, setEmail] = useState('');
@@ -18,50 +17,10 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [kakaoEmail, setKakaoEmail] = useState<string | null>(null);
 
-  // 카카오 인증 결과 처리
-  useEffect(() => {
-    const verified = searchParams.get('verified');
-    const verificationKey = searchParams.get('verificationKey');
-    const errorParam = searchParams.get('error');
-    const errorMessage = searchParams.get('message');
-
-    if (errorParam) {
-      setError(errorMessage || '카카오 인증에 실패했습니다.');
-      router.replace('/auth/login', { scroll: false });
-      return;
-    }
-
-    if (verified === 'true' && verificationKey) {
-      fetchKakaoResult(verificationKey);
-    }
-  }, [searchParams]);
-
-  const fetchKakaoResult = async (key: string) => {
-    try {
-      const response = await fetch(`/api/kakao/result?key=${key}`);
-      const data = await response.json();
-
-      if (data.success && data.data?.email) {
-        // 카카오 이메일로 자동 채움
-        setEmail(data.data.email);
-        setKakaoEmail(data.data.email);
-        setError('카카오 계정으로 인증되었습니다. 비밀번호를 입력해주세요.');
-      } else if (data.success && !data.data?.email) {
-        // 이메일 정보가 없으면 회원가입으로
-        router.replace('/auth/signup');
-        return;
-      }
-    } catch (err) {
-      console.error('카카오 인증 결과 조회 실패:', err);
-    }
-    router.replace('/auth/login', { scroll: false });
-  };
-
-  // 카카오 인증 시작
+  // 카카오로 시작하기 → 회원가입 페이지로 이동
   const handleKakaoLogin = () => {
-    window.location.href = '/api/kakao/auth?returnTo=/auth/login';
+    router.push('/auth/signup');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,17 +153,5 @@ function LoginContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
-      </div>
-    }>
-      <LoginContent />
-    </Suspense>
   );
 }
