@@ -34,13 +34,28 @@ function SignupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 약관 동의
-  const [agreements, setAgreements] = useState<Agreement[]>([
-    { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
-    { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
-    { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
-    { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
-  ]);
+  // 약관 동의 (sessionStorage에서 복원)
+  const [agreements, setAgreements] = useState<Agreement[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('signup_agreements');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return [
+      { id: 'service', label: '서비스 이용약관 (필수)', required: true, checked: false },
+      { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, checked: false },
+      { id: 'thirdParty', label: '제3자 정보제공 동의 (필수)', required: true, checked: false },
+      { id: 'marketing', label: '마케팅 정보 수신 동의 (선택)', required: false, checked: false },
+    ];
+  });
+
+  // 약관 동의 상태 저장
+  useEffect(() => {
+    sessionStorage.setItem('signup_agreements', JSON.stringify(agreements));
+  }, [agreements]);
 
   // 회원 유형 (사업자 회원만 가입 가능)
   const userType: TUserType = 'business';
@@ -323,7 +338,8 @@ function SignupContent() {
 
       await authAPI.signup(signupData);
 
-      // 휴대폰 인증 완료 시 이메일 인증 스킵하고 바로 완료
+      // 회원가입 완료 - sessionStorage 정리
+      sessionStorage.removeItem('signup_agreements');
       setStep('complete');
     } catch (err: any) {
       setError(err.message || '회원가입 중 오류가 발생했습니다.');
