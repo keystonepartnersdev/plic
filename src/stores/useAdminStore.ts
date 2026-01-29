@@ -40,8 +40,47 @@ const sampleAdmins: IAdmin[] = [
     createdAt: new Date().toISOString(),
     createdBy: 'system',
     updatedAt: new Date().toISOString(),
+  },
+  {
+    adminId: 'ADM002',
+    email: 'admin@plic.kr',
+    name: '플릭 관리자',
+    role: 'super',
+    status: 'active',
+    isMaster: true,
+    password: 'admin123',
+    loginFailCount: 0,
+    isLocked: false,
+    createdAt: new Date().toISOString(),
+    createdBy: 'system',
+    updatedAt: new Date().toISOString(),
   }
 ];
+
+// 스토어 초기화 시 어드민 계정 병합 및 잠금 해제
+const mergeAndUnlockAdmins = (existingAdmins: IAdmin[]): IAdmin[] => {
+  const merged = [...existingAdmins];
+
+  // sampleAdmins에 있는 계정이 기존에 없으면 추가
+  for (const sample of sampleAdmins) {
+    const existing = merged.find(a => a.email === sample.email);
+    if (!existing) {
+      merged.push(sample);
+    } else {
+      // 기존 계정의 비밀번호 업데이트 및 잠금 해제
+      const idx = merged.findIndex(a => a.email === sample.email);
+      merged[idx] = {
+        ...merged[idx],
+        password: sample.password,
+        isLocked: false,
+        loginFailCount: 0,
+        status: 'active',
+      };
+    }
+  }
+
+  return merged;
+};
 
 export const useAdminStore = create(
   persist<IAdminState>(
@@ -101,6 +140,12 @@ export const useAdminStore = create(
     {
       name: 'plic-admin-storage',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        // localStorage에서 복원 후 어드민 계정 병합 및 잠금 해제
+        if (state) {
+          state.adminList = mergeAndUnlockAdmins(state.adminList);
+        }
+      },
     }
   )
 );
