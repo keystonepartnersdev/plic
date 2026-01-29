@@ -43,7 +43,7 @@ export function getKakaoAuthUrl(state?: string): string {
     client_id: restApiKey,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'account_email phone_number', // 필요한 동의 항목
+    scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
   });
 
   if (state) {
@@ -199,13 +199,8 @@ export function formatKakaoPhoneNumber(phone: string): string {
  */
 interface VerificationResult {
   kakaoId: number;
-  name?: string;
+  nickname?: string;
   email?: string;
-  phone?: string;
-  birthyear?: string;
-  birthday?: string;
-  gender?: 'male' | 'female';
-  ci?: string;
   verifiedAt: string;
 }
 
@@ -245,13 +240,8 @@ export function extractVerificationResult(userInfo: KakaoUserInfo): Verification
 
   return {
     kakaoId: userInfo.id,
-    name: account?.name,
+    nickname: account?.profile?.nickname,
     email: account?.email,
-    phone: account?.phone_number ? formatKakaoPhoneNumber(account.phone_number) : undefined,
-    birthyear: account?.birthyear,
-    birthday: account?.birthday,
-    gender: account?.gender,
-    ci: account?.ci,
     verifiedAt: new Date().toISOString(),
   };
 }

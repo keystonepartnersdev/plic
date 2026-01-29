@@ -21,13 +21,8 @@ interface Agreement {
 
 interface KakaoVerificationResult {
   kakaoId: number;
-  name?: string;
+  nickname?: string;
   email?: string;
-  phone?: string;
-  birthyear?: string;
-  birthday?: string;
-  gender?: 'male' | 'female';
-  ci?: string;
   verifiedAt: string;
 }
 
@@ -51,7 +46,7 @@ function SignupContent() {
   const userType: TUserType = 'business';
 
   // 카카오 인증 결과
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [isKakaoVerified, setIsKakaoVerified] = useState(false);
   const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(null);
 
   // 회원 정보
@@ -105,11 +100,9 @@ function SignupContent() {
 
       if (data.success && data.data) {
         setKakaoVerification(data.data);
-        setIsPhoneVerified(true);
+        setIsKakaoVerified(true);
 
-        // 인증된 정보로 자동 채우기
-        if (data.data.name) setName(data.data.name);
-        if (data.data.phone) setPhone(data.data.phone);
+        // 카카오에서 가져온 이메일로 자동 채우기
         if (data.data.email) setEmail(data.data.email);
 
         // info 단계로 이동
@@ -176,7 +169,7 @@ function SignupContent() {
     isValidEmail(email) &&
     isValidPassword(password) &&
     password === passwordConfirm &&
-    isPhoneVerified;
+    isKakaoVerified;
 
   const canProceedBusinessInfo =
     businessName.length >= 2 &&
@@ -314,9 +307,8 @@ function SignupContent() {
           marketing: agreements.find((a) => a.id === 'marketing')?.checked || false,
         },
         // 카카오 인증 정보 추가
-        phoneVerified: isPhoneVerified,
+        kakaoVerified: isKakaoVerified,
         kakaoId: kakaoVerification?.kakaoId,
-        ci: kakaoVerification?.ci,
       };
 
       // 사업자인 경우 사업자 정보 추가
@@ -414,23 +406,23 @@ function SignupContent() {
           </div>
         )}
 
-        {/* Step 2: 휴대폰 본인인증 */}
+        {/* Step 2: 카카오 인증 */}
         {step === 'phoneVerify' && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">본인인증</h2>
-            <p className="text-gray-500 mb-6">안전한 서비스 이용을 위해 본인인증이 필요합니다.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">카카오 인증</h2>
+            <p className="text-gray-500 mb-6">서비스 이용을 위해 카카오 계정 인증이 필요합니다.</p>
 
             {/* 인증 상태 표시 */}
-            {isPhoneVerified ? (
+            {isKakaoVerified ? (
               <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-green-800">본인인증 완료</p>
+                    <p className="font-semibold text-green-800">카카오 인증 완료</p>
                     <p className="text-sm text-green-600">
-                      {kakaoVerification?.name} / {kakaoVerification?.phone}
+                      {kakaoVerification?.nickname && `${kakaoVerification.nickname} / `}{kakaoVerification?.email}
                     </p>
                   </div>
                 </div>
@@ -445,13 +437,13 @@ function SignupContent() {
                   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.47 1.607 4.647 4.035 5.906l-.857 3.179c-.058.215.189.39.379.27l3.746-2.357c.883.142 1.79.218 2.697.218 5.523 0 10-3.477 10-7.716S17.523 3 12 3z"/>
                   </svg>
-                  카카오로 본인인증
+                  카카오로 인증하기
                 </button>
 
                 <div className="p-4 bg-gray-50 rounded-xl">
                   <p className="text-sm text-gray-600">
-                    카카오 계정으로 간편하게 본인인증을 진행할 수 있습니다.
-                    인증 후 이름과 휴대폰 번호가 자동으로 입력됩니다.
+                    카카오 계정으로 간편하게 인증을 진행할 수 있습니다.
+                    인증 후 이메일이 자동으로 입력됩니다.
                   </p>
                 </div>
               </div>
@@ -463,7 +455,7 @@ function SignupContent() {
               </div>
             )}
 
-            {isPhoneVerified && (
+            {isKakaoVerified && (
               <button
                 onClick={() => setStep('info')}
                 className="w-full h-14 mt-6 bg-primary-400 hover:bg-primary-500 text-white font-semibold text-lg rounded-xl transition-colors"
@@ -480,11 +472,11 @@ function SignupContent() {
             <h2 className="text-xl font-bold text-gray-900 mb-2">회원 정보 입력</h2>
             <p className="text-gray-500 mb-6">서비스 이용에 필요한 정보를 입력해주세요.</p>
 
-            {/* 본인인증 완료 표시 */}
-            {isPhoneVerified && (
+            {/* 카카오 인증 완료 표시 */}
+            {isKakaoVerified && (
               <div className="p-3 bg-green-50 border border-green-100 rounded-xl mb-4 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-700 font-medium">본인인증 완료</span>
+                <span className="text-sm text-green-700 font-medium">카카오 인증 완료</span>
               </div>
             )}
 
@@ -498,16 +490,9 @@ function SignupContent() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="실명 입력"
-                  readOnly={isPhoneVerified && !!kakaoVerification?.name}
-                  className={cn(
-                    "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-                    isPhoneVerified && kakaoVerification?.name && "bg-gray-50 text-gray-600"
-                  )}
+                  className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
                 />
               </div>
-              {isPhoneVerified && kakaoVerification?.name && (
-                <p className="text-xs text-gray-400 mt-1">본인인증으로 확인된 이름입니다.</p>
-              )}
             </div>
 
             {/* 휴대폰 번호 */}
@@ -521,16 +506,9 @@ function SignupContent() {
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   placeholder="010-0000-0000"
                   maxLength={13}
-                  readOnly={isPhoneVerified && !!kakaoVerification?.phone}
-                  className={cn(
-                    "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-                    isPhoneVerified && kakaoVerification?.phone && "bg-gray-50 text-gray-600"
-                  )}
+                  className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
                 />
               </div>
-              {isPhoneVerified && kakaoVerification?.phone && (
-                <p className="text-xs text-gray-400 mt-1">본인인증으로 확인된 번호입니다.</p>
-              )}
             </div>
 
             {/* 이메일 */}
@@ -543,9 +521,16 @@ function SignupContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@email.com"
-                  className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  readOnly={isKakaoVerified && !!kakaoVerification?.email}
+                  className={cn(
+                    "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                    isKakaoVerified && kakaoVerification?.email && "bg-gray-50 text-gray-600"
+                  )}
                 />
               </div>
+              {isKakaoVerified && kakaoVerification?.email && (
+                <p className="text-xs text-gray-400 mt-1">카카오 계정 이메일입니다.</p>
+              )}
               {email && !isValidEmail(email) && (
                 <p className="text-sm text-red-500 mt-1">올바른 이메일 형식이 아닙니다.</p>
               )}
