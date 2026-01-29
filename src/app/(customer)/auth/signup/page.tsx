@@ -117,15 +117,32 @@ function SignupContent() {
     const verified = searchParams.get('verified');
     const verificationKey = searchParams.get('verificationKey');
     const errorParam = searchParams.get('error');
+    const kakaoAuth = searchParams.get('kakaoAuth'); // 로그인 페이지에서 카카오 인증 후 온 경우
 
     // 카카오 인증 후 돌아온 게 아니면 모든 상태 초기화
-    if (!verified && !verificationKey && !errorParam) {
+    if (!verified && !verificationKey && !errorParam && kakaoAuth !== 'complete') {
       sessionStorage.removeItem('signup_agreements');
       sessionStorage.removeItem('signup_kakao_verified');
       sessionStorage.removeItem('signup_kakao_data');
       setIsKakaoVerified(false);
       setKakaoVerification(null);
       setStep('agreement');
+    } else if (kakaoAuth === 'complete') {
+      // 로그인 페이지에서 카카오 인증 완료 후 온 경우
+      // sessionStorage에서 카카오 데이터 복원
+      const savedKakaoData = sessionStorage.getItem('signup_kakao_data');
+      if (savedKakaoData) {
+        try {
+          const data = JSON.parse(savedKakaoData);
+          setKakaoVerification(data);
+          setIsKakaoVerified(true);
+          if (data.email) setEmail(data.email);
+        } catch (e) {
+          console.error('카카오 데이터 파싱 실패:', e);
+        }
+      }
+      // URL 정리
+      router.replace('/auth/signup', { scroll: false });
     }
   }, []); // 마운트 시 한 번만 실행
 

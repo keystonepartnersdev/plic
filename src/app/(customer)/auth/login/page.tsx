@@ -132,7 +132,7 @@ function LoginContent() {
       ]));
 
       setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
-      router.replace('/auth/signup');
+      router.replace('/auth/signup?kakaoAuth=complete');
     } catch (err) {
       console.error('카카오 로그인 처리 실패:', err);
       setError('카카오 로그인 처리 중 오류가 발생했습니다.');
