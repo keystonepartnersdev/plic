@@ -140,7 +140,12 @@ function LoginContent() {
         }
       }
 
-      // 회원이 없는 경우 - 회원가입으로
+      // 회원이 없는 경우 - 회원가입으로 (verificationKey를 URL로 전달)
+      setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
+      router.replace(`/auth/signup?verified=true&verificationKey=${key}`);
+      return;
+
+      // 아래 코드는 실행되지 않음 (위에서 return)
       sessionStorage.setItem('signup_kakao_verified', 'true');
       sessionStorage.setItem('signup_kakao_data', JSON.stringify(resultData.data));
       sessionStorage.setItem('signup_agreements', JSON.stringify([

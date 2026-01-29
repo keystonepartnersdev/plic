@@ -59,15 +59,7 @@ function SignupContent() {
   const [isKakaoVerified, setIsKakaoVerified] = useState(false);
   const [kakaoVerification, setKakaoVerification] = useState<KakaoVerificationResult | null>(null);
 
-  // 카카오 인증 상태 저장
-  useEffect(() => {
-    if (isKakaoVerified) {
-      sessionStorage.setItem('signup_kakao_verified', 'true');
-      if (kakaoVerification) {
-        sessionStorage.setItem('signup_kakao_data', JSON.stringify(kakaoVerification));
-      }
-    }
-  }, [isKakaoVerified, kakaoVerification]);
+  // 카카오 인증 상태는 sessionStorage에 저장하지 않음 (URL 파라미터로만 처리)
 
   // 회원 정보
   const [name, setName] = useState('');
@@ -92,54 +84,23 @@ function SignupContent() {
   const [businessState, setBusinessState] = useState<string | null>(null); // 01/1: 사업중, 02/2: 휴업, 03/3: 폐업
   const [businessStateName, setBusinessStateName] = useState<string>('');
 
-  // 페이지 진입 시 상태 초기화 (카카오 인증 후 돌아온 경우 제외)
+  // 페이지 진입 시 상태 초기화
   useEffect(() => {
     const verified = searchParams.get('verified');
     const verificationKey = searchParams.get('verificationKey');
     const errorParam = searchParams.get('error');
-    const kakaoAuth = searchParams.get('kakaoAuth'); // 로그인 페이지에서 카카오 인증 후 온 경우
 
-    // 카카오 인증 후 돌아온 게 아니면 모든 상태 초기화
-    if (!verified && !verificationKey && !errorParam && kakaoAuth !== 'complete') {
+    // 카카오 인증 콜백으로 돌아온 경우가 아니면 모든 상태 초기화
+    if (!verified && !verificationKey && !errorParam) {
+      // 항상 sessionStorage 클리어하고 초기 상태로 시작
       sessionStorage.removeItem('signup_agreements');
       sessionStorage.removeItem('signup_kakao_verified');
       sessionStorage.removeItem('signup_kakao_data');
       setIsKakaoVerified(false);
       setKakaoVerification(null);
       setStep('agreement');
-      setInitialized(true);
-    } else if (kakaoAuth === 'complete') {
-      // 로그인 페이지에서 카카오 인증 완료 후 온 경우
-      // sessionStorage에서 약관 동의 복원
-      const savedAgreements = sessionStorage.getItem('signup_agreements');
-      if (savedAgreements) {
-        try {
-          setAgreements(JSON.parse(savedAgreements));
-        } catch (e) {
-          console.error('약관 데이터 파싱 실패:', e);
-        }
-      }
-      // sessionStorage에서 카카오 데이터 복원
-      const savedKakaoData = sessionStorage.getItem('signup_kakao_data');
-      if (savedKakaoData) {
-        try {
-          const data = JSON.parse(savedKakaoData);
-          setKakaoVerification(data);
-          setIsKakaoVerified(true);
-          if (data.email) setEmail(data.email);
-        } catch (e) {
-          console.error('카카오 데이터 파싱 실패:', e);
-        }
-      }
-      setInitialized(true);
-      // URL 정리
-      router.replace('/auth/signup', { scroll: false });
-    } else if (verified === 'true' || verificationKey || errorParam) {
-      // 카카오 인증 콜백으로 돌아온 경우 - 두 번째 useEffect에서 처리
-      setInitialized(true);
-    } else {
-      setInitialized(true);
     }
+    setInitialized(true);
   }, []); // 마운트 시 한 번만 실행
 
   // 카카오 인증 결과 처리
