@@ -112,6 +112,23 @@ function SignupContent() {
   const [businessState, setBusinessState] = useState<string | null>(null); // 01/1: 사업중, 02/2: 휴업, 03/3: 폐업
   const [businessStateName, setBusinessStateName] = useState<string>('');
 
+  // 페이지 진입 시 상태 초기화 (카카오 인증 후 돌아온 경우 제외)
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const verificationKey = searchParams.get('verificationKey');
+    const errorParam = searchParams.get('error');
+
+    // 카카오 인증 후 돌아온 게 아니면 모든 상태 초기화
+    if (!verified && !verificationKey && !errorParam) {
+      sessionStorage.removeItem('signup_agreements');
+      sessionStorage.removeItem('signup_kakao_verified');
+      sessionStorage.removeItem('signup_kakao_data');
+      setIsKakaoVerified(false);
+      setKakaoVerification(null);
+      setStep('agreement');
+    }
+  }, []); // 마운트 시 한 번만 실행
+
   // 카카오 인증 결과 처리
   useEffect(() => {
     const verified = searchParams.get('verified');
