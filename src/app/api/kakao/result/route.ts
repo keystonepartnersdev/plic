@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: result,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('인증 결과 조회 오류:', error);
     return NextResponse.json(
       { error: '인증 결과 조회에 실패했습니다.', message: error.message },

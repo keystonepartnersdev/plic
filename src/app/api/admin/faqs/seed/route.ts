@@ -344,7 +344,7 @@ export async function POST(request: NextRequest) {
             error: errorData.message || `HTTP ${response.status}`,
           });
         }
-      } catch (error: any) {
+      } catch (error) {
         results.failed.push({
           question: faq.question,
           error: error.message,
@@ -358,7 +358,7 @@ export async function POST(request: NextRequest) {
       success: results.success.length,
       failed: results.failed,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('FAQ seed error:', error);
     return NextResponse.json(
       { error: error.message || 'FAQ 시드 중 오류가 발생했습니다.' },

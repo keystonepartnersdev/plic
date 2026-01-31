@@ -51,7 +51,7 @@ export default function MyPage() {
           setUser(meData);
         }
         setGradeInfo(gradeData);
-      } catch (error: any) {
+      } catch (error) {
         console.error('사용자 정보 로드 실패:', error);
         // 401 에러 시 로그아웃 처리
         if (error.message?.includes('401') || error.message?.includes('인증')) {

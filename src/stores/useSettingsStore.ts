@@ -165,7 +165,7 @@ export const useSettingsStore = create<SettingsStore>()(
           } else {
             set({ error: data.error, isLoading: false });
           }
-        } catch (error: any) {
+        } catch (error) {
           set({ error: error.message, isLoading: false });
         }
       },
@@ -190,7 +190,7 @@ export const useSettingsStore = create<SettingsStore>()(
             set({ error: data.error, isLoading: false });
             return false;
           }
-        } catch (error: any) {
+        } catch (error) {
           set({ error: error.message, isLoading: false });
           return false;
         }

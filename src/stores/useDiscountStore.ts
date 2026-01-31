@@ -56,10 +56,10 @@ export const useDiscountStore = create(
             userCoupons: coupons,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '쿠폰 목록을 불러오는데 실패했습니다.',
+            apiError: errorMessage || '쿠폰 목록을 불러오는데 실패했습니다.',
           });
         }
       },
@@ -77,10 +77,10 @@ export const useDiscountStore = create(
             } as IDiscount;
           }
           return null;
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '할인코드 검증에 실패했습니다.',
+            apiError: errorMessage || '할인코드 검증에 실패했습니다.',
           });
           return null;
         }

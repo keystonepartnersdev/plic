@@ -633,7 +633,7 @@ function NewDealContent() {
       addDeal(completeDeal);
 
       router.replace(`/deals/${response.deal.did}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('거래 생성 실패:', error);
       alert(error.message || '거래 생성에 실패했습니다.');
     } finally {

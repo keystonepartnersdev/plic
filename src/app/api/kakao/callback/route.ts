@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     response.cookies.delete('kakao_return_to');
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error('카카오 콜백 처리 오류:', error);
 
     const returnTo = request.cookies.get('kakao_return_to')?.value || '/auth/signup';

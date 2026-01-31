@@ -225,7 +225,7 @@ export default function DealDetailPage() {
       await dealsAPI.cancel(deal.did);
       alert('거래가 삭제되었습니다.');
       router.replace('/deals');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Delete deal error:', error);
       alert(error.message || '거래 삭제에 실패했습니다.');
     } finally {

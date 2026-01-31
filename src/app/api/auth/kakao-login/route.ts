@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         exists: false,
       });
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[API] /api/auth/kakao-login error:', error);
     return NextResponse.json(
       { success: false, error: '서버 오류가 발생했습니다.' },

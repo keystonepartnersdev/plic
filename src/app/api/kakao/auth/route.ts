@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     console.error('카카오 인증 시작 오류:', error);
     return NextResponse.json(
       { error: '카카오 인증을 시작할 수 없습니다.', message: error.message },

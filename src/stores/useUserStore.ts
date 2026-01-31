@@ -115,10 +115,11 @@ export const useUserStore = create(
             isLoading: false,
             users: updatedUsers,
           });
-        } catch (error: any) {
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '로그인에 실패했습니다.';
           set({
             isLoading: false,
-            apiError: error.message || '로그인에 실패했습니다.',
+            apiError: errorMessage,
           });
           throw error;
         }
@@ -175,10 +176,11 @@ export const useUserStore = create(
             isLoading: false,
             users: updatedUsers,
           });
-        } catch (error: any) {
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '사용자 정보를 불러오는데 실패했습니다.';
           set({
             isLoading: false,
-            apiError: error.message || '사용자 정보를 불러오는데 실패했습니다.',
+            apiError: errorMessage,
           });
         }
       },
@@ -212,10 +214,11 @@ export const useUserStore = create(
             users: updatedUsers,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '사용자 정보 업데이트에 실패했습니다.';
           set({
             isLoading: false,
-            apiError: error.message || '사용자 정보 업데이트에 실패했습니다.',
+            apiError: errorMessage,
           });
           throw error;
         }

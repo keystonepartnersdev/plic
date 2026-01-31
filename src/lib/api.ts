@@ -8,9 +8,11 @@ import { IAdmin } from '@/types/admin';
 import { logError } from './errorHandler';
 
 // ✅ 환경변수에서 API URL 로드
+// NOTE: Next.js rewrites는 클라이언트 사이드 fetch()에 적용되지 않음
+// 따라서 개발 환경에서도 AWS를 직접 호출 (CORS 설정 필요)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
   process.env.API_BASE_URL ||
-  'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod'; // fallback
+  'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 // 토큰 저장소
 let accessToken: string | null = null;
@@ -130,6 +132,13 @@ const getActionDescription = (endpoint: string, method: string): string => {
 // 로그 즉시 전송 (비동기, fire-and-forget)
 const sendLog = (log: ApiLogEntry) => {
   if (typeof window === 'undefined') return;
+
+  // ⚠️ TEMPORARY: 개발 환경에서 /tracking/api-log 비활성화
+  // AWS API Gateway CORS 설정 또는 엔드포인트 확인 필요
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[API Log] (dev - disabled):', log.endpoint, log.method, log.statusCode);
+    return;
+  }
 
   console.log('[API Log] 전송 시도:', log.endpoint, log.method, log.statusCode);
 

@@ -168,7 +168,7 @@ export const useAdminStore = create(
       name: 'plic-admin-storage',
       storage: createJSONStorage(() => localStorage),
       version: 2, // 버전 업그레이드 - 기존 데이터 마이그레이션
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState: Partial<IAdminState>, version: number) => {
         // 버전 1 이하에서 오는 경우 어드민 계정 초기화
         if (version < 2) {
           return {

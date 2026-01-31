@@ -56,10 +56,10 @@ export const useDealStore = create(
             deals: result.deals,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '거래 목록을 불러오는데 실패했습니다.',
+            apiError: errorMessage || '거래 목록을 불러오는데 실패했습니다.',
           });
         }
       },
@@ -84,10 +84,10 @@ export const useDealStore = create(
 
           set({ isLoading: false });
           return deal;
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '거래 정보를 불러오는데 실패했습니다.',
+            apiError: errorMessage || '거래 정보를 불러오는데 실패했습니다.',
           });
           return null;
         }
@@ -112,10 +112,10 @@ export const useDealStore = create(
           }));
 
           return result.deal;
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '거래 생성에 실패했습니다.',
+            apiError: errorMessage || '거래 생성에 실패했습니다.',
           });
           throw error;
         }
@@ -133,10 +133,10 @@ export const useDealStore = create(
             ),
             isLoading: false,
           }));
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '거래 수정에 실패했습니다.',
+            apiError: errorMessage || '거래 수정에 실패했습니다.',
           });
           throw error;
         }
@@ -156,10 +156,10 @@ export const useDealStore = create(
             ),
             isLoading: false,
           }));
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '거래 취소에 실패했습니다.',
+            apiError: errorMessage || '거래 취소에 실패했습니다.',
           });
           throw error;
         }
@@ -177,10 +177,10 @@ export const useDealStore = create(
             ),
             isLoading: false,
           }));
-        } catch (error: any) {
+        } catch (error) {
           set({
             isLoading: false,
-            apiError: error.message || '할인 적용에 실패했습니다.',
+            apiError: errorMessage || '할인 적용에 실패했습니다.',
           });
           throw error;
         }

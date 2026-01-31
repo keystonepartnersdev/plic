@@ -28,13 +28,15 @@ export const newCorrelationId = () => {
 // 민감 정보 마스킹
 const SENSITIVE_FIELDS = ['password', 'token', 'accessToken', 'refreshToken', 'idToken', 'secret', 'apiKey', 'Authorization'];
 
-const maskSensitiveData = (data: any): any => {
+type MaskableData = string | number | boolean | null | undefined | MaskableData[] | { [key: string]: MaskableData };
+
+const maskSensitiveData = (data: MaskableData): MaskableData => {
   if (!data) return data;
-  if (typeof data === 'string') return data;
+  if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') return data;
   if (Array.isArray(data)) return data.map(maskSensitiveData);
 
   if (typeof data === 'object') {
-    const masked: any = {};
+    const masked: { [key: string]: MaskableData } = {};
     for (const [key, value] of Object.entries(data)) {
       if (SENSITIVE_FIELDS.some(f => key.toLowerCase().includes(f.toLowerCase()))) {
         masked[key] = '***MASKED***';
@@ -160,9 +162,9 @@ export const loggedFetch = async (
       responseBody = await clonedResponse.text();
     }
 
-  } catch (error: any) {
-    errorMessage = error.message;
-    errorStack = error.stack;
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : String(error);
+    errorStack = error instanceof Error ? error.stack : undefined;
 
     // 에러 로그 기록
     bufferLog({
