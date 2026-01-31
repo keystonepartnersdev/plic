@@ -7,3 +7,4 @@ export { default as BottomNav } from './BottomNav';
 export { default as Footer } from './Footer';
 export { BannerSlider } from './BannerSlider';
 export { Modal } from './Modal';
+export { ErrorBoundary } from './ErrorBoundary';
