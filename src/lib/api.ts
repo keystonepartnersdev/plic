@@ -175,9 +175,17 @@ export const tokenManager = {
   setTokens: (access: string, refresh: string) => {
     accessToken = access;
     refreshToken = refresh;
+
     if (typeof window !== 'undefined') {
+      // localStorage에 저장 (클라이언트 사이드용)
       localStorage.setItem('plic_access_token', access);
       localStorage.setItem('plic_refresh_token', refresh);
+
+      // 쿠키에도 저장 (middleware용)
+      // Access token: 24시간
+      document.cookie = `plic_access_token=${access}; path=/; max-age=86400; SameSite=Strict`;
+      // Refresh token: 30일
+      document.cookie = `plic_refresh_token=${refresh}; path=/; max-age=2592000; SameSite=Strict`;
     }
   },
   getAccessToken: () => {
@@ -195,9 +203,15 @@ export const tokenManager = {
   clearTokens: () => {
     accessToken = null;
     refreshToken = null;
+
     if (typeof window !== 'undefined') {
+      // localStorage에서 삭제
       localStorage.removeItem('plic_access_token');
       localStorage.removeItem('plic_refresh_token');
+
+      // 쿠키도 삭제
+      document.cookie = 'plic_access_token=; path=/; max-age=0';
+      document.cookie = 'plic_refresh_token=; path=/; max-age=0';
     }
   },
 };
