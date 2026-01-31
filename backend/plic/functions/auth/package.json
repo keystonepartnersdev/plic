@@ -1,0 +1,23 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.971.0",
+    "@aws-sdk/client-dynamodb": "^3.971.0",
+    "@aws-sdk/lib-dynamodb": "^3.971.0",
+    "@types/aws-lambda": "^8.10.160",
+    "@types/uuid": "^10.0.0",
+    "aws-lambda": "^1.0.7",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.9.3",
+    "uuid": "^13.0.0"
+  }
+}
