@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logError } from '../errorHandler';
+import jwt from 'jsonwebtoken';
 
 /**
  * JWT 토큰 페이로드 인터페이스
@@ -106,20 +107,26 @@ export async function requireAdminAuth(
  */
 async function verifyToken(token: string): Promise<string | null> {
   try {
-    // 간단한 JWT 검증 (실제로는 aws-jwt-verify 또는 jsonwebtoken 사용 권장)
-    const payload: TokenPayload = JSON.parse(
-      Buffer.from(token, 'base64').toString()
-    );
+    const secret = process.env.JWT_SECRET;
 
-    // 토큰 만료 확인
-    if (payload.exp < Date.now()) {
-      console.warn('Token expired');
+    if (!secret) {
+      console.error('JWT_SECRET is not defined in environment variables');
       return null;
     }
 
-    return payload.userId || null;
+    // ✅ Proper JWT signature verification
+    const decoded = jwt.verify(token, secret) as TokenPayload;
+
+    // 토큰 만료는 jwt.verify()가 자동으로 확인
+    return decoded.userId || null;
   } catch (error) {
-    console.error('Token parsing error:', error);
+    if (error instanceof jwt.TokenExpiredError) {
+      console.warn('Token expired');
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      console.error('Invalid token signature:', error.message);
+    } else {
+      console.error('Token verification error:', error);
+    }
     return null;
   }
 }
@@ -132,24 +139,31 @@ async function verifyToken(token: string): Promise<string | null> {
  */
 async function verifyAdminToken(token: string): Promise<TokenPayload | null> {
   try {
-    const payload: TokenPayload = JSON.parse(
-      Buffer.from(token, 'base64').toString()
-    );
+    const secret = process.env.ADMIN_JWT_SECRET;
 
-    // 토큰 만료 확인
-    if (payload.exp < Date.now()) {
-      console.warn('Admin token expired');
+    if (!secret) {
+      console.error('ADMIN_JWT_SECRET is not defined in environment variables');
       return null;
     }
+
+    // ✅ Proper JWT signature verification for admin tokens
+    const decoded = jwt.verify(token, secret) as TokenPayload;
 
     // 관리자 토큰 확인
-    if (!payload.adminId || !payload.role) {
+    if (!decoded.adminId || !decoded.role) {
+      console.warn('Invalid admin token: missing adminId or role');
       return null;
     }
 
-    return payload;
+    return decoded;
   } catch (error) {
-    console.error('Admin token parsing error:', error);
+    if (error instanceof jwt.TokenExpiredError) {
+      console.warn('Admin token expired');
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      console.error('Invalid admin token signature:', error.message);
+    } else {
+      console.error('Admin token verification error:', error);
+    }
     return null;
   }
 }

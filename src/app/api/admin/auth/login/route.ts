@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerEnv } from '@/lib/validateEnv';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 /**
  * 관리자 로그인 API
@@ -27,14 +28,23 @@ function hashPassword(password: string, secretKey: string): string {
 }
 
 function generateToken(email: string, role: string, adminId: string): string {
-  // 간단한 JWT 구현 (실제로는 jsonwebtoken 라이브러리 사용 권장)
+  const secret = process.env.ADMIN_JWT_SECRET;
+
+  if (!secret) {
+    throw new Error('ADMIN_JWT_SECRET is not defined in environment variables');
+  }
+
+  // ✅ Proper JWT with signature
   const payload = {
     email,
     role,
     adminId,
-    exp: Date.now() + 8 * 60 * 60 * 1000, // 8시간
   };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  // exp는 jwt.sign()의 expiresIn 옵션으로 자동 처리
+  return jwt.sign(payload, secret, {
+    expiresIn: '8h', // 8시간
+  });
 }
 
 export async function POST(request: NextRequest) {
