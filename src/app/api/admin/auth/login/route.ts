@@ -60,26 +60,31 @@ export async function POST(request: NextRequest) {
 
     const serverEnv = getServerEnv();
 
-    // 환경 변수에서 관리자 정보 로드
-    // 실제 운영에서는 데이터베이스에서 조회
-    const ADMIN_USERS: AdminUser[] = [
-      {
-        email: 'admin',
-        passwordHash: hashPassword('admin1234', serverEnv.ADMIN_SECRET_KEY),
-        role: 'super',
-        name: '관리자',
-        adminId: 'ADM001',
-      },
-      {
-        email: 'admin@plic.kr',
-        passwordHash: hashPassword('admin123', serverEnv.ADMIN_SECRET_KEY),
-        role: 'super',
-        name: '플릭 관리자',
-        adminId: 'ADM002',
-      },
-    ];
+    // ✅ 환경 변수에서 관리자 정보 로드 (하드코딩 제거)
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    const adminName = process.env.ADMIN_NAME || 'Administrator';
+    const adminId = process.env.ADMIN_ID || 'ADM001';
+    const adminRole = (process.env.ADMIN_ROLE as 'super' | 'manager' | 'viewer') || 'super';
 
-    const admin = ADMIN_USERS.find((u) => u.email === email);
+    if (!adminEmail || !adminPasswordHash) {
+      console.error('Admin credentials not configured in environment variables');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const admin: AdminUser | null =
+      email === adminEmail
+        ? {
+            email: adminEmail,
+            passwordHash: adminPasswordHash,
+            role: adminRole,
+            name: adminName,
+            adminId: adminId,
+          }
+        : null;
 
     if (!admin || hashPassword(password, serverEnv.ADMIN_SECRET_KEY) !== admin.passwordHash) {
       return NextResponse.json(
