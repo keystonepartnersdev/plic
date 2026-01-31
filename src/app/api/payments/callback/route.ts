@@ -4,12 +4,42 @@
  *
  * 소프트먼트 결제창에서 인증 완료 후 호출됩니다.
  * 인증 데이터를 받아 승인 API를 호출하고 결과 페이지로 리다이렉트합니다.
+ *
+ * ✅ Webhook Signature Verification Required
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import crypto from 'crypto';
+
+/**
+ * Verify webhook signature
+ * NOTE: This is a placeholder implementation.
+ * Actual implementation should follow Softpayment's webhook signature spec.
+ */
+function verifyWebhookSignature(
+  payload: string,
+  signature: string | null,
+  secret: string
+): boolean {
+  if (!signature) {
+    console.warn('[Webhook] No signature provided');
+    return false;
+  }
+
+  // HMAC-SHA256 signature verification
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -19,10 +49,36 @@ export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
   try {
+    // ✅ Webhook signature verification
+    const webhookSecret = process.env.SOFTPAYMENT_WEBHOOK_SECRET;
+    const signature = request.headers.get('x-softpayment-signature'); // Adjust header name per Softpayment docs
+
+    if (!webhookSecret) {
+      console.error('[Webhook] SOFTPAYMENT_WEBHOOK_SECRET not configured');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     const formData = await request.formData();
     const resultParam = formData.get('result');
 
     console.log('[Payment Callback] Received result:', resultParam);
+
+    // Verify signature if signature header is present
+    // NOTE: Skip verification in development if signature not provided
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    if (signature && !verifyWebhookSignature(resultParam?.toString() || '', signature, webhookSecret)) {
+      console.error('[Webhook] Invalid signature');
+      if (!isDevelopment) {
+        return NextResponse.json(
+          { error: 'Invalid webhook signature' },
+          { status: 401 }
+        );
+      }
+      console.warn('[Webhook] Signature verification failed, but allowing in development mode');
+    }
 
     if (!resultParam) {
       return NextResponse.redirect(

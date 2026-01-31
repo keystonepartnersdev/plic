@@ -3,12 +3,17 @@
  * POST /api/payments/billing
  *
  * 거래등록 후 결제창 URL을 반환합니다.
+ *
+ * ✅ Authentication Required
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
+import { requireAuth } from '@/lib/auth/middleware';
 
 export async function POST(request: NextRequest) {
+  // ✅ Authentication check
+  return requireAuth(request, async (req, userId) => {
   try {
     const body = await request.json();
     console.log('[Payment Create] Received body:', JSON.stringify(body, null, 2));
@@ -80,4 +85,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  }); // Close requireAuth callback
 }

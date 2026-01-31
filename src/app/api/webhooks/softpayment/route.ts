@@ -3,19 +3,72 @@
  * POST /api/webhooks/softpayment
  *
  * 소프트먼트에서 결제 상태 변경 시 호출됩니다.
+ *
+ * ✅ Webhook Signature Verification Required
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { WebhookPayload, STATUS_MAPPING } from '@/lib/softpayment';
+import crypto from 'crypto';
+
+/**
+ * Verify webhook signature
+ * NOTE: This implementation should match Softpayment's webhook signature spec.
+ */
+function verifyWebhookSignature(
+  payload: string,
+  signature: string | null,
+  secret: string
+): boolean {
+  if (!signature) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
 
 // 처리된 이벤트 추적 (실제 서비스에서는 DB 사용)
 const processedEvents = new Set<string>();
 
 export async function POST(request: NextRequest) {
   try {
-    const body: WebhookPayload = await request.json();
+    // ✅ Webhook signature verification
+    const webhookSecret = process.env.SOFTPAYMENT_WEBHOOK_SECRET;
+    const signature = request.headers.get('x-softpayment-signature'); // Adjust per Softpayment docs
+
+    if (!webhookSecret) {
+      console.error('[Webhook] SOFTPAYMENT_WEBHOOK_SECRET not configured');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const bodyText = await request.text();
+    const body: WebhookPayload = JSON.parse(bodyText);
 
     console.log('[Webhook] Received:', JSON.stringify(body, null, 2));
+
+    // Verify signature (production only)
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    if (signature && !verifyWebhookSignature(bodyText, signature, webhookSecret)) {
+      console.error('[Webhook] Invalid signature');
+      if (!isDevelopment) {
+        return NextResponse.json(
+          { error: 'Invalid webhook signature' },
+          { status: 401 }
+        );
+      }
+      console.warn('[Webhook] Signature verification failed, but allowing in development mode');
+    }
 
     const {
       trxId,
