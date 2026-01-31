@@ -114,6 +114,9 @@ export const useAdminStore = create(
           // 토큰 저장
           localStorage.setItem('adminToken', token);
 
+          // ✅ 쿠키에도 저장 (middleware용)
+          document.cookie = `plic_admin_token=${token}; path=/; max-age=86400; SameSite=Strict`;
+
           // 관리자 정보 업데이트
           set({ currentAdmin: admin, isLoggedIn: true });
 
@@ -125,6 +128,12 @@ export const useAdminStore = create(
       },
 
       logout: () => {
+        // localStorage에서 삭제
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('adminToken');
+          // 쿠키도 삭제
+          document.cookie = 'plic_admin_token=; path=/; max-age=0';
+        }
         set({ admin: null, isLoggedIn: false, currentAdmin: null });
       },
 

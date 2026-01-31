@@ -281,7 +281,10 @@ export const useUserStore = create(
         set({
           currentUser: null,
           isLoggedIn: false,
-          registeredCards: []
+          isLoading: false,
+          apiError: null,
+          registeredCards: [],
+          // users 배열은 유지 (관리자용)
         });
       },
 
