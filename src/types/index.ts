@@ -7,3 +7,4 @@ export * from './admin';
 export * from './content';
 export * from './discount';
 export * from './api';
+export * from './error';
