@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { useSettingsStore, useAdminUserStore, defaultSettings } from '@/stores';
 import { TUserGrade, IUserHistory } from '@/types';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 const GRADE_LABELS: Record<TUserGrade, string> = {
   basic: '베이직',

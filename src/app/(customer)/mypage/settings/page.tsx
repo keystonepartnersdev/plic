@@ -8,7 +8,7 @@ import { useUserStore } from '@/stores';
 import { tokenManager } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 interface NotificationSettings {
   pushEnabled: boolean;

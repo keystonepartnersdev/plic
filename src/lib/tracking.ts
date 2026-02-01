@@ -1,7 +1,7 @@
 // src/lib/tracking.ts
 // 자체 트래킹 시스템 - 이벤트 수집 및 전송
 
-const TRACKING_API_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/prod';
+const TRACKING_API_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 // 세션/익명 ID 관리
 const getAnonymousId = (): string => {

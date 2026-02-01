@@ -5,27 +5,33 @@ import Link from 'next/link';
 import { ChevronDown, ChevronRight, Phone, MessageCircle, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
 import { contentAPI } from '@/lib/api';
-import { ContentHelper } from '@/classes';
 import { cn } from '@/lib/utils';
 
 interface IFAQ {
-  faqId: string;
+  id: string;
   question: string;
   answer: string;
   category: string;
-  isVisible: boolean;
-  priority: number;
-  createdAt: string;
-  updatedAt: string;
+  isVisible?: boolean;
+  priority?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function GuidePage() {
   const [faqs, setFaqs] = useState<IFAQ[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('서비스 이용');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
-  const categories = ContentHelper.FAQ_CATEGORIES;
+  // 카테고리는 DB에 저장된 한글 이름 기준으로 정의
+  const categories = [
+    { id: 'service', name: '서비스 이용' },
+    { id: 'payment', name: '결제/수수료' },
+    { id: 'account', name: '계정/회원' },
+    { id: 'transfer', name: '송금/입금' },
+    { id: 'etc', name: '기타' },
+  ];
 
   useEffect(() => {
     const fetchFaqs = async () => {
@@ -42,24 +48,8 @@ export default function GuidePage() {
     fetchFaqs();
   }, []);
 
-  const getCategoryName = (categoryId?: string) => {
-    const cat = categories.find(c => c.id === categoryId);
-    return cat ? cat.name : categoryId || '기타';
-  };
-
-  const getCategoryColor = (categoryId?: string): string => {
-    const colors: Record<string, string> = {
-      service: 'bg-blue-100 text-blue-700',
-      payment: 'bg-green-100 text-green-700',
-      transfer: 'bg-purple-100 text-purple-700',
-      account: 'bg-orange-100 text-orange-700',
-    };
-    return colors[categoryId || ''] || 'bg-gray-100 text-gray-700';
-  };
-
-  const displayFaqs = activeCategory
-    ? faqs.filter((f) => f.category === activeCategory)
-    : faqs;
+  // 선택된 카테고리의 FAQ만 표시
+  const displayFaqs = faqs.filter((f) => f.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -104,24 +94,16 @@ export default function GuidePage() {
         <h2 className="text-lg font-bold mb-4">자주 묻는 질문</h2>
 
         <div className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-5 px-5">
-          <button
-            onClick={() => setActiveCategory(null)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors',
-              activeCategory === null
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600'
-            )}
-          >
-            전체
-          </button>
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => {
+                setActiveCategory(cat.name);
+                setExpandedFaq(null); // 카테고리 변경 시 펼쳐진 FAQ 닫기
+              }}
               className={cn(
                 'px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors',
-                activeCategory === cat.id
+                activeCategory === cat.name
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-600'
               )}
@@ -143,36 +125,26 @@ export default function GuidePage() {
           <div className="space-y-2">
             {displayFaqs.map((faq) => (
               <div
-                key={faq.faqId}
+                key={faq.id}
                 className="border border-gray-200 rounded-lg overflow-hidden"
               >
                 <button
                   onClick={() =>
-                    setExpandedFaq(expandedFaq === faq.faqId ? null : faq.faqId)
+                    setExpandedFaq(expandedFaq === faq.id ? null : faq.id)
                   }
                   className="w-full p-4 text-left flex items-start gap-3"
                 >
                   <span className="text-blue-500 font-medium">Q.</span>
-                  <div className="flex-1">
-                    <p className="font-medium">{faq.question}</p>
-                    <span
-                      className={cn(
-                        'inline-block mt-2 px-2 py-0.5 rounded text-xs',
-                        getCategoryColor(faq.category)
-                      )}
-                    >
-                      {getCategoryName(faq.category)}
-                    </span>
-                  </div>
+                  <p className="flex-1 font-medium">{faq.question}</p>
                   <ChevronDown
                     className={cn(
                       'w-5 h-5 text-gray-400 transition-transform flex-shrink-0',
-                      expandedFaq === faq.faqId && 'rotate-180'
+                      expandedFaq === faq.id && 'rotate-180'
                     )}
                   />
                 </button>
 
-                {expandedFaq === faq.faqId && (
+                {expandedFaq === faq.id && (
                   <div className="px-4 pb-4 pt-0">
                     <div className="bg-gray-50 rounded-lg p-4 flex gap-3">
                       <span className="text-green-500 font-medium">A.</span>

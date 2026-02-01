@@ -21,7 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 
 // API 기본 URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 interface BusinessAnalyticsData {
   summary: {

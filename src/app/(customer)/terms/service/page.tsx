@@ -50,18 +50,6 @@ export default function ServiceTermsPage() {
           <p className="text-gray-500 text-sm mt-8">
             시행일: 2024년 1월 1일
           </p>
-
-          {/* 사업자 정보 */}
-          <div className="mt-12 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">사업자 정보</h3>
-            <div className="text-xs text-gray-500 space-y-1">
-              <p>상호명: 주식회사 키스톤파트너스</p>
-              <p>대표자: 방성민</p>
-              <p>사업자등록번호: 583-88-01313</p>
-              <p>주소: 경기도 안양시 동안구 흥안대로 457-27, 1동 지하 1층 비 117호(관양동)</p>
-              <p>이메일: support@plic.kr</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

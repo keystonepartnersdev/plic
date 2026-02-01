@@ -186,13 +186,6 @@ Resources:
             Path: /auth/signup
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/auth/signup.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: SignupFunction
   ConfirmFunction:
     Type: AWS::Serverless::Function
@@ -226,13 +219,6 @@ Resources:
             Path: /auth/confirm
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/auth/confirm.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: ConfirmFunction
   LoginFunction:
     Type: AWS::Serverless::Function
@@ -267,13 +253,6 @@ Resources:
             Path: /auth/login
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/auth/login.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: LoginFunction
   RefreshFunction:
     Type: AWS::Serverless::Function
@@ -304,13 +283,6 @@ Resources:
             Path: /auth/refresh
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/auth/refresh.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: RefreshFunction
   LogoutFunction:
     Type: AWS::Serverless::Function
@@ -341,13 +313,6 @@ Resources:
             Path: /auth/logout
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/auth/logout.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: LogoutFunction
   GetMeFunction:
     Type: AWS::Serverless::Function
@@ -379,13 +344,6 @@ Resources:
             Path: /users/me
             Method: get
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/users/me.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetMeFunction
   UpdateMeFunction:
     Type: AWS::Serverless::Function
@@ -417,13 +375,6 @@ Resources:
             Path: /users/me
             Method: put
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/users/update.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: UpdateMeFunction
   WithdrawFunction:
     Type: AWS::Serverless::Function
@@ -456,13 +407,6 @@ Resources:
             Path: /users/me
             Method: delete
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/users/withdraw.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: WithdrawFunction
   GetGradeFunction:
     Type: AWS::Serverless::Function
@@ -494,13 +438,6 @@ Resources:
             Path: /users/me/grade
             Method: get
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/users/grade.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetGradeFunction
   ListDealsFunction:
     Type: AWS::Serverless::Function
@@ -535,13 +472,6 @@ Resources:
             Path: /deals
             Method: get
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/deals/list.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: ListDealsFunction
   GetDealFunction:
     Type: AWS::Serverless::Function
@@ -576,13 +506,6 @@ Resources:
             Path: /deals/{did}
             Method: get
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/deals/get.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetDealFunction
   CreateDealFunction:
     Type: AWS::Serverless::Function
@@ -617,13 +540,6 @@ Resources:
             Path: /deals
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/deals/create.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: CreateDealFunction
   UpdateDealFunction:
     Type: AWS::Serverless::Function
@@ -658,13 +574,6 @@ Resources:
             Path: /deals/{did}
             Method: put
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/deals/update.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: UpdateDealFunction
   CancelDealFunction:
     Type: AWS::Serverless::Function
@@ -699,13 +608,6 @@ Resources:
             Path: /deals/{did}
             Method: delete
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/deals/cancel.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: CancelDealFunction
   ValidateDiscountFunction:
     Type: AWS::Serverless::Function
@@ -740,13 +642,6 @@ Resources:
             Path: /discounts/validate
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/discounts/validate.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: ValidateDiscountFunction
   GetCouponsFunction:
     Type: AWS::Serverless::Function
@@ -781,13 +676,6 @@ Resources:
             Path: /discounts/coupons
             Method: get
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/discounts/coupons.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetCouponsFunction
   ApplyDiscountFunction:
     Type: AWS::Serverless::Function
@@ -825,13 +713,6 @@ Resources:
             Path: /deals/{did}/discount
             Method: post
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/discounts/apply.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: ApplyDiscountFunction
   AdminLoginFunction:
     Type: AWS::Serverless::Function
@@ -852,13 +733,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/login.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminLoginFunction
   AdminUsersListFunction:
     Type: AWS::Serverless::Function
@@ -882,13 +756,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/users-list.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminUsersListFunction
   AdminUsersGetFunction:
     Type: AWS::Serverless::Function
@@ -915,13 +782,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/users-get.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminUsersGetFunction
   AdminUsersStatusFunction:
     Type: AWS::Serverless::Function
@@ -945,13 +805,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/users-status.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminUsersStatusFunction
   AdminUsersGradeFunction:
     Type: AWS::Serverless::Function
@@ -975,13 +828,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/users-grade.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminUsersGradeFunction
   AdminDealsListFunction:
     Type: AWS::Serverless::Function
@@ -1005,13 +851,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/deals-list.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminDealsListFunction
   AdminDealsGetFunction:
     Type: AWS::Serverless::Function
@@ -1038,13 +877,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/deals-get.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminDealsGetFunction
   AdminDealsStatusFunction:
     Type: AWS::Serverless::Function
@@ -1071,13 +903,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/admin/deals-status.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: AdminDealsStatusFunction
   GetBannersFunction:
     Type: AWS::Serverless::Function
@@ -1098,13 +923,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/content/banners.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetBannersFunction
   GetNoticesFunction:
     Type: AWS::Serverless::Function
@@ -1125,13 +943,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/content/notices.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetNoticesFunction
   GetNoticeDetailFunction:
     Type: AWS::Serverless::Function
@@ -1152,13 +963,6 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        EntryPoints:
-        - functions/content/notice-detail.ts
-        Minify: true
-        Sourcemap: true
-        Target: es2020
       SamResourceId: GetNoticeDetailFunction
   GetFaqsFunction:
     Type: AWS::Serverless::Function
@@ -1179,14 +983,192 @@ Resources:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
+      SamResourceId: GetFaqsFunction
+  AdminFaqsManageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminFaqsManageFunction
+      Handler: faqs-manage.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        GetAll:
+          Type: Api
+          Properties:
+            Path: /admin/faqs
+            Method: get
+        Create:
+          Type: Api
+          Properties:
+            Path: /admin/faqs
+            Method: post
+        GetOne:
+          Type: Api
+          Properties:
+            Path: /admin/faqs/{id}
+            Method: get
+        Update:
+          Type: Api
+          Properties:
+            Path: /admin/faqs/{id}
+            Method: put
+        Delete:
+          Type: Api
+          Properties:
+            Path: /admin/faqs/{id}
+            Method: delete
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
       BuildMethod: esbuild
       BuildProperties:
         EntryPoints:
-        - functions/content/faqs.ts
+        - faqs-manage.ts
         Minify: true
         Sourcemap: true
         Target: es2020
-      SamResourceId: GetFaqsFunction
+      SamResourceId: AdminFaqsManageFunction
+  AdminFaqsSeedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminFaqsSeedFunction
+      Handler: faqs-seed.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      Events:
+        Seed:
+          Type: Api
+          Properties:
+            Path: /admin/faqs/seed
+            Method: post
+        SeedOptions:
+          Type: Api
+          Properties:
+            Path: /admin/faqs/seed
+            Method: options
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - faqs-seed.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminFaqsSeedFunction
+  GetTermsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetTermsFunction
+      Handler: terms.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      Events:
+        GetAll:
+          Type: Api
+          Properties:
+            Path: /content/terms
+            Method: get
+        GetOne:
+          Type: Api
+          Properties:
+            Path: /content/terms/{type}
+            Method: get
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - terms.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: GetTermsFunction
+  AdminTermsManageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminTermsManageFunction
+      Handler: terms-manage.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        GetAll:
+          Type: Api
+          Properties:
+            Path: /admin/terms
+            Method: get
+        GetOne:
+          Type: Api
+          Properties:
+            Path: /admin/terms/{type}
+            Method: get
+        Update:
+          Type: Api
+          Properties:
+            Path: /admin/terms/{type}
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - terms-manage.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminTermsManageFunction
+  TrackingApiLogFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: TrackingApiLogFunction
+      Handler: log-api.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: plic-api-logs
+      Events:
+        Post:
+          Type: Api
+          Properties:
+            Path: /tracking/api-log
+            Method: post
+        Options:
+          Type: Api
+          Properties:
+            Path: /tracking/api-log
+            Method: options
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - log-api.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: TrackingApiLogFunction
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

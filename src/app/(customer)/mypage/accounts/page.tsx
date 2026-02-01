@@ -9,7 +9,7 @@ import { useUserStore, useDealStore } from '@/stores';
 import { tokenManager } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 // 은행 정보
 const BANK_INFO: Record<string, { name: string; color: string }> = {

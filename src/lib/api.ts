@@ -1,6 +1,6 @@
 // src/lib/api.ts
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 // 토큰 저장소
 let accessToken: string | null = null;
@@ -502,6 +502,24 @@ export const contentAPI = {
     const query = category ? `?category=${category}` : '';
     return request<{ faqs: any[]; grouped: Record<string, any[]>; total: number }>(`/content/faqs${query}`);
   },
+
+  // 약관 조회
+  getTerms: () => request<{ terms: Array<{
+    type: string;
+    title: string;
+    content: string;
+    version: string;
+    effectiveDate: string;
+  }> }>('/content/terms'),
+
+  getTermsDetail: (type: 'service' | 'privacy' | 'electronic' | 'marketing') =>
+    request<{ terms: {
+      type: string;
+      title: string;
+      content: string;
+      version: string;
+      effectiveDate: string;
+    } }>(`/content/terms/${type}`),
 };
 
 // ============================================
@@ -820,6 +838,37 @@ export const adminAPI = {
       hasMore: boolean;
     }>(`/admin/api-logs${queryString ? `?${queryString}` : ''}`);
   },
+
+  // 약관 관리
+  getTerms: () => requestWithAdminToken<{ terms: Array<{
+    type: string;
+    title: string;
+    content: string;
+    version: string;
+    effectiveDate: string;
+    updatedAt?: string;
+    createdAt?: string;
+  }>; count: number }>('/admin/terms'),
+
+  getTermsDetail: (type: 'service' | 'privacy' | 'electronic' | 'marketing') =>
+    requestWithAdminToken<{ terms: {
+      type: string;
+      title: string;
+      content: string;
+      version: string;
+      effectiveDate: string;
+      updatedAt?: string;
+      createdAt?: string;
+    } }>(`/admin/terms/${type}`),
+
+  updateTerms: (type: 'service' | 'privacy' | 'electronic' | 'marketing', data: {
+    content: string;
+    version?: string;
+    effectiveDate?: string;
+  }) => requestWithAdminToken<{ message: string; terms: any }>(`/admin/terms/${type}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
 };
 
 // 관리자 토큰으로 요청
