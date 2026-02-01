@@ -8,12 +8,6 @@ import { Header } from '@/components/common';
 import { authAPI, tokenManager } from '@/lib/api';
 import { useUserStore } from '@/stores';
 
-// 카카오 ID로부터 결정적 비밀번호 생성 (회원가입과 동일한 로직)
-const generateKakaoPassword = (kakaoId: number): string => {
-  const idStr = kakaoId.toString(16).padStart(12, '0');
-  return `Kk${idStr.substring(0, 10)}Px1!`;
-};
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,7 +59,7 @@ function LoginContent() {
 
       setKakaoAutoLoginStatus('회원 정보 확인 중...');
 
-      // 회원 존재 여부 및 완전 가입 여부 확인
+      // 백엔드 카카오 로그인 API 호출 (자동 로그인 포함)
       const checkRes = await fetch('/api/auth/kakao-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,68 +73,40 @@ function LoginContent() {
         return;
       }
 
-      // 회원이 존재하고 완전히 가입된 경우 - 자동 로그인
-      if (checkData.exists && !checkData.incomplete) {
-        setKakaoAutoLoginStatus('자동 로그인 중...');
+      // 백엔드에서 자동 로그인 완료된 경우 (토큰 포함)
+      if (checkData.autoLogin && checkData.data) {
+        setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
 
-        // 결정적 비밀번호 생성
-        const kakaoPassword = generateKakaoPassword(kakaoId);
-
-        try {
-          // 일반 로그인 API 호출
-          const loginResult = await authAPI.login({
-            email: kakaoEmail,
-            password: kakaoPassword,
-          });
-
-          // 사용자 정보 저장
-          setUser(loginResult.user);
-
-          setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
-
-          // 홈으로 이동
-          router.replace('/');
-          return;
-        } catch (loginErr: any) {
-          console.error('카카오 자동 로그인 실패:', loginErr);
-          // 비밀번호가 맞지 않는 경우 (기존 회원이 일반 가입한 경우)
-          setError('카카오 계정으로 가입된 회원이 아닙니다. 이메일/비밀번호로 로그인해주세요.');
-          setEmail(kakaoEmail);
-          router.replace('/auth/login', { scroll: false });
-          return;
+        // 토큰 저장
+        if (checkData.data.tokens?.accessToken && checkData.data.tokens?.refreshToken) {
+          tokenManager.setTokens(checkData.data.tokens.accessToken, checkData.data.tokens.refreshToken);
         }
+
+        // 사용자 정보 저장
+        setUser(checkData.data.user);
+
+        // 홈으로 이동
+        router.replace('/');
+        return;
       }
 
-      // 가입이 완료되지 않은 경우 (이메일 미인증) - 카카오 사용자는 로그인 시도
+      // 회원이 존재하고 완전히 가입된 경우 (autoLogin이 없는 경우 - fallback)
+      if (checkData.exists && !checkData.incomplete) {
+        setError('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+        router.replace('/auth/login', { scroll: false });
+        return;
+      }
+
+      // 가입이 완료되지 않은 경우
       if (checkData.incomplete) {
-        setKakaoAutoLoginStatus('카카오 인증 사용자 로그인 시도 중...');
-
-        // 카카오 인증 사용자이므로 결정적 비밀번호로 로그인 시도
-        const kakaoPassword = generateKakaoPassword(kakaoId);
-
-        try {
-          const loginResult = await authAPI.login({
-            email: kakaoEmail,
-            password: kakaoPassword,
-          });
-
-          setUser(loginResult.user);
-          setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
-          router.replace('/');
-          return;
-        } catch (incompleteLoginErr: any) {
-          console.error('미인증 사용자 로그인 실패:', incompleteLoginErr);
-          setKakaoAutoLoginStatus('');
-          // 이메일 인증이 필요한 경우
-          setError('이메일 인증이 필요합니다. 가입 시 입력한 이메일의 인증 링크를 확인해주세요. (인증 메일 발송까지 최대 5분 소요)');
-          setEmail(kakaoEmail);
-          router.replace('/auth/login', { scroll: false });
-          return;
-        }
+        setKakaoAutoLoginStatus('');
+        setError(checkData.message || '가입이 완료되지 않은 계정입니다. 다시 가입해주세요.');
+        // 회원가입 페이지로 이동
+        router.replace(`/auth/signup?verified=true&verificationKey=${key}&fromLogin=true`);
+        return;
       }
 
       // 회원이 없는 경우 - 회원가입 페이지로 카카오 인증 데이터와 함께 이동
-      // verificationKey를 그대로 전달하여 회원가입에서 다시 인증하지 않아도 됨
       setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
       router.replace(`/auth/signup?verified=true&verificationKey=${key}&fromLogin=true`);
       return;
