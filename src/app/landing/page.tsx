@@ -742,7 +742,7 @@ function FAQ() {
                     >
                       <div className="px-6 pb-6">
                         <div className="pt-2 border-t border-gray-200">
-                          <p className="text-gray-600 leading-relaxed pt-4">
+                          <p className="text-gray-600 leading-relaxed pt-4 whitespace-pre-line">
                             {faq.answer}
                           </p>
                         </div>

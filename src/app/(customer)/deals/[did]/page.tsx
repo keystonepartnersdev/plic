@@ -627,10 +627,11 @@ export default function DealDetailPage() {
             href={`/payment/${deal.did}`}
             className="
               mt-4 w-full h-14
-              bg-primary-400 hover:bg-primary-500
+              bg-primary-600 hover:bg-primary-700
               text-white font-semibold
               rounded-xl
               flex items-center justify-center gap-2
+              transition-colors
             "
           >
             <CreditCard className="w-5 h-5" />
@@ -638,7 +639,33 @@ export default function DealDetailPage() {
           </Link>
         )}
 
-        {/* 할인코드 & 쿠폰 섹션 - draft/awaiting_payment 상태에서 표시 */}
+        {/* 결제완료 버튼 - 결제가 완료된 거래 */}
+        {deal.isPaid && (
+          <div className="mt-4">
+            <button
+              disabled
+              className="
+                w-full h-14
+                bg-gray-900
+                text-white font-semibold
+                rounded-xl
+                flex items-center justify-center gap-2
+                cursor-not-allowed
+              "
+            >
+              <Check className="w-5 h-5" />
+              결제완료
+            </button>
+            <div className="mt-4 p-4 bg-blue-50 rounded-xl">
+              <p className="text-sm text-blue-700 leading-relaxed">
+                본 거래는 운영팀에서 검수중입니다.<br />
+                검수가 완료되면 하단에 기재하신 수취인 정보로 송금이 진행됩니다.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 할인코드 & 쿠폰 섹션 - draft/awaiting_payment 상태에서 미결제일 때만 표시 */}
         {(deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid && (
           <div className="mt-4 space-y-3">
             {/* 적용된 할인 목록 */}

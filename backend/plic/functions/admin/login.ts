@@ -2,6 +2,9 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import * as crypto from 'crypto';
+
+const ADMIN_SECRET = 'plic-admin-secret';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -145,14 +148,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // 비밀번호 제외하고 반환
     const { password: _, ...safeAdmin } = admin;
 
-    // 간단한 세션 토큰 생성 (adminId + timestamp 기반)
-    const token = Buffer.from(JSON.stringify({
+    // 세션 토큰 생성 (HMAC 서명 포함)
+    const payload = Buffer.from(JSON.stringify({
       adminId: admin.adminId,
       email: admin.email,
       role: admin.role,
       iat: Date.now(),
       exp: Date.now() + 24 * 60 * 60 * 1000, // 24시간 후 만료
     })).toString('base64');
+    const signature = crypto.createHmac('sha256', ADMIN_SECRET).update(payload).digest('hex');
+    const token = `${payload}.${signature}`;
 
     return response(200, {
       success: true,

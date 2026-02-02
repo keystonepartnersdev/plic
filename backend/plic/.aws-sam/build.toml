@@ -279,6 +279,8 @@ Minify = true
 Sourcemap = true
 Target = "es2020"
 
+
+
 [function_build_definitions.52382298-20ef-49dc-bf17-ac83642b5438]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminFaqsSeedFunction"
 runtime = "nodejs20.x"
@@ -296,6 +298,8 @@ EntryPoints = ["faqs-seed.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
 
 [function_build_definitions.6b6499b4-f522-4812-a330-8507cb0b70cb]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/GetTermsFunction"
@@ -315,6 +319,8 @@ Minify = true
 Sourcemap = true
 Target = "es2020"
 
+
+
 [function_build_definitions.f8292235-38af-4d45-86e7-297f9bb16731]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminTermsManageFunction"
 runtime = "nodejs20.x"
@@ -333,6 +339,8 @@ Minify = true
 Sourcemap = true
 Target = "es2020"
 
+
+
 [function_build_definitions.719b62d3-8900-43db-9ae5-d94823765d34]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/TrackingApiLogFunction"
 runtime = "nodejs20.x"
@@ -350,5 +358,16 @@ EntryPoints = ["log-api.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
+
+[function_build_definitions.e3cd22b5-6114-4ff2-9dc8-b1c261f22b2a]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/KakaoLoginFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "kakao-login.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["KakaoLoginFunction"]
 
 [layer_build_definitions]

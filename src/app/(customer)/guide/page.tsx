@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronRight, Phone, MessageCircle, Mail } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageCircle, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
 import { contentAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -58,16 +58,6 @@ export default function GuidePage() {
       <div className="bg-white px-5 py-6 mb-2">
         <h2 className="text-lg font-bold mb-4">고객센터</h2>
         <div className="space-y-3">
-          <a href="tel:1588-0000" className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <Phone className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-medium">전화 문의</p>
-              <p className="text-sm text-gray-500">1588-0000 (평일 09:00~18:00)</p>
-            </div>
-          </a>
-
           <a href="https://pf.kakao.com/_xample" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
             <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-yellow-600" />

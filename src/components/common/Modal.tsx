@@ -75,18 +75,18 @@ export function Modal({
         </div>
 
         {/* 버튼 영역 */}
-        <div className={`flex gap-3 ${showCancel ? 'flex-row' : 'flex-col'}`}>
+        <div className={`flex gap-3 ${showCancel ? 'flex-row' : 'justify-center'}`}>
           {showCancel && (
             <button
               onClick={handleCancel}
-              className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full transition-all duration-300"
+              className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-300"
             >
               {cancelText}
             </button>
           )}
           <button
             onClick={handleConfirm}
-            className="flex-1 h-12 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] hover:shadow-xl hover:shadow-blue-500/30 text-white font-semibold rounded-full transition-all duration-300"
+            className={`h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl transition-all duration-300 ${showCancel ? 'flex-1' : 'w-full max-w-[200px]'}`}
           >
             {confirmText}
           </button>

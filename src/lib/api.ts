@@ -917,6 +917,16 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
       });
     }
 
+    // 401 에러 시 토큰 클리어 및 로그인 페이지로 리다이렉트
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('plic_admin_token');
+        localStorage.removeItem('plic-admin-storage');
+        window.location.href = '/admin/login';
+      }
+      throw new Error(data.error || '관리자 인증이 필요합니다.');
+    }
+
     if (!response.ok || !data.success) {
       throw new Error(data.error || '요청 처리 중 오류가 발생했습니다.');
     }

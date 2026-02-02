@@ -332,7 +332,7 @@ export default function HomePage() {
                 {expandedFaq === faq.faqId && (
                   <div className="px-5 pb-5">
                     <div className="pt-2 border-t border-gray-200">
-                      <p className="text-gray-600 leading-relaxed pt-4">{faq.answer}</p>
+                      <p className="text-gray-600 leading-relaxed pt-4 whitespace-pre-line">{faq.answer}</p>
                     </div>
                   </div>
                 )}

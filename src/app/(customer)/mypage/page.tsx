@@ -140,21 +140,13 @@ export default function MyPage() {
         <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  'px-3 py-1 rounded-full text-xs font-bold',
-                  gradeConfig.name === "베이직" ? "bg-gray-100 text-gray-700" : gradeConfig.name === "플래티넘" ? "bg-purple-100 text-purple-700" : gradeConfig.name === "B2B" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
-                )}
-              >
-                {gradeConfig.name}
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
+                베이직
               </span>
               <span className="text-sm text-gray-500 font-medium">
-                수수료 {gradeInfo?.fee?.rateText || `${currentUser.feeRate}%`}
+                수수료 5.5%
               </span>
             </div>
-            <Link href="/mypage/grade" className="text-sm text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
-              등급 안내
-            </Link>
           </div>
 
           {/* 한도 사용률 */}
@@ -163,19 +155,19 @@ export default function MyPage() {
               <span className="text-gray-500 font-medium">월 한도 사용</span>
               <span className="text-gray-900 font-semibold">
                 {(gradeInfo?.limit?.used || currentUser.usedAmount || 0).toLocaleString()}원 /{' '}
-                {(gradeInfo?.limit?.monthly || currentUser.monthlyLimit).toLocaleString()}원
+                {(20000000).toLocaleString()}원
               </span>
             </div>
             <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-[#2563EB] to-[#3B82F6] rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(usageRate, 100)}%` }}
+                style={{ width: `${Math.min(((gradeInfo?.limit?.used || currentUser.usedAmount || 0) / 20000000) * 100, 100)}%` }}
               />
             </div>
           </div>
 
           <p className="text-xs text-gray-500 font-medium">
-            이번 달 잔여 한도: <span className="text-[#2563EB] font-semibold">{remainingLimit.toLocaleString()}원</span>
+            이번 달 잔여 한도: <span className="text-[#2563EB] font-semibold">{(20000000 - (gradeInfo?.limit?.used || currentUser.usedAmount || 0)).toLocaleString()}원</span>
           </p>
         </div>
       </div>

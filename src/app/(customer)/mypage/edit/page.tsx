@@ -23,6 +23,11 @@ export default function EditProfilePage() {
     phone: '',
   });
 
+  const [originalData, setOriginalData] = useState({
+    name: '',
+    phone: '',
+  });
+
   useEffect(() => {
     setMounted(true);
     if (currentUser) {
@@ -31,8 +36,15 @@ export default function EditProfilePage() {
         email: currentUser.email || '',
         phone: currentUser.phone,
       });
+      setOriginalData({
+        name: currentUser.name,
+        phone: currentUser.phone,
+      });
     }
   }, [currentUser]);
+
+  // 변경사항 있는지 확인
+  const hasChanges = formData.name !== originalData.name || formData.phone !== originalData.phone;
 
   useEffect(() => {
     if (mounted && !isLoggedIn) {
@@ -59,6 +71,12 @@ export default function EditProfilePage() {
       });
 
       updateUser({
+        name: formData.name,
+        phone: formData.phone,
+      });
+
+      // 저장 후 원본 데이터 업데이트
+      setOriginalData({
         name: formData.name,
         phone: formData.phone,
       });
@@ -149,11 +167,11 @@ export default function EditProfilePage() {
 
         <button
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || !hasChanges}
           className={cn(
             'w-full py-4 rounded-xl font-semibold transition-colors',
-            isSaving
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            isSaving || !hasChanges
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
               : 'bg-primary-400 text-white hover:bg-primary-500'
           )}
         >

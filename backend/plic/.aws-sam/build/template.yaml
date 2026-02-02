@@ -254,6 +254,44 @@ Resources:
             Method: post
     Metadata:
       SamResourceId: LoginFunction
+  KakaoLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: KakaoLoginFunction
+      Handler: kakao-login.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          USER_POOL_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          USERS_TABLE:
+            Ref: UsersTable
+          KAKAO_AUTH_SECRET: plic-kakao-secret-key-2024
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:AdminInitiateAuth
+          - cognito-idp:AdminSetUserPassword
+          - cognito-idp:AdminGetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/kakao-login
+            Method: post
+    Metadata:
+      SamResourceId: KakaoLoginFunction
   RefreshFunction:
     Type: AWS::Serverless::Function
     Properties:

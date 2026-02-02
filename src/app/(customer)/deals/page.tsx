@@ -270,8 +270,10 @@ function DealCard({ deal }: { deal: IDeal }) {
     green: 'bg-green-100 text-green-700',
   };
 
-  // 미결제 거래인지 확인 (draft 또는 awaiting_payment)
+  // 미결제 거래인지 확인 (draft 또는 awaiting_payment이면서 미결제)
   const isUnpaid = (deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid;
+  // 결제 완료 후 검토중인 거래 (awaiting_payment 상태이지만 결제 완료)
+  const isPaidAndReviewing = deal.isPaid && (deal.status === 'awaiting_payment' || deal.status === 'pending');
 
   return (
     <Link
@@ -289,6 +291,10 @@ function DealCard({ deal }: { deal: IDeal }) {
             {isUnpaid ? (
               <span className="inline-flex px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white">
                 결제대기
+              </span>
+            ) : isPaidAndReviewing ? (
+              <span className="inline-flex px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700">
+                검토중
               </span>
             ) : (
               <span className={cn(

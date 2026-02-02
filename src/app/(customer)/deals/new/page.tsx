@@ -872,7 +872,7 @@ function NewDealContent() {
             {/* 기존 거래 내역 조회 버튼 */}
             <button
               onClick={handleLoadPreviousAccounts}
-              className="w-full mb-6 h-12 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+              className="w-full mb-6 h-14 bg-primary-400 hover:bg-primary-500 rounded-xl flex items-center justify-center gap-2 transition-colors text-white font-semibold"
             >
               <History className="w-5 h-5" />
               기존 거래 내역 조회
@@ -967,14 +967,21 @@ function NewDealContent() {
                     isLoading
                   }
                   className="
-                    h-14 px-4
-                    bg-gray-900 text-white font-medium
-                    rounded-xl
+                    h-14 px-5
+                    bg-primary-400 hover:bg-primary-500
+                    text-white font-semibold
+                    rounded-xl transition-colors
                     disabled:bg-gray-200 disabled:text-gray-400
                     whitespace-nowrap
+                    flex items-center justify-center gap-2
                   "
                 >
-                  {recipient.isVerified ? '인증완료' : '계좌확인'}
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      확인 중...
+                    </>
+                  ) : recipient.isVerified ? '인증완료' : '계좌확인'}
                 </button>
               </div>
             </div>
@@ -1090,7 +1097,7 @@ function NewDealContent() {
               mb-4
             ">
               <Upload className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-sm text-gray-500">파일 선택 또는 드래그</span>
+              <span className="text-sm text-gray-500">탭하여 파일 선택</span>
               <span className="text-xs text-gray-400 mt-1">개별 파일 50MB 이하</span>
               <input
                 type="file"
@@ -1344,9 +1351,15 @@ function NewDealContent() {
                 disabled:bg-gray-200 disabled:text-gray-400
                 text-white font-semibold text-lg
                 rounded-xl transition-colors
+                flex items-center justify-center gap-2
               "
             >
-              {isLoading ? '신청 중...' : '거래 신청하기'}
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  신청 중...
+                </>
+              ) : '거래 신청하기'}
             </button>
           </div>
         )}
