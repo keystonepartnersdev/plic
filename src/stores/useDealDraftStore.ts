@@ -1,10 +1,12 @@
 // src/stores/useDealDraftStore.ts
+// Phase 2.1: 환경 설정 중앙화 - API_BASE_URL을 config에서 가져옴
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IDealDraft, TDealStep, TDealType, IDraftDocument } from '@/types';
+import { API_CONFIG } from '@/lib/config';
 
-const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 interface IDealDraftState {
   // 현재 작성중인 송금

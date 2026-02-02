@@ -1,4 +1,6 @@
 // src/stores/useAdminStore.ts
+// Phase 1.1: 보안 강화 - 하드코딩된 비밀번호 제거 (2026-02-02)
+// 모든 인증은 서버 사이드 API (adminAPI.login)를 통해 처리됨
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -10,13 +12,14 @@ interface IAdminState {
   adminList: IAdmin[];
   currentAdmin: IAdmin | null;
 
-  // 인증
+  // 인증 (서버 사이드 인증 후 세션 관리)
   login: (session: IAdminSession) => void;
-  loginWithCredentials: (email: string, password: string) => boolean;
   logout: () => void;
   setAdmin: (admin: IAdmin | null) => void;
+  setAdminFromResponse: (adminData: any, token: string) => void;
 
-  // 관리자 목록 관리
+  // 관리자 목록 관리 (서버에서 가져온 데이터)
+  setAdminList: (admins: IAdmin[]) => void;
   addAdmin: (admin: IAdmin) => void;
   updateAdmin: (adminId: string, updates: Partial<IAdmin>) => void;
   deleteAdmin: (adminId: string) => void;
@@ -26,93 +29,65 @@ interface IAdminState {
   hasPermission: (permission: string) => boolean;
 }
 
-const sampleAdmins: IAdmin[] = [
-  {
-    adminId: 'ADM001',
-    email: 'admin',
-    name: '관리자',
-    role: 'super',
-    status: 'active',
-    isMaster: true,
-    password: 'admin1234',
-    loginFailCount: 0,
-    isLocked: false,
-    createdAt: new Date().toISOString(),
-    createdBy: 'system',
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    adminId: 'ADM002',
-    email: 'admin@plic.kr',
-    name: '플릭 관리자',
-    role: 'super',
-    status: 'active',
-    isMaster: true,
-    password: 'admin123',
-    loginFailCount: 0,
-    isLocked: false,
-    createdAt: new Date().toISOString(),
-    createdBy: 'system',
-    updatedAt: new Date().toISOString(),
-  }
-];
-
-// 스토어 초기화 시 어드민 계정 병합 및 잠금 해제
-const mergeAndUnlockAdmins = (existingAdmins: IAdmin[]): IAdmin[] => {
-  const merged = [...existingAdmins];
-
-  // sampleAdmins에 있는 계정이 기존에 없으면 추가
-  for (const sample of sampleAdmins) {
-    const existing = merged.find(a => a.email === sample.email);
-    if (!existing) {
-      merged.push(sample);
-    } else {
-      // 기존 계정의 비밀번호 업데이트 및 잠금 해제
-      const idx = merged.findIndex(a => a.email === sample.email);
-      merged[idx] = {
-        ...merged[idx],
-        password: sample.password,
-        isLocked: false,
-        loginFailCount: 0,
-        status: 'active',
-      };
-    }
-  }
-
-  return merged;
-};
-
 export const useAdminStore = create(
   persist<IAdminState>(
     (set, get) => ({
       admin: null,
       isLoggedIn: false,
-      adminList: sampleAdmins,
+      adminList: [],
       currentAdmin: null,
 
+      // 서버 인증 후 세션 설정
       login: (session) => {
-        const adminData = get().adminList.find(a => a.adminId === session.adminId);
-        set({ admin: session, isLoggedIn: true, currentAdmin: adminData || null });
+        set({ admin: session, isLoggedIn: true });
       },
 
-      loginWithCredentials: (email, password) => {
-        const admin = get().adminList.find(a => a.email === email);
-        if (!admin) return false;
-        if (admin.status !== 'active') return false;
-        if (admin.isLocked) return false;
-        if (admin.password !== password) return false;
+      // 서버 API 응답으로 어드민 정보 설정
+      setAdminFromResponse: (adminData, token) => {
+        const admin: IAdmin = {
+          adminId: adminData.adminId || adminData.id,
+          email: adminData.email,
+          name: adminData.name || '관리자',
+          role: adminData.role || 'admin',
+          status: adminData.status || 'active',
+          isMaster: adminData.isMaster || false,
+          loginFailCount: 0,
+          isLocked: false,
+          createdAt: adminData.createdAt || new Date().toISOString(),
+          createdBy: adminData.createdBy || 'system',
+          updatedAt: adminData.updatedAt || new Date().toISOString(),
+        };
 
-        set({ currentAdmin: admin, isLoggedIn: true });
-        return true;
+        const session: IAdminSession = {
+          adminId: admin.adminId,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role,
+          token: token,
+          loginAt: new Date().toISOString(),
+        };
+
+        set({
+          admin: session,
+          isLoggedIn: true,
+          currentAdmin: admin
+        });
       },
 
       logout: () => {
+        // 토큰도 함께 제거
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('plic_admin_token');
+        }
         set({ admin: null, isLoggedIn: false, currentAdmin: null });
       },
 
       setAdmin: (admin) => {
         set({ currentAdmin: admin, isLoggedIn: !!admin });
       },
+
+      // 서버에서 관리자 목록을 가져온 후 설정
+      setAdminList: (admins) => set({ adminList: admins }),
 
       addAdmin: (admin) => set((state) => ({
         adminList: [...state.adminList, admin]
@@ -140,15 +115,14 @@ export const useAdminStore = create(
     {
       name: 'plic-admin-storage',
       storage: createJSONStorage(() => localStorage),
-      version: 2, // 버전 업그레이드 - 기존 데이터 마이그레이션
+      version: 3, // 버전 업그레이드 - 하드코딩된 비밀번호 제거
       migrate: (persistedState: any, version: number) => {
-        // 버전 1 이하에서 오는 경우 어드민 계정 초기화
-        if (version < 2) {
+        // 이전 버전에서 오는 경우 세션 초기화 (보안 강화)
+        if (version < 3) {
           return {
-            ...persistedState,
-            adminList: sampleAdmins,
-            isLoggedIn: false,
             admin: null,
+            isLoggedIn: false,
+            adminList: [],
             currentAdmin: null,
           };
         }

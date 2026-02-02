@@ -46,7 +46,7 @@ export class AdminHelper {
     },
   };
 
-  // 마스터 계정 정보
+  // 마스터 계정 정보 템플릿 (비밀번호는 서버에서 관리)
   static MASTER_ADMIN: IAdmin = {
     adminId: 'MASTER',
     email: 'admin',
@@ -55,7 +55,6 @@ export class AdminHelper {
     role: 'super',
     status: 'active',
     isMaster: true,
-    password: 'admin',
     loginFailCount: 0,
     isLocked: false,
     createdAt: '2025-01-01T00:00:00.000Z',
@@ -89,15 +88,14 @@ export class AdminHelper {
     return { valid: errors.length === 0, errors };
   }
 
-  // 신규 어드민 생성
+  // 신규 어드민 생성 (비밀번호는 서버 API를 통해 설정)
   static createNewAdmin(
     email: string,
     name: string,
     role: TAdminRole,
-    password: string,
     createdBy: string,
     phone?: string
-  ): IAdmin {
+  ): Omit<IAdmin, 'adminId'> & { adminId?: string } {
     const now = new Date().toISOString();
     return {
       adminId: this.generateAdminId(),
@@ -107,7 +105,6 @@ export class AdminHelper {
       role,
       status: 'active',
       isMaster: false,
-      password,
       loginFailCount: 0,
       isLocked: false,
       createdAt: now,

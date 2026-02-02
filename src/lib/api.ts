@@ -1,6 +1,9 @@
 // src/lib/api.ts
+// Phase 2.1: 환경 설정 중앙화 - API_BASE_URL을 config에서 가져옴
 
-const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+import { API_CONFIG } from './config';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 // 토큰 저장소
 let accessToken: string | null = null;

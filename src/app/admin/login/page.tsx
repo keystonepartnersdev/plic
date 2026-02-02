@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { useAdminStore } from '@/stores';
-import { AdminHelper } from '@/classes';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login } = useAdminStore();
+  const { setAdminFromResponse } = useAdminStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,23 +22,11 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // 백엔드 API로 로그인
+      // 백엔드 API로 로그인 (서버 사이드 인증)
       const response = await adminAPI.login({ email, password });
 
-      // 로그인 성공 - 토큰은 adminAPI.login에서 이미 저장됨
-      const roleConfig = AdminHelper.getRoleConfig(response.admin.role);
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 8 * 60 * 60 * 1000); // 8시간
-
-      login({
-        adminId: response.admin.adminId,
-        email: response.admin.email,
-        name: response.admin.name,
-        role: response.admin.role,
-        permissions: roleConfig.permissions,
-        loginAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-      });
+      // 로그인 성공 - 스토어에 어드민 정보 설정
+      setAdminFromResponse(response.admin, response.token);
 
       router.replace('/admin');
     } catch (err: any) {
