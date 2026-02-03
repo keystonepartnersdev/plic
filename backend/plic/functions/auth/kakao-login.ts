@@ -14,19 +14,60 @@ const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 const KAKAO_SECRET = process.env.KAKAO_AUTH_SECRET || 'plic-kakao-secret-key-2024';
 
-// CORS 헤더
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS',
+// CORS 헤더 (httpOnly 쿠키 지원)
+const ALLOWED_ORIGINS = [
+  'https://plic.kr',
+  'https://www.plic.kr',
+  'https://plic.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+
+function getCorsHeaders(origin?: string): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,Cookie',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+// 쿠키 설정 상수
+const TOKEN_CONFIG = {
+  ACCESS_TOKEN_NAME: 'plic_access_token',
+  REFRESH_TOKEN_NAME: 'plic_refresh_token',
+  ACCESS_TOKEN_MAX_AGE: 60 * 60, // 1시간
+  REFRESH_TOKEN_MAX_AGE: 7 * 24 * 60 * 60, // 7일
 };
 
-// 응답 헬퍼
-const response = (statusCode: number, body: Record<string, unknown>) => ({
+// 응답 헬퍼 (CORS 지원)
+const response = (statusCode: number, body: Record<string, unknown>, origin?: string) => ({
   statusCode,
-  headers: corsHeaders,
+  headers: getCorsHeaders(origin),
   body: JSON.stringify(body),
 });
+
+// httpOnly 쿠키가 포함된 응답 헬퍼
+const responseWithCookies = (
+  statusCode: number,
+  body: Record<string, unknown>,
+  cookies: string[],
+  origin?: string
+) => ({
+  statusCode,
+  headers: getCorsHeaders(origin),
+  multiValueHeaders: {
+    'Set-Cookie': cookies,
+  },
+  body: JSON.stringify(body),
+});
+
+// Set-Cookie 헤더 생성
+function createSetCookie(name: string, value: string, maxAge: number): string {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `${name}=${value}; HttpOnly${secure}; SameSite=Lax; Max-Age=${maxAge}; Path=/`;
+}
 
 // 카카오 ID로부터 결정적 비밀번호 생성
 function generateKakaoPassword(kakaoId: number | string): string {
@@ -38,9 +79,11 @@ function generateKakaoPassword(kakaoId: number | string): string {
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const origin = event.headers?.origin || event.headers?.Origin;
+
   // OPTIONS 요청 처리 (CORS)
   if (event.httpMethod === 'OPTIONS') {
-    return response(200, {});
+    return response(200, {}, origin);
   }
 
   try {
@@ -48,7 +91,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       return response(400, {
         success: false,
         error: '요청 본문이 필요합니다.',
-      });
+      }, origin);
     }
 
     const body = JSON.parse(event.body);
@@ -58,7 +101,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       return response(400, {
         success: false,
         error: '이메일과 카카오 ID가 필요합니다.',
-      });
+      }, origin);
     }
 
     // DynamoDB에서 사용자 조회
@@ -74,7 +117,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         success: true,
         exists: false,
         message: '등록되지 않은 사용자입니다.',
-      });
+      }, origin);
     }
 
     const user = queryResult.Items[0];
@@ -96,7 +139,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         exists: false, // 완전히 가입되지 않았으므로 새 가입 취급
         incomplete: true,
         message: '가입이 완료되지 않은 계정입니다. 다시 가입해주세요.',
-      });
+      }, origin);
     }
 
     // 카카오 ID 확인 (저장된 kakaoId가 있으면 일치 여부 확인)
@@ -104,7 +147,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       return response(401, {
         success: false,
         error: '카카오 계정이 일치하지 않습니다.',
-      });
+      }, origin);
     }
 
     // 카카오 ID가 없으면 저장 (기존 회원의 카카오 연동)
@@ -152,10 +195,27 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         return response(401, {
           success: false,
           error: '인증에 실패했습니다.',
-        });
+        }, origin);
       }
 
-      return response(200, {
+      // httpOnly 쿠키 설정
+      const cookies: string[] = [];
+      if (authResult.AuthenticationResult.AccessToken) {
+        cookies.push(createSetCookie(
+          TOKEN_CONFIG.ACCESS_TOKEN_NAME,
+          authResult.AuthenticationResult.AccessToken,
+          TOKEN_CONFIG.ACCESS_TOKEN_MAX_AGE
+        ));
+      }
+      if (authResult.AuthenticationResult.RefreshToken) {
+        cookies.push(createSetCookie(
+          TOKEN_CONFIG.REFRESH_TOKEN_NAME,
+          authResult.AuthenticationResult.RefreshToken,
+          TOKEN_CONFIG.REFRESH_TOKEN_MAX_AGE
+        ));
+      }
+
+      return responseWithCookies(200, {
         success: true,
         exists: true,
         autoLogin: true,
@@ -172,6 +232,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             businessInfo: user.businessInfo,
             agreements: user.agreements,
           },
+          // 토큰은 httpOnly 쿠키로 전달되므로 응답 본문에서 제외
+          // tokens는 레거시 클라이언트 호환을 위해 유지하되, 점진적 마이그레이션 권장
           tokens: {
             accessToken: authResult.AuthenticationResult.AccessToken,
             refreshToken: authResult.AuthenticationResult.RefreshToken,
@@ -179,7 +241,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             expiresIn: authResult.AuthenticationResult.ExpiresIn,
           },
         },
-      });
+      }, cookies, origin);
     } catch (authError: any) {
       console.error('Cognito 인증 실패:', authError);
 
@@ -190,19 +252,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           exists: false,
           incomplete: true,
           message: '이메일 인증이 완료되지 않았습니다.',
-        });
+        }, origin);
       }
 
       return response(401, {
         success: false,
         error: '카카오 로그인에 실패했습니다.',
-      });
+      }, origin);
     }
   } catch (error: any) {
     console.error('카카오 로그인 오류:', error);
     return response(500, {
       success: false,
       error: error.message || '서버 오류가 발생했습니다.',
-    });
+    }, origin);
   }
 };

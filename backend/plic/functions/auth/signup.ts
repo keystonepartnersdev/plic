@@ -20,17 +20,29 @@ const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 const KAKAO_VERIFICATIONS_TABLE = 'plic-kakao-verifications';
 
-// CORS 헤더
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS',
-};
+// CORS 헤더 (httpOnly 쿠키 지원)
+const ALLOWED_ORIGINS = [
+  'https://plic.kr',
+  'https://www.plic.kr',
+  'https://plic.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
 
-// 응답 헬퍼
-const response = (statusCode: number, body: Record<string, unknown>) => ({
+function getCorsHeaders(origin?: string): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,Cookie',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+// 응답 헬퍼 (CORS 지원)
+const response = (statusCode: number, body: Record<string, unknown>, origin?: string) => ({
   statusCode,
-  headers: corsHeaders,
+  headers: getCorsHeaders(origin),
   body: JSON.stringify(body),
 });
 
@@ -60,9 +72,11 @@ interface SignupRequest {
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const origin = event.headers?.origin || event.headers?.Origin;
+
   // OPTIONS 요청 처리 (CORS)
   if (event.httpMethod === 'OPTIONS') {
-    return response(200, {});
+    return response(200, {}, origin);
   }
 
   try {
