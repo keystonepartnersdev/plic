@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, Check } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
-import { tokenManager } from '@/lib/api';
+// httpOnly 쿠키 사용으로 tokenManager 제거
 import { cn } from '@/lib/utils';
 
 const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
@@ -42,16 +42,13 @@ export default function NotificationSettingsPage() {
 
   // Fetch settings from API
   const fetchSettings = useCallback(async () => {
-    const token = tokenManager.getAccessToken();
-    if (!token) return;
-
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // httpOnly 쿠키 자동 전송
       });
       const data = await response.json();
       if (data.success && data.data?.settings) {
@@ -75,17 +72,14 @@ export default function NotificationSettingsPage() {
 
   // Save settings to API
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
-    const token = tokenManager.getAccessToken();
-    if (!token) return;
-
     setIsSaving(true);
     try {
       const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // httpOnly 쿠키 자동 전송
         body: JSON.stringify({ settings: newSettings }),
       });
       const data = await response.json();

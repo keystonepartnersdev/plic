@@ -8,7 +8,6 @@ import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { getErrorMessage } from '@/lib/utils';
 import { secureAuth } from '@/lib/auth';
-import { tokenManager } from '@/lib/api';
 
 function LoginContent() {
   const router = useRouter();
@@ -58,16 +57,11 @@ function LoginContent() {
         return;
       }
 
-      // 백엔드에서 자동 로그인 완료된 경우 (토큰 포함)
+      // 백엔드에서 자동 로그인 완료된 경우 (토큰은 httpOnly 쿠키로 자동 설정됨)
       if (checkData.autoLogin && checkData.data) {
         setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
 
-        // 토큰 저장
-        if (checkData.data.tokens?.accessToken && checkData.data.tokens?.refreshToken) {
-          tokenManager.setTokens(checkData.data.tokens.accessToken, checkData.data.tokens.refreshToken);
-        }
-
-        // 사용자 정보 저장
+        // 사용자 정보 저장 (토큰은 httpOnly 쿠키로 이미 설정됨)
         setUser(checkData.data.user);
 
         // 홈으로 이동

@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IUser, TUserGrade, IGradeChangeResult } from '@/types';
 import { IRegisteredCard } from '@/types/payment';
-import { usersAPI, authAPI, tokenManager } from '@/lib/api';
+import { usersAPI, authAPI } from '@/lib/api';
 import {
   processAutoGradeChange as processGradeChange,
   resetMonthlyUsage as resetUsage,
@@ -229,11 +229,10 @@ export const useUserStore = create(
 
       logoutWithAPI: async () => {
         try {
-          await authAPI.logout();
+          await secureAuth.logout();
         } catch (error) {
           console.error('로그아웃 API 오류:', error);
         } finally {
-          tokenManager.clearTokens();
           set({
             currentUser: null,
             isLoggedIn: false,
@@ -283,7 +282,7 @@ export const useUserStore = create(
       }),
 
       logout: () => {
-        tokenManager.clearTokens();
+        // httpOnly 쿠키는 secureAuth.logout()으로 삭제됨 (호출하는 곳에서 처리)
         set({
           currentUser: null,
           isLoggedIn: false,

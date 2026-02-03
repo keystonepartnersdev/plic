@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
-import { usersAPI, tokenManager } from '@/lib/api';
+import { usersAPI } from '@/lib/api';
+import { secureAuth } from '@/lib/auth';
 import { UserHelper } from '@/classes';
 import { cn, getErrorMessage } from '@/lib/utils';
 
@@ -60,7 +61,7 @@ export default function MyPage() {
         console.error('사용자 정보 로드 실패:', error);
         // 401 에러 시 로그아웃 처리
         if (getErrorMessage(error)?.includes('401') || getErrorMessage(error)?.includes('인증')) {
-          tokenManager.clearTokens();
+          await secureAuth.logout().catch(() => {});
           logout();
           router.replace('/auth/login');
           return;
@@ -90,11 +91,11 @@ export default function MyPage() {
   const remainingLimit = gradeInfo?.limit?.remaining ?? UserHelper.getRemainingLimit(currentUser);
   const usageRate = gradeInfo?.limit?.usagePercent ?? UserHelper.getUsageRate(currentUser);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('로그아웃 하시겠습니까?')) {
+      await secureAuth.logout().catch(() => {});
       logout();
       clearDeals();
-      tokenManager.clearTokens();
       router.replace('/');
     }
   };

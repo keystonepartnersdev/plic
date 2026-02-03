@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Building2, ChevronRight, Search, Copy, Check, Star } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
-import { tokenManager } from '@/lib/api';
+// httpOnly 쿠키 사용으로 tokenManager 대신 credentials: 'include' 사용
 import { cn } from '@/lib/utils';
 
 const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
@@ -62,18 +62,12 @@ export default function AccountsPage() {
 
   // Fetch favorite accounts from API
   const fetchFavoriteAccounts = useCallback(async () => {
-    const token = tokenManager.getAccessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // httpOnly 쿠키 자동 전송
       });
       const data = await response.json();
       if (data.success && data.data?.favoriteAccounts) {
@@ -97,16 +91,13 @@ export default function AccountsPage() {
 
   // Save favorite accounts to API
   const saveFavoriteAccounts = useCallback(async (newFavorites: string[]) => {
-    const token = tokenManager.getAccessToken();
-    if (!token) return;
-
     try {
       await fetch(`${API_BASE_URL}/users/me/settings`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // httpOnly 쿠키 자동 전송
         body: JSON.stringify({ favoriteAccounts: newFavorites }),
       });
     } catch (error) {
