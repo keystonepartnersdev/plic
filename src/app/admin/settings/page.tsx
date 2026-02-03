@@ -84,6 +84,7 @@ export default function AdminSettingsPage() {
     };
 
     loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // 등급별 설정이 변경되었을 때 해당 등급 회원들에게 일괄 적용

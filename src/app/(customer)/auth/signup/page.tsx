@@ -198,6 +198,7 @@ function SignupContent() {
     setKakaoVerification(null);
 
     setInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchVerificationResult = async (key: string) => {

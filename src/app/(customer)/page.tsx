@@ -27,6 +27,7 @@ export default function HomePage() {
     // 배너, FAQ 데이터 API에서 가져오기
     fetchBanners();
     fetchFaqs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 강제 로그아웃 감지 (탈퇴 처리 등)

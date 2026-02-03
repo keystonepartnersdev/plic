@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail } from 'lucide-react';
@@ -22,26 +22,8 @@ function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [kakaoAutoLoginStatus, setKakaoAutoLoginStatus] = useState<string>('');
 
-  // 카카오 인증 결과 처리
-  useEffect(() => {
-    const verified = searchParams.get('verified');
-    const verificationKey = searchParams.get('verificationKey');
-    const errorParam = searchParams.get('error');
-    const errorMessage = searchParams.get('message');
-
-    if (errorParam) {
-      setError(errorMessage || '카카오 인증에 실패했습니다.');
-      router.replace('/auth/login', { scroll: false });
-      return;
-    }
-
-    if (verified === 'true' && verificationKey) {
-      handleKakaoAutoLogin(verificationKey);
-    }
-  }, [searchParams]);
-
-  // 카카오 자동 로그인 처리
-  const handleKakaoAutoLogin = async (key: string) => {
+  // 카카오 자동 로그인 처리 (useEffect보다 먼저 정의)
+  const handleKakaoAutoLogin = useCallback(async (key: string) => {
     setKakaoAutoLoginStatus('카카오 인증 확인 중...');
     setError('');
 
@@ -120,7 +102,25 @@ function LoginContent() {
     } finally {
       setKakaoAutoLoginStatus('');
     }
-  };
+  }, [router, setUser]);
+
+  // 카카오 인증 결과 처리
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const verificationKey = searchParams.get('verificationKey');
+    const errorParam = searchParams.get('error');
+    const errorMessage = searchParams.get('message');
+
+    if (errorParam) {
+      setError(errorMessage || '카카오 인증에 실패했습니다.');
+      router.replace('/auth/login', { scroll: false });
+      return;
+    }
+
+    if (verified === 'true' && verificationKey) {
+      handleKakaoAutoLogin(verificationKey);
+    }
+  }, [searchParams, handleKakaoAutoLogin, router]);
 
   // 카카오 인증 시작
   const handleKakaoLogin = () => {

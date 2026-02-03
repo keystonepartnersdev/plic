@@ -152,6 +152,7 @@ export default function DealDetailPage() {
     }).catch(() => {
       router.replace('/deals');
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, isLoggedIn, did, router]);
 
   // 결제대기 상태일 때 쿠폰 목록 API에서 가져오기

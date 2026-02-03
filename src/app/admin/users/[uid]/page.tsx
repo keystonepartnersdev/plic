@@ -146,6 +146,7 @@ export default function AdminUserDetailPage() {
 
   useEffect(() => {
     fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
   // 거래 통계 계산

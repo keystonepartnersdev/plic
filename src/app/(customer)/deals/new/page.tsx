@@ -179,6 +179,7 @@ function NewDealContent() {
       startNewDraft(currentUser.uid);
     }
     setDraftInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, currentUser]);
 
   // Draft 데이터로 상태 복원
@@ -237,6 +238,7 @@ function NewDealContent() {
       }
       setAttachmentsRestored(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftInitialized, currentDraft?.id, attachmentsRestored]);
 
   // URL 파라미터에서 금액 확인
@@ -289,6 +291,7 @@ function NewDealContent() {
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealType, amount, discountCode, recipient, senderName, attachments, draftInitialized]);
 
   useEffect(() => {

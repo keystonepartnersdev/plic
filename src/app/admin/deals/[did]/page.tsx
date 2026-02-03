@@ -71,6 +71,7 @@ export default function AdminDealDetailPage() {
 
   useEffect(() => {
     fetchDeal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [did]);
 
   // 로딩 상태
