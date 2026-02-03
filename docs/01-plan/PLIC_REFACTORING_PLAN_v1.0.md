@@ -32,7 +32,7 @@
 |---------|---------|------|------|--------|
 | P0 | 보안 | 어드민 비밀번호 하드코딩 | ✅ 완료 | Critical |
 | P0 | 보안 | 클라이언트 사이드 인증 | ✅ 완료 | Critical |
-| P1 | 보안 | JWT 토큰 localStorage 저장 | 🟡 백엔드 협업 대기 | High |
+| P1 | 보안 | JWT 토큰 localStorage 저장 | ✅ 완료 (httpOnly 쿠키) | High |
 | P1 | 타입 | TypeScript strict 모드 비활성화 | ✅ 완료 | High |
 | P2 | 구조 | 대형 컴포넌트 (1000줄+) 3개 | ✅ 완료 | Medium |
 | P2 | 중복 | 중복 코드 다수 | ✅ 완료 | Medium |
@@ -44,7 +44,7 @@
 
 ## 3. 완료된 단계
 
-### ✅ Phase 1: 보안 강화 (90% 완료)
+### ✅ Phase 1: 보안 강화 (100% 완료)
 
 #### 1.1 어드민 인증 재구현 ✅
 **변경 내용**:
@@ -56,16 +56,22 @@
 - `src/stores/useAdminStore.ts` - 전면 수정
 - `src/app/admin/login/page.tsx` - API 호출로 변경
 
-#### 1.2 토큰 저장 방식 개선 🟡
+#### 1.2 토큰 저장 방식 개선 ✅
 **변경 내용**:
-- API Route 프록시 추가 (login, logout, refresh, me)
-- httpOnly 쿠키 전환은 백엔드 협업 필요 (추후 진행)
+- API Route 프록시 추가 (login, logout, refresh, me, kakao-login)
+- httpOnly 쿠키 전환 완료 (2026-02-04)
+- Lambda 함수 수정 및 배포
+- API Gateway CORS credentials 설정
 
 **수정된 파일**:
 - `src/app/api/auth/login/route.ts`
 - `src/app/api/auth/logout/route.ts`
 - `src/app/api/auth/refresh/route.ts`
 - `src/app/api/auth/me/route.ts`
+- `src/app/api/auth/kakao-login/route.ts` - Set-Cookie 전달 추가
+- `backend/plic/functions/auth/kakao-login.ts` - httpOnly 쿠키 설정
+- `backend/plic/functions/auth/signup.ts` - CORS 업데이트
+- `backend/plic/functions/shared/cors.ts` - 공통 CORS 유틸리티
 
 ---
 
@@ -232,15 +238,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
 ## 4. 남은 작업 (향후 개선)
 
-### 백엔드 협업 필요
-| 작업 | 파일 | 설명 |
-|------|------|------|
-| httpOnly 쿠키 전환 | `lib/api.ts` | 백엔드 API 변경 필요 |
-
 ### 우선순위 Low (선택사항)
 | 작업 | 파일 | 설명 |
 |------|------|------|
 | useEffect 최적화 | 각 페이지 | 의존성 배열 검토 (성능 영향 미미) |
+| tokenManager 정리 | `lib/api.ts` | 레거시 코드 점진적 제거 |
+| E2E 테스트 | - | 통합 테스트 작성 |
 
 ---
 
@@ -278,3 +281,4 @@ export class ErrorBoundary extends Component<Props, State> {
 | 1.1 | 2026-02-03 | Phase 1-6 진행 현황 업데이트 (92% 완료) |
 | 1.2 | 2026-02-04 | Phase 6 완료 - any 타입 98% 제거 (97% 완료) |
 | 1.3 | 2026-02-04 | **100% 완료** - ErrorBoundary 추가, 품질 93점 달성 |
+| 1.4 | 2026-02-04 | **P1 보안 완료** - JWT httpOnly 쿠키 전환 완료, Lambda/API Gateway 배포 |

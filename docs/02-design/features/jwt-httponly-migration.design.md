@@ -1,7 +1,7 @@
 # JWT httpOnly 쿠키 마이그레이션 설계서
 
 > **작성일**: 2026-02-04
-> **상태**: 백엔드 협업 대기
+> **상태**: ✅ 완료 (2026-02-04)
 > **우선순위**: P1 (High)
 > **관련 리팩토링**: Phase 1.2 - 토큰 저장 방식 개선
 
@@ -188,18 +188,24 @@ app.use(cors({
 
 ## 6. 체크리스트
 
-### 프론트엔드 (완료)
+### 프론트엔드 ✅
 - [x] API Route 프록시 생성 (`/api/auth/*`)
 - [x] secureAuth 유틸리티 구현
 - [x] 쿠키 설정 로직 구현
 - [x] credentials: 'include' 적용
-- [ ] 기존 tokenManager 코드 제거 (마이그레이션 완료 후)
+- [x] Set-Cookie 헤더 전달 구현 (`/api/auth/kakao-login`)
+- [ ] 기존 tokenManager 코드 제거 (점진적 마이그레이션)
 
-### 백엔드 (협업 필요)
-- [ ] CORS credentials 설정
-- [ ] (선택) Set-Cookie 헤더 직접 설정
-- [ ] (선택) Cookie 기반 인증 지원
-- [ ] 토큰 갱신 엔드포인트 확인 (`/auth/refresh`)
+### 백엔드 ✅ (2026-02-04 완료)
+- [x] CORS credentials 설정 (API Gateway)
+- [x] Set-Cookie 헤더 직접 설정 (Lambda)
+- [x] multiValueHeaders 사용 (쿠키 다중 설정)
+- [x] 토큰 갱신 엔드포인트 확인 (`/auth/refresh`)
+
+### 배포 완료 ✅
+- [x] Lambda 함수 업데이트 (`plic-KakaoLoginFunction`, `plic-SignupFunction`)
+- [x] API Gateway CORS 설정 (모든 /auth/* 엔드포인트)
+- [x] 프로덕션 배포 (`sam deploy`)
 
 ---
 
@@ -277,3 +283,4 @@ app.use(cors({
 | 버전 | 날짜 | 변경 내용 |
 |------|------|----------|
 | 1.0 | 2026-02-04 | 최초 작성 - 백엔드 협업 요청 문서 |
+| 1.1 | 2026-02-04 | **구현 완료** - Lambda, API Gateway, 프론트엔드 배포 완료 |
