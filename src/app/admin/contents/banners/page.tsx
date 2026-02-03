@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
 import { contentAPI, adminAPI } from '@/lib/api';
 import { IHomeBanner } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function AdminBannersPage() {
   // API 데이터 상태
@@ -30,9 +30,9 @@ export default function AdminBannersPage() {
     try {
       const response = await contentAPI.getBanners();
       setBanners(response.banners || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('배너 목록 로드 실패:', err);
-      setError(err.message || '배너 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '배너 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -85,9 +85,9 @@ export default function AdminBannersPage() {
       }
       await fetchBanners();
       resetForm();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('배너 저장 실패:', err);
-      alert(err.message || '배너 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || '배너 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -100,9 +100,9 @@ export default function AdminBannersPage() {
     try {
       await adminAPI.deleteBanner(bannerId);
       await fetchBanners();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('배너 삭제 실패:', err);
-      alert(err.message || '배너 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || '배너 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -113,9 +113,9 @@ export default function AdminBannersPage() {
     try {
       await adminAPI.updateBanner(banner.bannerId, { isVisible: !banner.isVisible });
       await fetchBanners();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('배너 상태 변경 실패:', err);
-      alert(err.message || '배너 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '배너 상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -168,9 +168,9 @@ export default function AdminBannersPage() {
         }
       }
       await fetchBanners();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('배너 순서 변경 실패:', err);
-      alert(err.message || '배너 순서 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '배너 순서 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

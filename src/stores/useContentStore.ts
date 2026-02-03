@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IHomeBanner, INotice, IFAQ } from '@/types';
 import { contentAPI } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 interface IContentState {
   banners: IHomeBanner[];
@@ -62,10 +63,10 @@ export const useContentStore = create(
             banners: result.banners,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '배너를 불러오는데 실패했습니다.',
+            apiError: getErrorMessage(error) || '배너를 불러오는데 실패했습니다.',
           });
         }
       },
@@ -78,10 +79,10 @@ export const useContentStore = create(
             notices: result.notices,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '공지사항을 불러오는데 실패했습니다.',
+            apiError: getErrorMessage(error) || '공지사항을 불러오는데 실패했습니다.',
           });
         }
       },
@@ -106,10 +107,10 @@ export const useContentStore = create(
 
           set({ isLoading: false });
           return notice;
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '공지사항을 불러오는데 실패했습니다.',
+            apiError: getErrorMessage(error) || '공지사항을 불러오는데 실패했습니다.',
           });
           return null;
         }
@@ -137,10 +138,10 @@ export const useContentStore = create(
               isLoading: false,
             });
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || 'FAQ를 불러오는데 실패했습니다.',
+            apiError: getErrorMessage(error) || 'FAQ를 불러오는데 실패했습니다.',
           });
         }
       },

@@ -5,7 +5,147 @@
 
 ---
 
+## 2026-02-04
+
+### [RF-013] Phase 6: 코드 품질 개선 최종 완료
+
+**날짜**: 2026-02-04
+
+**목표**: `any` 타입 98% 제거 달성
+
+**변경 내용**:
+
+1. `src/lib/utils.ts` - `getErrorMessage()` 유틸리티 함수 추가
+   ```typescript
+   export function getErrorMessage(error: unknown): string {
+     if (error instanceof Error) return error.message;
+     if (typeof error === 'string') return error;
+     return '알 수 없는 오류가 발생했습니다.';
+   }
+   ```
+
+2. **모든 Store 파일 (7개)** - `catch (error: any)` → `catch (error: unknown)` 변환
+   - useContentStore.ts, useDealStore.ts, useDealDraftStore.ts
+   - useDiscountStore.ts, usePaymentStore.ts, useSettingsStore.ts, useUserStore.ts
+
+3. **모든 페이지 파일 (22개)** - 에러 핸들링 타입 안전성 강화
+   - Admin 페이지 15개: login, page, deals, users, admins, codes, analytics, api-logs, contents/*
+   - Customer 페이지 7개: auth/login, auth/signup, deals/new, deals/[did], mypage, mypage/edit, terms/[type]
+
+4. **API 라우트 파일 (4개)** - 타입 안전성 강화
+   - kakao/callback, kakao/auth, kakao/result, admin/faqs/seed
+
+5. **추가 타입 정의**
+   - `IApiDraft` (useDealDraftStore) - API 응답 타입
+   - `IAdminApiResponse` (useAdminStore) - API 응답 타입
+   - `LucideIcon` import (analytics) - 아이콘 타입
+
+**결과 지표**:
+- `any` 타입: 161개 → **3개** (98% 감소)
+- 남은 3개는 Zustand migrate 함수 (의도적 유지)
+
+**영향받은 파일**:
+```
+- src/lib/utils.ts (getErrorMessage 추가)
+- src/stores/*.ts (7개 파일)
+- src/app/(customer)/**/*.tsx (7개 파일)
+- src/app/admin/**/*.tsx (15개 파일)
+- src/app/api/**/*.ts (4개 파일)
+- src/components/auth/signup/types.ts (타입 수정)
+```
+
+**테스트**:
+- `npm run build` 통과
+
+**결과**: ✅ 완료
+
+---
+
+## 2026-02-03
+
+### [RF-012] Phase 6: 코드 품질 개선 1차
+
+**날짜**: 2026-02-03
+
+**목표**: `any` 타입 제거 및 타입 안전성 강화
+
+**변경 내용**:
+1. `src/lib/api.ts` - 44개 `any` 타입을 실제 타입으로 교체
+   - API 응답 타입을 `IUser`, `IDeal`, `IHomeBanner`, `INotice`, `IFAQ`, `IDiscount`, `IAdmin` 등 실제 타입으로 변경
+   - `ApiLogEntry` 인터페이스의 `requestBody`, `responseBody`를 `unknown`으로 변경
+   - catch 블록의 `error: any`를 `error: unknown`으로 변경
+   - 불필요한 디버그 로그 제거
+
+2. `src/lib/apiLogger.ts` - 7개 `any` 타입 제거
+   - `maskSensitiveData` 함수: `any` → `unknown`
+   - `ApiLogEntry` 인터페이스 필드: `any` → `unknown`
+   - catch 블록: `error: any` → `error: unknown`
+
+3. `src/stores/useUserStore.ts` - 타입 호환성 수정
+   - `socialProvider: 'none'` → `socialProvider: null` (TSocialProvider 타입 준수)
+
+4. `src/app/(customer)/guide/page.tsx` - 로컬 타입 제거
+   - 로컬 `IFAQ` 인터페이스 제거, 글로벌 `@/types` 사용
+   - `faq.id` → `faq.faqId` 변경
+
+**결과 지표**:
+- `any` 타입: 140개 → 89개 (51개 감소, 36% 개선)
+- 불필요한 console.log: 5개 제거
+
+**영향받은 파일**:
+```
+- src/lib/api.ts (주요 타입 개선)
+- src/lib/apiLogger.ts (타입 개선)
+- src/stores/useUserStore.ts (타입 호환성)
+- src/app/(customer)/guide/page.tsx (타입 통합)
+```
+
+**테스트**:
+- `npm run build` 통과
+
+**결과**: ✅ 완료
+
+---
+
 ## 2026-02-02
+
+### [RF-011] Phase 5: TypeScript Strict 모드 완전 활성화
+
+**날짜**: 2026-02-03
+
+**목표**: TypeScript strict 모드 완전 활성화로 타입 안전성 강화
+
+**변경 내용**:
+1. `tsconfig.json`에서 `strict: true` 설정
+2. 모든 strict 옵션 활성화:
+   - `noImplicitAny`
+   - `strictNullChecks`
+   - `strictFunctionTypes`
+   - `strictBindCallApply`
+   - `strictPropertyInitialization`
+   - `noImplicitThis`
+   - `useUnknownInCatchVariables`
+   - `alwaysStrict`
+
+**수정된 타입 오류**:
+- `src/lib/upload.ts`: catch 블록 error 타입 및 반환 타입 명시
+- `src/stores/useAdminUserStore.ts`: 빈 함수 반환 타입 명시
+- `src/stores/useUserStore.ts`: IUser 타입 단언 추가
+
+**영향받은 파일**:
+```
+- tsconfig.json (strict: true)
+- src/lib/upload.ts (타입 수정)
+- src/stores/useAdminUserStore.ts (타입 수정)
+- src/stores/useUserStore.ts (타입 수정)
+```
+
+**테스트**:
+- `npm run build` 통과
+
+**결과**: ✅ 완료
+
+---
 
 ### [RF-010] Phase 3.3: auth/signup 컴포넌트 분할 (완료)
 
@@ -353,8 +493,8 @@
 | 3.2 | deals/[did] 컴포넌트 분할 | ✅ 완료 |
 | 3.3 | auth/signup 컴포넌트 분할 | ✅ 완료 |
 | 4 | 중복 코드 제거 | ✅ 완료 |
-| 5 | TypeScript strict 모드 | 🟡 준비 완료 |
-| 6 | 코드 품질 개선 | 🟡 추후 진행 |
+| 5 | TypeScript strict 모드 | ✅ 완료 |
+| 6 | 코드 품질 개선 | ✅ 완료 |
 
 **참고 문서**: `docs/01-plan/PLIC_REFACTORING_PLAN_v1.0.md`
 
@@ -389,4 +529,4 @@
 
 ---
 
-**마지막 업데이트**: 2026-02-02 (Phase 3.3 컴포넌트 분할 완료)
+**마지막 업데이트**: 2026-02-04 (Phase 6 코드 품질 개선 완료 - any 타입 98% 제거)

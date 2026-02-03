@@ -100,7 +100,7 @@ export interface UserInfoStepProps {
  */
 export interface BusinessInfoStepProps {
   businessInfo: BusinessInfo;
-  onBusinessInfoChange: (field: keyof BusinessInfo, value: any) => void;
+  onBusinessInfoChange: (field: keyof BusinessInfo, value: string | File | null) => void;
   verification: BusinessVerificationState;
   onVerifyBusiness: () => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;

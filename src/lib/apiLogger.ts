@@ -26,14 +26,14 @@ export const newCorrelationId = () => {
 // 민감 정보 마스킹
 const SENSITIVE_FIELDS = ['password', 'token', 'accessToken', 'refreshToken', 'idToken', 'secret', 'apiKey', 'Authorization'];
 
-const maskSensitiveData = (data: any): any => {
+const maskSensitiveData = (data: unknown): unknown => {
   if (!data) return data;
   if (typeof data === 'string') return data;
   if (Array.isArray(data)) return data.map(maskSensitiveData);
 
   if (typeof data === 'object') {
-    const masked: any = {};
-    for (const [key, value] of Object.entries(data)) {
+    const masked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
       if (SENSITIVE_FIELDS.some(f => key.toLowerCase().includes(f.toLowerCase()))) {
         masked[key] = '***MASKED***';
       } else if (typeof value === 'object') {
@@ -54,8 +54,8 @@ export interface ApiLogEntry {
   endpoint: string;
   method: string;
   statusCode: number;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: unknown;
+  responseBody?: unknown;
   errorMessage?: string;
   errorStack?: string;
   executionTime: number;
@@ -130,7 +130,7 @@ export const loggedFetch = async (
   const headers = new Headers(options.headers);
   headers.set('X-Correlation-ID', correlationId);
 
-  let requestBody: any;
+  let requestBody: unknown;
   if (options.body && typeof options.body === 'string') {
     try {
       requestBody = JSON.parse(options.body);
@@ -140,7 +140,7 @@ export const loggedFetch = async (
   }
 
   let response: Response;
-  let responseBody: any;
+  let responseBody: unknown;
   let errorMessage: string | undefined;
   let errorStack: string | undefined;
 
@@ -156,9 +156,9 @@ export const loggedFetch = async (
       responseBody = await clonedResponse.text();
     }
 
-  } catch (error: any) {
-    errorMessage = error.message;
-    errorStack = error.stack;
+  } catch (error: unknown) {
+    errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    errorStack = error instanceof Error ? error.stack : undefined;
 
     // 에러 로그 기록
     bufferLog({

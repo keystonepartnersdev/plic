@@ -10,7 +10,7 @@ import { dealsAPI } from '@/lib/api';
 import { useUserStore, useDealStore, useDiscountStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { IDeal, IDiscount } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function DealDetailPage() {
   const router = useRouter();
@@ -225,9 +225,9 @@ export default function DealDetailPage() {
       await dealsAPI.cancel(deal.did);
       alert('거래가 삭제되었습니다.');
       router.replace('/deals');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete deal error:', error);
-      alert(error.message || '거래 삭제에 실패했습니다.');
+      alert(getErrorMessage(error) || '거래 삭제에 실패했습니다.');
     } finally {
       setIsDeleting(false);
       setShowDealDeleteModal(false);

@@ -9,7 +9,7 @@ import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
 import { useUserStore, useDealStore, useDealDraftStore, useAdminUserStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 type Step = 'type' | 'amount' | 'recipient' | 'docs' | 'confirm';
 
@@ -630,9 +630,9 @@ function NewDealContent() {
       addDeal(completeDeal);
 
       router.replace(`/deals/${response.deal.did}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('거래 생성 실패:', error);
-      alert(error.message || '거래 생성에 실패했습니다.');
+      alert(getErrorMessage(error) || '거래 생성에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }

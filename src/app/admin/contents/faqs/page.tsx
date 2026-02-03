@@ -5,7 +5,7 @@ import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw } f
 import { contentAPI, adminAPI } from '@/lib/api';
 import { ContentHelper } from '@/classes';
 import { IFAQ } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function AdminFAQsPage() {
   // API 데이터 상태
@@ -34,9 +34,9 @@ export default function AdminFAQsPage() {
     try {
       const response = await contentAPI.getFaqs();
       setFaqs(response.faqs || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 목록 로드 실패:', err);
-      setError(err.message || 'FAQ 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || 'FAQ 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -93,9 +93,9 @@ export default function AdminFAQsPage() {
       }
       await fetchFaqs();
       resetForm();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 저장 실패:', err);
-      alert(err.message || 'FAQ 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || 'FAQ 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -108,9 +108,9 @@ export default function AdminFAQsPage() {
     try {
       await adminAPI.deleteFaq(faqId);
       await fetchFaqs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 삭제 실패:', err);
-      alert(err.message || 'FAQ 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || 'FAQ 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -121,9 +121,9 @@ export default function AdminFAQsPage() {
     try {
       await adminAPI.updateFaq(faq.faqId, { isVisible: !faq.isVisible });
       await fetchFaqs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 상태 변경 실패:', err);
-      alert(err.message || 'FAQ 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || 'FAQ 상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

@@ -6,7 +6,7 @@ import { User, Mail, Phone, Shield, Check } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { usersAPI } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -83,8 +83,8 @@ export default function EditProfilePage() {
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
-    } catch (err: any) {
-      setError(err.message || '저장 중 오류가 발생했습니다.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || '저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
     }

@@ -20,7 +20,7 @@ import { adminAPI } from '@/lib/api';
 import { useAdminStore } from '@/stores';
 import { IAdmin, TAdminRole, TAdminStatus } from '@/types';
 import { AdminHelper } from '@/classes';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 const ROLE_LABELS: Record<TAdminRole, string> = {
   super: '슈퍼관리자',
@@ -69,9 +69,9 @@ export default function AdminsManagePage() {
     try {
       const response = await adminAPI.getAdmins();
       setAdminList(response.admins || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('관리자 목록 로드 실패:', err);
-      setError(err.message || '관리자 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '관리자 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -112,9 +112,9 @@ export default function AdminsManagePage() {
       await adminAPI.deleteAdmin(admin.adminId);
       await fetchAdmins();
       setDeleteTarget(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('관리자 삭제 실패:', err);
-      alert(err.message || '관리자 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || '관리자 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -131,9 +131,9 @@ export default function AdminsManagePage() {
       const newStatus = admin.status === 'active' ? 'inactive' : 'active';
       await adminAPI.updateAdmin(admin.adminId, { status: newStatus });
       await fetchAdmins();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('관리자 상태 변경 실패:', err);
-      alert(err.message || '관리자 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '관리자 상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -156,9 +156,9 @@ export default function AdminsManagePage() {
       await fetchAdmins();
       setShowCreateModal(false);
       setEditingAdmin(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('관리자 저장 실패:', err);
-      alert(err.message || '관리자 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || '관리자 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
-import { authAPI, tokenManager } from '@/lib/api';
 import { useUserStore } from '@/stores';
+import { getErrorMessage } from '@/lib/utils';
+import { secureAuth } from '@/lib/auth';
+import { tokenManager } from '@/lib/api';
 
 function LoginContent() {
   const router = useRouter();
@@ -142,19 +144,16 @@ function LoginContent() {
     }
 
     try {
-      const result = await authAPI.login({ email, password });
+      // httpOnly 쿠키 기반 보안 로그인 사용
+      const result = await secureAuth.login(email, password);
 
-      // 토큰 저장
-      if (result.tokens?.accessToken && result.tokens?.refreshToken) {
-        tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-      }
-
-      // 사용자 정보 저장
+      // 토큰은 httpOnly 쿠키로 자동 저장됨
+      // 사용자 정보만 저장
       setUser(result.user);
 
       router.replace('/');
-    } catch (err: any) {
-      setError(err.message || '로그인에 실패했습니다.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || '로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }

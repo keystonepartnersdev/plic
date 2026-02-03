@@ -6,6 +6,7 @@ import {
   saveVerificationResult,
   generateVerificationKey,
 } from '@/lib/kakao';
+import { getErrorMessage } from '@/lib/utils';
 
 /**
  * 카카오 인증 콜백 처리
@@ -72,13 +73,13 @@ export async function GET(request: NextRequest) {
     response.cookies.delete('kakao_return_to');
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('카카오 콜백 처리 오류:', error);
 
     const returnTo = request.cookies.get('kakao_return_to')?.value || '/auth/signup';
     const errorUrl = new URL(returnTo, request.url);
     errorUrl.searchParams.set('error', 'callback_failed');
-    errorUrl.searchParams.set('message', error.message || '인증 처리 중 오류가 발생했습니다.');
+    errorUrl.searchParams.set('message', getErrorMessage(error) || '인증 처리 중 오류가 발생했습니다.');
 
     return NextResponse.redirect(errorUrl);
   }

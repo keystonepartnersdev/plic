@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     if (!accessToken) {
       return NextResponse.json(
-        { isLoggedIn: false, user: null },
+        { success: false, isLoggedIn: false, user: null },
         { status: 200 }
       );
     }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     if (!backendResponse.ok) {
       // 토큰 만료 등의 이유로 인증 실패
       return NextResponse.json(
-        { isLoggedIn: false, user: null },
+        { success: false, isLoggedIn: false, user: null },
         { status: 200 }
       );
     }
@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
     const data = await backendResponse.json();
 
     return NextResponse.json({
+      success: true,
       isLoggedIn: true,
-      user: data.user || data,
+      user: data.user || data.data || data,
     });
   } catch (error) {
     console.error('인증 상태 확인 에러:', error);

@@ -1,4 +1,5 @@
 'use client';
+import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -38,9 +39,9 @@ export default function AdminDealsPage() {
     try {
       const response = await adminAPI.getDeals();
       setDeals(response.deals || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('거래 목록 로드 실패:', err);
-      setError(err.message || '거래 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '거래 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }

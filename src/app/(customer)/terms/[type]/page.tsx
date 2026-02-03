@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { Header } from '@/components/common';
 import { contentAPI } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 const TERMS_TITLES: Record<string, string> = {
   service: '서비스 이용약관',
@@ -33,9 +34,9 @@ export default function TermsDetailPage({ params }: { params: Promise<{ type: st
       try {
         const response = await contentAPI.getTermsDetail(type as 'service' | 'privacy' | 'electronic' | 'marketing');
         setTerms(response.terms);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('약관 로드 실패:', err);
-        setError(err.message || '약관을 불러오는데 실패했습니다.');
+        setError(getErrorMessage(err) || '약관을 불러오는데 실패했습니다.');
       } finally {
         setLoading(false);
       }

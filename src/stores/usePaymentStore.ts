@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IPayment, TPaymentStatus } from '@/types';
+import { getErrorMessage } from '@/lib/utils';
 
 const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
@@ -79,8 +80,8 @@ export const usePaymentStore = create(
           } else {
             set({ error: data.error, isLoading: false });
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
         }
       },
 
@@ -108,8 +109,8 @@ export const usePaymentStore = create(
             set({ error: data.error, isLoading: false });
             return null;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return null;
         }
       },
@@ -139,8 +140,8 @@ export const usePaymentStore = create(
             set({ error: data.error, isLoading: false });
             return false;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return false;
         }
       },

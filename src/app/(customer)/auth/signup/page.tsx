@@ -8,7 +8,7 @@ import { Header } from '@/components/common';
 import { authAPI } from '@/lib/api';
 import { uploadFile, validateFile } from '@/lib/upload';
 import { TUserType } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 type Step = 'agreement' | 'phoneVerify' | 'info' | 'businessInfo' | 'complete';
 
@@ -487,8 +487,8 @@ function SignupContent() {
       sessionStorage.removeItem('signup_kakao_verified');
       sessionStorage.removeItem('signup_kakao_data');
       setStepState('complete'); // setStep 대신 직접 호출 (sessionStorage 저장 안함)
-    } catch (err: any) {
-      setError(err.message || '회원가입 중 오류가 발생했습니다.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || '회원가입 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }

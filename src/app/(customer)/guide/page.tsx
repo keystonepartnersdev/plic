@@ -6,17 +6,7 @@ import { ChevronDown, ChevronRight, MessageCircle, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
 import { contentAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
-
-interface IFAQ {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-  isVisible?: boolean;
-  priority?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+import { IFAQ } from '@/types';
 
 export default function GuidePage() {
   const [faqs, setFaqs] = useState<IFAQ[]>([]);
@@ -115,12 +105,12 @@ export default function GuidePage() {
           <div className="space-y-2">
             {displayFaqs.map((faq) => (
               <div
-                key={faq.id}
+                key={faq.faqId}
                 className="border border-gray-200 rounded-lg overflow-hidden"
               >
                 <button
                   onClick={() =>
-                    setExpandedFaq(expandedFaq === faq.id ? null : faq.id)
+                    setExpandedFaq(expandedFaq === faq.faqId ? null : faq.faqId)
                   }
                   className="w-full p-4 text-left flex items-start gap-3"
                 >
@@ -129,12 +119,12 @@ export default function GuidePage() {
                   <ChevronDown
                     className={cn(
                       'w-5 h-5 text-gray-400 transition-transform flex-shrink-0',
-                      expandedFaq === faq.id && 'rotate-180'
+                      expandedFaq === faq.faqId && 'rotate-180'
                     )}
                   />
                 </button>
 
-                {expandedFaq === faq.id && (
+                {expandedFaq === faq.faqId && (
                   <div className="px-4 pb-4 pt-0">
                     <div className="bg-gray-50 rounded-lg p-4 flex gap-3">
                       <span className="text-green-500 font-medium">A.</span>

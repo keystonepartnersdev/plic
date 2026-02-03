@@ -21,7 +21,7 @@ import {
 import { adminAPI } from '@/lib/api';
 import { useAdminUserStore } from '@/stores';
 import { IDiscount, IDiscountCreateInput, TDiscountType, TUserGrade, IUser } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 // 등급 라벨 맵
 const GRADE_LABELS: Record<TUserGrade, string> = {
@@ -57,9 +57,9 @@ export default function AdminCodesPage() {
     try {
       const response = await adminAPI.getDiscounts();
       setDiscounts(response.discounts || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 목록 로드 실패:', err);
-      setError(err.message || '할인 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '할인 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -100,9 +100,9 @@ export default function AdminCodesPage() {
       await adminAPI.deleteDiscount(discount.id);
       await fetchDiscounts();
       setDeleteTarget(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 삭제 실패:', err);
-      alert(err.message || '할인 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || '할인 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -113,9 +113,9 @@ export default function AdminCodesPage() {
     try {
       await adminAPI.updateDiscount(discount.id, { isActive: !discount.isActive });
       await fetchDiscounts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 상태 변경 실패:', err);
-      alert(err.message || '할인 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '할인 상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -132,9 +132,9 @@ export default function AdminCodesPage() {
       await fetchDiscounts();
       setShowCreateModal(false);
       setEditingDiscount(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 저장 실패:', err);
-      alert(err.message || '할인 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || '할인 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

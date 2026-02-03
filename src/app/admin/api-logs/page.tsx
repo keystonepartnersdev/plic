@@ -23,7 +23,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 interface ApiLog {
   logId: string;
@@ -31,8 +31,8 @@ interface ApiLog {
   endpoint: string;
   method: string;
   statusCode: number;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: Record<string, unknown>;
+  responseBody?: Record<string, unknown>;
   errorMessage?: string;
   executionTime: number;
   timestamp: string;
@@ -107,18 +107,18 @@ export default function AdminApiLogsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: any = { limit: 200 };
-      if (statusFilter !== 'all') {
+      const params: { limit: number; status?: 'error' | 'slow'; correlationId?: string } = { limit: 200 };
+      if (statusFilter === 'error' || statusFilter === 'slow') {
         params.status = statusFilter;
       }
       if (searchCorrelationId) {
         params.correlationId = searchCorrelationId;
       }
-      const response = await adminAPI.getApiLogs(params) as any;
+      const response = await adminAPI.getApiLogs(params) as ApiLogsData;
       setData(response);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('API Logs 데이터 로드 실패:', err);
-      setError(err.message || '데이터를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }

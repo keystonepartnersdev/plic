@@ -25,7 +25,7 @@ import {
 import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus, IUser } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 const statusColors: Record<string, string> = {
   blue: 'bg-blue-100 text-blue-700',
@@ -61,9 +61,9 @@ export default function AdminDealDetailPage() {
       const response = await adminAPI.getDeal(did);
       setDeal(response.deal);
       setDealUser(response.user || null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('거래 정보 로드 실패:', err);
-      setError(err.message || '거래 정보를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '거래 정보를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -148,9 +148,9 @@ export default function AdminDealDetailPage() {
         // PG 취소 성공 후 거래 상태 변경
         await adminAPI.updateDealStatus(deal.did, 'cancelled', 'PG 결제 취소 완료');
         await fetchDeal();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('PG 결제 취소 실패:', err);
-        alert(`PG 결제 취소 실패: ${err.message}\n\n수동으로 PG사에서 취소 처리가 필요합니다.`);
+        alert(`PG 결제 취소 실패: ${getErrorMessage(err)}\n\n수동으로 PG사에서 취소 처리가 필요합니다.`);
       } finally {
         setIsProcessing(false);
       }
@@ -161,9 +161,9 @@ export default function AdminDealDetailPage() {
     try {
       await adminAPI.updateDealStatus(deal.did, newStatus);
       await fetchDeal(); // 데이터 다시 로드
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('거래 상태 변경 실패:', err);
-      alert(err.message || '거래 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '거래 상태 변경에 실패했습니다.');
     } finally {
       setIsProcessing(false);
     }
@@ -192,9 +192,9 @@ export default function AdminDealDetailPage() {
       setShowRevisionConfirmModal(false);
       setSelectedRevisionType(null);
       setRevisionMemo('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('보완 요청 실패:', err);
-      alert(err.message || '보완 요청에 실패했습니다.');
+      alert(getErrorMessage(err) || '보완 요청에 실패했습니다.');
     } finally {
       setIsProcessing(false);
     }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getErrorMessage } from '@/lib/utils';
 
 // FAQ 데이터 (FAQ_CONTENT.md 기반)
 const faqData = [
@@ -344,10 +345,10 @@ export async function POST(request: NextRequest) {
             error: errorData.message || `HTTP ${response.status}`,
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         results.failed.push({
           question: faq.question,
-          error: error.message,
+          error: getErrorMessage(error),
         });
       }
     }
@@ -358,10 +359,10 @@ export async function POST(request: NextRequest) {
       success: results.success.length,
       failed: results.failed,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('FAQ seed error:', error);
     return NextResponse.json(
-      { error: error.message || 'FAQ 시드 중 오류가 발생했습니다.' },
+      { error: getErrorMessage(error) || 'FAQ 시드 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

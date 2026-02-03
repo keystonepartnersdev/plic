@@ -18,7 +18,7 @@ import { Header } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
 import { usersAPI, tokenManager } from '@/lib/api';
 import { UserHelper } from '@/classes';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function MyPage() {
   const router = useRouter();
@@ -26,7 +26,12 @@ export default function MyPage() {
   const { deals, clearDeals } = useDealStore();
 
   const [mounted, setMounted] = useState(false);
-  const [gradeInfo, setGradeInfo] = useState<any>(null);
+  const [gradeInfo, setGradeInfo] = useState<{
+    grade: { code: string; name: string; isManual: boolean };
+    fee: { rate: number; rateText: string };
+    limit: { monthly: number; used: number; remaining: number; usagePercent: number };
+    stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,10 +56,10 @@ export default function MyPage() {
           setUser(meData);
         }
         setGradeInfo(gradeData);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('사용자 정보 로드 실패:', error);
         // 401 에러 시 로그아웃 처리
-        if (error.message?.includes('401') || error.message?.includes('인증')) {
+        if (getErrorMessage(error)?.includes('401') || getErrorMessage(error)?.includes('인증')) {
           tokenManager.clearTokens();
           logout();
           router.replace('/auth/login');

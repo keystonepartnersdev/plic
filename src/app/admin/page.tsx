@@ -1,4 +1,5 @@
 'use client';
+import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
 import { Users, FileText, CreditCard, TrendingUp, RefreshCw } from 'lucide-react';
@@ -22,9 +23,9 @@ export default function AdminDashboardPage() {
       ]);
       setUsers(usersResponse.users || []);
       setDeals(dealsResponse.deals || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('대시보드 데이터 로드 실패:', err);
-      setError(err.message || '데이터를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }

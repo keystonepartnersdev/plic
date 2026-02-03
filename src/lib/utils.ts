@@ -134,3 +134,17 @@ export function base64ToFile(base64Data: string, fileName: string, mimeType: str
   }
   return new File([u8arr], fileName, { type: mimeType });
 }
+
+/**
+ * unknown 타입 에러에서 메시지 추출
+ * TypeScript strict 모드 호환
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return '알 수 없는 오류가 발생했습니다.';
+}

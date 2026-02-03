@@ -1,4 +1,5 @@
 'use client';
+import { getErrorMessage } from '@/lib/utils';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -29,9 +30,9 @@ export default function AdminLoginPage() {
       setAdminFromResponse(response.admin, response.token);
 
       router.replace('/admin');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('로그인 실패:', err);
-      setError(err.message || '로그인에 실패했습니다.');
+      setError(getErrorMessage(err) || '로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }

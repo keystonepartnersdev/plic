@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, Pin, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { contentAPI, adminAPI } from '@/lib/api';
 import { INotice } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function AdminNoticesPage() {
   // API 데이터 상태
@@ -29,9 +29,9 @@ export default function AdminNoticesPage() {
     try {
       const response = await contentAPI.getNotices();
       setNotices(response.notices || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('공지사항 목록 로드 실패:', err);
-      setError(err.message || '공지사항 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '공지사항 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -81,9 +81,9 @@ export default function AdminNoticesPage() {
       }
       await fetchNotices();
       resetForm();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('공지사항 저장 실패:', err);
-      alert(err.message || '공지사항 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || '공지사항 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -96,9 +96,9 @@ export default function AdminNoticesPage() {
     try {
       await adminAPI.deleteNotice(noticeId);
       await fetchNotices();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('공지사항 삭제 실패:', err);
-      alert(err.message || '공지사항 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || '공지사항 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -109,9 +109,9 @@ export default function AdminNoticesPage() {
     try {
       await adminAPI.updateNotice(notice.noticeId, { isVisible: !notice.isVisible });
       await fetchNotices();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('공지사항 상태 변경 실패:', err);
-      alert(err.message || '공지사항 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '공지사항 상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -122,9 +122,9 @@ export default function AdminNoticesPage() {
     try {
       await adminAPI.updateNotice(notice.noticeId, { isPinned: !notice.isPinned });
       await fetchNotices();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('공지사항 고정 변경 실패:', err);
-      alert(err.message || '공지사항 고정 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '공지사항 고정 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

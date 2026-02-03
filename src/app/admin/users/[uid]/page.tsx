@@ -30,7 +30,7 @@ import { useSettingsStore } from '@/stores';
 import { adminAPI } from '@/lib/api';
 import { TUserGrade, TUserStatus, IUserHistory, IDeal, TDealStatus, IUser } from '@/types';
 import { DealHelper } from '@/classes';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 const GRADE_LABELS: Record<TUserGrade, string> = {
   basic: '베이직',
@@ -136,9 +136,9 @@ export default function AdminUserDetailPage() {
         email: response.user.email || '',
         phone: response.user.phone || '',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('회원 정보 로드 실패:', err);
-      setError(err.message || '회원 정보를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '회원 정보를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -205,9 +205,9 @@ export default function AdminUserDetailPage() {
       // 데이터 다시 로드
       await fetchUser();
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('회원 정보 수정 실패:', err);
-      alert(err.message || '회원 정보 수정에 실패했습니다.');
+      alert(getErrorMessage(err) || '회원 정보 수정에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -227,9 +227,9 @@ export default function AdminUserDetailPage() {
       await adminAPI.updateUserStatus(user.uid, 'withdrawn', '관리자 회원탈퇴 처리');
       await fetchUser();
       setShowWithdrawModal(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('회원 탈퇴 처리 실패:', err);
-      alert(err.message || '회원 탈퇴 처리에 실패했습니다.');
+      alert(getErrorMessage(err) || '회원 탈퇴 처리에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -241,9 +241,9 @@ export default function AdminUserDetailPage() {
       await adminAPI.updateBusinessVerification(user.uid, 'verified');
       await fetchUser();
       alert('사업자 인증이 승인되었습니다.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('사업자 승인 실패:', err);
-      alert(err.message || '사업자 승인에 실패했습니다.');
+      alert(getErrorMessage(err) || '사업자 승인에 실패했습니다.');
     } finally {
       setIsApprovingBusiness(false);
     }
@@ -261,9 +261,9 @@ export default function AdminUserDetailPage() {
       setShowRejectModal(false);
       setRejectMemo('');
       alert('사업자 인증이 거절되었습니다.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('사업자 거절 실패:', err);
-      alert(err.message || '사업자 거절에 실패했습니다.');
+      alert(getErrorMessage(err) || '사업자 거절에 실패했습니다.');
     } finally {
       setIsApprovingBusiness(false);
     }
@@ -282,9 +282,9 @@ export default function AdminUserDetailPage() {
       setShowStatusModal(false);
       setStatusChangeReason('');
       alert(`회원 상태가 "${STATUS_LABELS[newStatus]}"(으)로 변경되었습니다.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('상태 변경 실패:', err);
-      alert(err.message || '상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }

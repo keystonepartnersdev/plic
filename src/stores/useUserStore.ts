@@ -4,11 +4,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IUser, TUserGrade, IGradeChangeResult } from '@/types';
 import { IRegisteredCard } from '@/types/payment';
-import { authAPI, usersAPI, tokenManager } from '@/lib/api';
+import { usersAPI, authAPI, tokenManager } from '@/lib/api';
 import {
   processAutoGradeChange as processGradeChange,
   resetMonthlyUsage as resetUsage,
 } from '@/lib/gradeUtils';
+import { getErrorMessage } from '@/lib/utils';
+import { secureAuth } from '@/lib/auth';
 
 const sampleUsers: IUser[] = [];
 
@@ -70,7 +72,8 @@ export const useUserStore = create(
       login: async (email, password) => {
         set({ isLoading: true, apiError: null });
         try {
-          const result = await authAPI.login({ email, password });
+          // httpOnly 쿠키 기반 보안 로그인 사용
+          const result = await secureAuth.login(email, password);
 
           // API에서 받은 사용자 정보로 상태 업데이트
           const user: IUser = {
@@ -81,7 +84,7 @@ export const useUserStore = create(
             userType: result.user.userType || 'personal',
             businessInfo: result.user.businessInfo,
             authType: result.user.authType || 'direct',
-            socialProvider: result.user.socialProvider || 'none',
+            socialProvider: result.user.socialProvider || null,
             isVerified: result.user.isVerified ?? true,
             verifiedAt: result.user.verifiedAt,
             status: result.user.status || 'active',
@@ -115,23 +118,25 @@ export const useUserStore = create(
             isLoading: false,
             users: updatedUsers,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '로그인에 실패했습니다.',
+            apiError: getErrorMessage(error) || '로그인에 실패했습니다.',
           });
           throw error;
         }
       },
 
       fetchCurrentUser: async () => {
-        if (!tokenManager.getAccessToken()) {
-          return;
-        }
-
         set({ isLoading: true, apiError: null });
         try {
-          const userData = await usersAPI.getMe();
+          // httpOnly 쿠키로 인증 상태 확인
+          const meResult = await secureAuth.getMe();
+          if (!meResult.success) {
+            set({ isLoading: false });
+            return;
+          }
+          const userData = meResult.user;
 
           const user: IUser = {
             uid: userData.uid,
@@ -141,7 +146,7 @@ export const useUserStore = create(
             userType: userData.userType || 'personal',
             businessInfo: userData.businessInfo,
             authType: userData.authType || 'direct',
-            socialProvider: userData.socialProvider || 'none',
+            socialProvider: userData.socialProvider || null,
             isVerified: userData.isVerified ?? true,
             verifiedAt: userData.verifiedAt,
             status: userData.status || 'active',
@@ -175,10 +180,10 @@ export const useUserStore = create(
             isLoading: false,
             users: updatedUsers,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '사용자 정보를 불러오는데 실패했습니다.',
+            apiError: getErrorMessage(error) || '사용자 정보를 불러오는데 실패했습니다.',
           });
         }
       },
@@ -194,8 +199,9 @@ export const useUserStore = create(
           });
 
           // 로컬 상태 업데이트
-          const updatedUser = get().currentUser
-            ? { ...get().currentUser, ...updates, updatedAt: new Date().toISOString() }
+          const currentUser = get().currentUser;
+          const updatedUser: IUser | null = currentUser
+            ? { ...currentUser, ...updates, updatedAt: new Date().toISOString() } as IUser
             : null;
 
           let updatedUsers = get().users;
@@ -212,10 +218,10 @@ export const useUserStore = create(
             users: updatedUsers,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '사용자 정보 업데이트에 실패했습니다.',
+            apiError: getErrorMessage(error) || '사용자 정보 업데이트에 실패했습니다.',
           });
           throw error;
         }

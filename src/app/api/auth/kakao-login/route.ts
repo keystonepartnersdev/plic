@@ -75,14 +75,14 @@ export async function POST(request: NextRequest) {
       // 백엔드 응답 그대로 반환
       return NextResponse.json(kakaoLoginData, { status: kakaoLoginRes.status });
 
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       console.error('[API] Kakao login fetch error after retries:', fetchError);
       return NextResponse.json(
         { success: false, error: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' },
         { status: 503 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] /api/auth/kakao-login error:', error);
     return NextResponse.json(
       { success: false, error: '서버 오류가 발생했습니다.' },

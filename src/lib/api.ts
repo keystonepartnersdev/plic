@@ -2,10 +2,13 @@
 // Phase 2.1: 환경 설정 중앙화 - API_BASE_URL을 config에서 가져옴
 
 import { API_CONFIG } from './config';
+import { IUser, IDeal, IHomeBanner, INotice, IFAQ, IDiscount, IAdmin } from '@/types';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
+const IS_DEV = process.env.NODE_ENV === 'development';
 
-// 토큰 저장소
+// 토큰 저장소 (레거시 호환용 - httpOnly 쿠키로 전환됨)
+// 어드민 토큰만 localStorage 사용 (별도 인증 체계)
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 
@@ -19,8 +22,8 @@ interface ApiLogEntry {
   endpoint: string;
   method: string;
   statusCode: number;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: unknown;
+  responseBody?: unknown;
   errorMessage?: string;
   executionTime: number;
   timestamp: string;
@@ -124,26 +127,19 @@ const getActionDescription = (endpoint: string, method: string): string => {
 const sendLog = (log: ApiLogEntry) => {
   if (typeof window === 'undefined') return;
 
-  console.log('[API Log] 전송 시도:', log.endpoint, log.method, log.statusCode);
-
   // fetch 사용 (fire-and-forget)
   fetch(`${API_BASE_URL}/tracking/api-log`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ logs: [log] }),
     keepalive: true,
-  }).then(res => {
-    if (!res.ok) {
-      console.error('[API Log] 전송 실패:', res.status, res.statusText);
-    }
-  }).catch((err) => {
-    console.error('[API Log] 전송 에러:', err);
+  }).catch(() => {
+    // 에러 무시 (fire-and-forget)
   });
 };
 
 // 로그 전송 (action 설명 추가)
 const queueLog = (log: ApiLogEntry) => {
-  console.log('[API queueLog]', log.endpoint, log.method);
   const action = getActionDescription(log.endpoint, log.method);
   sendLog({ ...log, action });
 };
@@ -163,35 +159,28 @@ const getCurrentUserId = (): string | undefined => {
   return undefined;
 };
 
-// 토큰 관리
+// 토큰 관리 (레거시 호환용 - 사용자 토큰은 httpOnly 쿠키로 전환됨)
+// 참고: 사용자 인증은 secureAuth (/lib/auth.ts) 사용 권장
 export const tokenManager = {
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   setTokens: (access: string, refresh: string) => {
     accessToken = access;
     refreshToken = refresh;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plic_access_token', access);
-      localStorage.setItem('plic_refresh_token', refresh);
-    }
+    // localStorage 저장 제거 - httpOnly 쿠키 사용
+    console.warn('[tokenManager] setTokens is deprecated. Use secureAuth instead.');
   },
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   getAccessToken: () => {
-    if (!accessToken && typeof window !== 'undefined') {
-      accessToken = localStorage.getItem('plic_access_token');
-    }
     return accessToken;
   },
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   getRefreshToken: () => {
-    if (!refreshToken && typeof window !== 'undefined') {
-      refreshToken = localStorage.getItem('plic_refresh_token');
-    }
     return refreshToken;
   },
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   clearTokens: () => {
     accessToken = null;
     refreshToken = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('plic_access_token');
-      localStorage.removeItem('plic_refresh_token');
-    }
   },
 };
 
@@ -201,7 +190,6 @@ async function request<T>(
   options: RequestInit = {},
   skipLogging = false
 ): Promise<T> {
-  console.log('[API Request]', options.method || 'GET', endpoint);
   const url = `${API_BASE_URL}${endpoint}`;
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
@@ -218,7 +206,7 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  let requestBody: any;
+  let requestBody: unknown;
   try {
     requestBody = options.body ? JSON.parse(options.body as string) : undefined;
   } catch {
@@ -226,48 +214,61 @@ async function request<T>(
   }
 
   let response: Response;
-  let data: any;
+  let data: { success: boolean; data?: T; error?: string; message?: string };
 
   try {
     response = await fetch(url, {
       ...options,
       headers,
+      credentials: 'include', // httpOnly 쿠키 자동 전송
     });
 
     data = await response.json();
 
-    // 토큰 만료 시 갱신 시도
-    if (response.status === 401 && tokenManager.getRefreshToken()) {
-      const refreshed = await authAPI.refresh();
-      if (refreshed) {
-        headers['Authorization'] = `Bearer ${tokenManager.getAccessToken()}`;
-        const retryResponse = await fetch(url, { ...options, headers });
-        const retryData = await retryResponse.json();
+    // 토큰 만료 시 갱신 시도 (httpOnly 쿠키 기반)
+    if (response.status === 401) {
+      try {
+        // httpOnly 쿠키 기반 토큰 갱신
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        });
 
-        // 로그 기록 (재시도)
-        if (!skipLogging && !endpoint.includes('/tracking/')) {
-          queueLog({
-            correlationId,
-            endpoint,
-            method,
-            statusCode: retryResponse.status,
-            requestBody,
-            responseBody: retryResponse.status >= 400 ? retryData : undefined,
-            errorMessage: !retryResponse.ok ? retryData?.error : undefined,
-            executionTime: Date.now() - startTime,
-            timestamp: new Date().toISOString(),
-            userId: getCurrentUserId(),
-            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        if (refreshResponse.ok) {
+          // 쿠키가 자동으로 갱신되므로 재요청만 수행
+          const retryResponse = await fetch(url, {
+            ...options,
+            headers,
+            credentials: 'include',
           });
-        }
+          const retryData = await retryResponse.json();
 
-        if (!retryResponse.ok || !retryData.success) {
-          throw new Error(retryData.error || '요청 처리 중 오류가 발생했습니다.');
+          // 로그 기록 (재시도)
+          if (!skipLogging && !endpoint.includes('/tracking/')) {
+            queueLog({
+              correlationId,
+              endpoint,
+              method,
+              statusCode: retryResponse.status,
+              requestBody,
+              responseBody: retryResponse.status >= 400 ? retryData : undefined,
+              errorMessage: !retryResponse.ok ? retryData?.error : undefined,
+              executionTime: Date.now() - startTime,
+              timestamp: new Date().toISOString(),
+              userId: getCurrentUserId(),
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+            });
+          }
+
+          if (!retryResponse.ok || !retryData.success) {
+            throw new Error(retryData.error || '요청 처리 중 오류가 발생했습니다.');
+          }
+          return retryData.data as T;
+        } else {
+          // 토큰 갱신 실패
+          throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
         }
-        return retryData.data;
-      } else {
-        // 토큰 갱신 실패 시 토큰 삭제
-        tokenManager.clearTokens();
+      } catch {
         throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
       }
     }
@@ -307,8 +308,9 @@ async function request<T>(
       throw new Error(data.error || '요청 처리 중 오류가 발생했습니다.');
     }
 
-    return data.data;
-  } catch (error: any) {
+    return data.data as T;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     // 네트워크 에러 등 로깅
     if (!skipLogging && !endpoint.includes('/tracking/')) {
       queueLog({
@@ -317,7 +319,7 @@ async function request<T>(
         method,
         statusCode: 0,
         requestBody,
-        errorMessage: error.message,
+        errorMessage,
         executionTime: Date.now() - startTime,
         timestamp: new Date().toISOString(),
         userId: getCurrentUserId(),
@@ -368,7 +370,7 @@ export const authAPI = {
 
   login: async (data: { email: string; password: string }) => {
     const result = await request<{
-      user: any;
+      user: IUser;
       tokens: {
         accessToken: string;
         refreshToken: string;
@@ -379,7 +381,7 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    
+
     tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
     return result;
   },
@@ -416,10 +418,10 @@ export const authAPI = {
 // Users API
 // ============================================
 export const usersAPI = {
-  getMe: () => request<any>('/users/me'),
+  getMe: () => request<IUser>('/users/me'),
 
   updateMe: (data: { name?: string; phone?: string; agreements?: { marketing?: boolean } }) =>
-    request<{ message: string; user: any }>('/users/me', {
+    request<{ message: string; user: IUser }>('/users/me', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -443,10 +445,10 @@ export const dealsAPI = {
     if (params?.status) query.append('status', params.status);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    return request<{ deals: any[]; total: number }>(`/deals${queryString ? `?${queryString}` : ''}`);
+    return request<{ deals: IDeal[]; total: number }>(`/deals${queryString ? `?${queryString}` : ''}`);
   },
 
-  get: (did: string) => request<{ deal: any }>(`/deals/${did}`),
+  get: (did: string) => request<{ deal: IDeal }>(`/deals/${did}`),
 
   create: (data: {
     dealName: string;
@@ -455,13 +457,13 @@ export const dealsAPI = {
     recipient: { bank: string; accountNumber: string; accountHolder: string };
     senderName: string;
     attachments?: string[];
-  }) => request<{ message: string; deal: any }>('/deals', {
+  }) => request<{ message: string; deal: IDeal }>('/deals', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
 
-  update: (did: string, data: any) =>
-    request<{ message: string; deal: any }>(`/deals/${did}`, {
+  update: (did: string, data: Partial<IDeal>) =>
+    request<{ message: string; deal: IDeal }>(`/deals/${did}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -469,7 +471,7 @@ export const dealsAPI = {
   cancel: (did: string) => request<{ message: string; did: string }>(`/deals/${did}`, { method: 'DELETE' }),
 
   applyDiscount: (did: string, discountId: string) =>
-    request<{ message: string; deal: any }>(`/deals/${did}/discount`, {
+    request<{ message: string; deal: IDeal }>(`/deals/${did}/discount`, {
       method: 'POST',
       body: JSON.stringify({ discountId }),
     }),
@@ -480,30 +482,30 @@ export const dealsAPI = {
 // ============================================
 export const discountsAPI = {
   validate: (data: { code: string; amount: number }) =>
-    request<{ valid: boolean; discount: any }>('/discounts/validate', {
+    request<{ valid: boolean; discount: IDiscount }>('/discounts/validate', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  getCoupons: () => request<{ coupons: any[]; total: number }>('/discounts/coupons'),
+  getCoupons: () => request<{ coupons: IDiscount[]; total: number }>('/discounts/coupons'),
 };
 
 // ============================================
 // Content API
 // ============================================
 export const contentAPI = {
-  getBanners: () => request<{ banners: any[] }>('/content/banners'),
+  getBanners: () => request<{ banners: IHomeBanner[] }>('/content/banners'),
 
   getNotices: (limit?: number) => {
     const query = limit ? `?limit=${limit}` : '';
-    return request<{ notices: any[]; total: number }>(`/content/notices${query}`);
+    return request<{ notices: INotice[]; total: number }>(`/content/notices${query}`);
   },
 
-  getNoticeDetail: (id: string) => request<{ notice: any }>(`/content/notices/${id}`),
+  getNoticeDetail: (id: string) => request<{ notice: INotice }>(`/content/notices/${id}`),
 
   getFaqs: (category?: string) => {
     const query = category ? `?category=${category}` : '';
-    return request<{ faqs: any[]; grouped: Record<string, any[]>; total: number }>(`/content/faqs${query}`);
+    return request<{ faqs: IFAQ[]; grouped: Record<string, IFAQ[]>; total: number }>(`/content/faqs${query}`);
   },
 
   // 약관 조회
@@ -548,7 +550,7 @@ export const uploadsAPI = {
 // ============================================
 export const adminAPI = {
   login: async (data: { email: string; password: string }) => {
-    const result = await request<{ admin: any; token: string }>('/admin/auth/login', {
+    const result = await request<{ admin: IAdmin; token: string }>('/admin/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -566,11 +568,11 @@ export const adminAPI = {
     if (params?.search) query.append('search', params.search);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    
-    return requestWithAdminToken<{ users: any[]; total: number }>(`/admin/users${queryString ? `?${queryString}` : ''}`);
+
+    return requestWithAdminToken<{ users: IUser[]; total: number }>(`/admin/users${queryString ? `?${queryString}` : ''}`);
   },
 
-  getUser: (uid: string) => requestWithAdminToken<{ user: any; recentDeals: any[] }>(`/admin/users/${uid}`),
+  getUser: (uid: string) => requestWithAdminToken<{ user: IUser; recentDeals: IDeal[] }>(`/admin/users/${uid}`),
 
   updateUserStatus: (uid: string, status: string, reason?: string) =>
     requestWithAdminToken<{ message: string }>(`/admin/users/${uid}/status`, {
@@ -591,11 +593,11 @@ export const adminAPI = {
     if (params?.uid) query.append('uid', params.uid);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    
-    return requestWithAdminToken<{ deals: any[]; total: number }>(`/admin/deals${queryString ? `?${queryString}` : ''}`);
+
+    return requestWithAdminToken<{ deals: IDeal[]; total: number }>(`/admin/deals${queryString ? `?${queryString}` : ''}`);
   },
 
-  getDeal: (did: string) => requestWithAdminToken<{ deal: any; user: any }>(`/admin/deals/${did}`),
+  getDeal: (did: string) => requestWithAdminToken<{ deal: IDeal; user: IUser }>(`/admin/deals/${did}`),
 
   updateDealStatus: (did: string, status: string, reason?: string) =>
     requestWithAdminToken<{ message: string }>(`/admin/deals/${did}/status`, {
@@ -617,7 +619,7 @@ export const adminAPI = {
     linkUrl?: string;
     priority: number;
     isVisible: boolean;
-  }) => requestWithAdminToken<{ message: string; banner: any }>('/admin/banners', {
+  }) => requestWithAdminToken<{ message: string; banner: IHomeBanner }>('/admin/banners', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -628,7 +630,7 @@ export const adminAPI = {
     linkUrl: string;
     priority: number;
     isVisible: boolean;
-  }>) => requestWithAdminToken<{ message: string; banner: any }>(`/admin/banners/${id}`, {
+  }>) => requestWithAdminToken<{ message: string; banner: IHomeBanner }>(`/admin/banners/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -645,7 +647,7 @@ export const adminAPI = {
     category: string;
     isPinned?: boolean;
     isVisible?: boolean;
-  }) => requestWithAdminToken<{ message: string; notice: any }>('/admin/notices', {
+  }) => requestWithAdminToken<{ message: string; notice: INotice }>('/admin/notices', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -656,7 +658,7 @@ export const adminAPI = {
     category: string;
     isPinned: boolean;
     isVisible: boolean;
-  }>) => requestWithAdminToken<{ message: string; notice: any }>(`/admin/notices/${id}`, {
+  }>) => requestWithAdminToken<{ message: string; notice: INotice }>(`/admin/notices/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -674,7 +676,7 @@ export const adminAPI = {
     priority?: number;
     isVisible?: boolean;
     isHomeFeatured?: boolean;
-  }) => requestWithAdminToken<{ message: string; faq: any }>('/admin/faqs', {
+  }) => requestWithAdminToken<{ message: string; faq: IFAQ }>('/admin/faqs', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -686,7 +688,7 @@ export const adminAPI = {
     priority: number;
     isVisible: boolean;
     isHomeFeatured: boolean;
-  }>) => requestWithAdminToken<{ message: string; faq: any }>(`/admin/faqs/${id}`, {
+  }>) => requestWithAdminToken<{ message: string; faq: IFAQ }>(`/admin/faqs/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -697,9 +699,9 @@ export const adminAPI = {
     }),
 
   // 관리자 계정 관리
-  getAdmins: () => requestWithAdminToken<{ admins: any[]; count: number }>('/admin/admins'),
+  getAdmins: () => requestWithAdminToken<{ admins: IAdmin[]; count: number }>('/admin/admins'),
 
-  getAdmin: (adminId: string) => requestWithAdminToken<{ admin: any }>(`/admin/admins/${adminId}`),
+  getAdmin: (adminId: string) => requestWithAdminToken<{ admin: IAdmin }>(`/admin/admins/${adminId}`),
 
   createAdmin: (data: {
     email: string;
@@ -707,7 +709,7 @@ export const adminAPI = {
     phone?: string;
     role: 'super' | 'operator' | 'cs';
     password: string;
-  }) => requestWithAdminToken<{ message: string; admin: any }>('/admin/admins', {
+  }) => requestWithAdminToken<{ message: string; admin: IAdmin }>('/admin/admins', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -719,7 +721,7 @@ export const adminAPI = {
     status: 'active' | 'inactive' | 'suspended';
     password: string;
     isLocked: boolean;
-  }>) => requestWithAdminToken<{ message: string; admin: any }>(`/admin/admins/${adminId}`, {
+  }>) => requestWithAdminToken<{ message: string; admin: IAdmin }>(`/admin/admins/${adminId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -732,11 +734,11 @@ export const adminAPI = {
   // 할인코드/쿠폰 관리
   getDiscounts: (type?: 'code' | 'coupon') => {
     const query = type ? `?type=${type}` : '';
-    return requestWithAdminToken<{ discounts: any[]; count: number }>(`/admin/discounts${query}`);
+    return requestWithAdminToken<{ discounts: IDiscount[]; count: number }>(`/admin/discounts${query}`);
   },
 
   getDiscount: (discountId: string) =>
-    requestWithAdminToken<{ discount: any }>(`/admin/discounts/${discountId}`),
+    requestWithAdminToken<{ discount: IDiscount }>(`/admin/discounts/${discountId}`),
 
   createDiscount: (data: {
     name: string;
@@ -753,7 +755,7 @@ export const adminAPI = {
     allowedGrades?: string[];
     targetGrades?: string[];
     targetUserIds?: string[];
-  }) => requestWithAdminToken<{ message: string; discount: any }>('/admin/discounts', {
+  }) => requestWithAdminToken<{ message: string; discount: IDiscount }>('/admin/discounts', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -773,7 +775,7 @@ export const adminAPI = {
     allowedGrades: string[];
     targetGrades: string[];
     targetUserIds: string[];
-  }>) => requestWithAdminToken<{ message: string; discount: any }>(`/admin/discounts/${discountId}`, {
+  }>) => requestWithAdminToken<{ message: string; discount: IDiscount }>(`/admin/discounts/${discountId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -821,15 +823,15 @@ export const adminAPI = {
         endpoint: string;
         method: string;
         statusCode: number;
-        requestBody?: any;
-        responseBody?: any;
+        requestBody?: unknown;
+        responseBody?: unknown;
         errorMessage?: string;
         executionTime: number;
         timestamp: string;
         userId?: string;
         level: 'INFO' | 'WARN' | 'ERROR';
       }>;
-      log?: any;
+      log?: ApiLogEntry;
       stats: {
         total: number;
         success: number;
@@ -868,7 +870,7 @@ export const adminAPI = {
     content: string;
     version?: string;
     effectiveDate?: string;
-  }) => requestWithAdminToken<{ message: string; terms: any }>(`/admin/terms/${type}`, {
+  }) => requestWithAdminToken<{ message: string; terms: { type: string; title: string; content: string; version: string; effectiveDate: string; updatedAt?: string; createdAt?: string; } }>(`/admin/terms/${type}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -892,7 +894,7 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
     headers['Authorization'] = `Bearer ${adminToken}`;
   }
 
-  let requestBody: any;
+  let requestBody: unknown;
   try {
     requestBody = options.body ? JSON.parse(options.body as string) : undefined;
   } catch {
@@ -901,7 +903,7 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
 
   try {
     const response = await fetch(url, { ...options, headers });
-    const data = await response.json();
+    const data: { success: boolean; data?: T; error?: string } = await response.json();
 
     // 관리자 API 로그 기록 (tracking 엔드포인트 제외)
     if (!endpoint.includes('/tracking/') && !endpoint.includes('/api-logs')) {
@@ -934,8 +936,9 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
       throw new Error(data.error || '요청 처리 중 오류가 발생했습니다.');
     }
 
-    return data.data;
-  } catch (error: any) {
+    return data.data as T;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     // 에러 로깅
     if (!endpoint.includes('/tracking/') && !endpoint.includes('/api-logs')) {
       queueLog({
@@ -944,7 +947,7 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
         method,
         statusCode: 0,
         requestBody,
-        errorMessage: error.message,
+        errorMessage,
         executionTime: Date.now() - startTime,
         timestamp: new Date().toISOString(),
         userId: 'admin',

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FileText, Edit, Check, ChevronRight } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 interface Terms {
   type: string;
@@ -34,7 +34,7 @@ export default function AdminTermsPage() {
     try {
       const response = await adminAPI.getTerms();
       setTerms(response.terms);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('약관 로드 실패:', error);
     } finally {
       setLoading(false);
@@ -56,7 +56,7 @@ export default function AdminTermsPage() {
     setMessage('');
 
     try {
-      await adminAPI.updateTerms(selectedTerms.type as any, {
+      await adminAPI.updateTerms(selectedTerms.type as 'service' | 'privacy' | 'electronic' | 'marketing', {
         content: editContent,
         version: editVersion,
         effectiveDate: editEffectiveDate,
@@ -72,8 +72,8 @@ export default function AdminTermsPage() {
         version: editVersion,
         effectiveDate: editEffectiveDate,
       } : null);
-    } catch (error: any) {
-      setMessage(`저장 실패: ${error.message}`);
+    } catch (error: unknown) {
+      setMessage(`저장 실패: ${getErrorMessage(error)}`);
     } finally {
       setSaving(false);
     }

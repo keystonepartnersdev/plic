@@ -17,8 +17,9 @@ import {
   Building,
   Wallet,
   BarChart3,
+  LucideIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 // API 기본 URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
@@ -171,9 +172,9 @@ export default function AdminAnalyticsPage() {
       } else {
         throw new Error(result.error || '데이터 로드 실패');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Business Analytics 로드 실패:', err);
-      setError(err.message || '데이터를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -601,7 +602,7 @@ function SummaryCard({
   label: string;
   value: number | string;
   subLabel: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   urgent?: boolean;
   isAmount?: boolean;
@@ -683,7 +684,7 @@ function StatusBox({
   label: string;
   count: number;
   color: string;
-  icon: any;
+  icon: LucideIcon;
 }) {
   return (
     <div className={cn('p-3 rounded-lg text-center', color)}>

@@ -5,8 +5,24 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IDealDraft, TDealStep, TDealType, IDraftDocument } from '@/types';
 import { API_CONFIG } from '@/lib/config';
+import { getErrorMessage } from '@/lib/utils';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
+
+// API 응답 타입
+interface IApiDraft {
+  draftId: string;
+  uid: string;
+  dealType: TDealType;
+  amount: number;
+  recipientBank?: string;
+  recipientAccount?: string;
+  recipientName?: string;
+  senderName?: string;
+  step: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface IDealDraftState {
   // 현재 작성중인 송금
@@ -141,7 +157,7 @@ export const useDealDraftStore = create(
               4: 'docs',
               5: 'confirm',
             };
-            const drafts: IDealDraft[] = (data.data.drafts || []).map((d: any) => ({
+            const drafts: IDealDraft[] = (data.data.drafts || []).map((d: IApiDraft) => ({
               id: d.draftId,
               uid: d.uid,
               dealType: d.dealType,
@@ -161,8 +177,8 @@ export const useDealDraftStore = create(
           } else {
             set({ error: data.error, isLoading: false });
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
         }
       },
 
@@ -232,8 +248,8 @@ export const useDealDraftStore = create(
             set({ error: data.error, isLoading: false });
             return false;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return false;
         }
       },
@@ -261,8 +277,8 @@ export const useDealDraftStore = create(
             set({ error: data.error, isLoading: false });
             return false;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return false;
         }
       },

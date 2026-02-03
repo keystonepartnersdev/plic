@@ -1,4 +1,5 @@
 'use client';
+import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -26,9 +27,9 @@ export default function AdminUsersPage() {
     try {
       const response = await adminAPI.getUsers();
       setUsers(response.users || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('회원 목록 로드 실패:', err);
-      setError(err.message || '회원 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '회원 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }

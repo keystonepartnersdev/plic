@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IDiscount } from '@/types';
 import { discountsAPI } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 interface IDiscountState {
   discounts: IDiscount[];
@@ -48,7 +49,7 @@ export const useDiscountStore = create(
         set({ isLoading: true, apiError: null });
         try {
           const result = await discountsAPI.getCoupons();
-          const coupons = (result.coupons || []).map((coupon: any) => ({
+          const coupons = (result.coupons || []).map((coupon: Omit<IDiscount, 'type'>) => ({
             ...coupon,
             type: 'coupon' as const,
           }));
@@ -56,10 +57,10 @@ export const useDiscountStore = create(
             userCoupons: coupons,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '쿠폰 목록을 불러오는데 실패했습니다.',
+            apiError: getErrorMessage(error) || '쿠폰 목록을 불러오는데 실패했습니다.',
           });
         }
       },
@@ -77,10 +78,10 @@ export const useDiscountStore = create(
             } as IDiscount;
           }
           return null;
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '할인코드 검증에 실패했습니다.',
+            apiError: getErrorMessage(error) || '할인코드 검증에 실패했습니다.',
           });
           return null;
         }

@@ -4,7 +4,21 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { IAdmin, IAdminSession, TAdminRole } from '@/types';
+import { IAdmin, IAdminSession, TAdminRole, TAdminStatus } from '@/types';
+
+// API 응답 타입
+interface IAdminApiResponse {
+  adminId?: string;
+  id?: string;
+  email: string;
+  name?: string;
+  role?: TAdminRole;
+  status?: TAdminStatus;
+  isMaster?: boolean;
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+}
 
 interface IAdminState {
   admin: IAdminSession | null;
@@ -16,7 +30,7 @@ interface IAdminState {
   login: (session: IAdminSession) => void;
   logout: () => void;
   setAdmin: (admin: IAdmin | null) => void;
-  setAdminFromResponse: (adminData: any, token: string) => void;
+  setAdminFromResponse: (adminData: IAdminApiResponse, token: string) => void;
 
   // 관리자 목록 관리 (서버에서 가져온 데이터)
   setAdminList: (admins: IAdmin[]) => void;
@@ -45,10 +59,10 @@ export const useAdminStore = create(
       // 서버 API 응답으로 어드민 정보 설정
       setAdminFromResponse: (adminData, token) => {
         const admin: IAdmin = {
-          adminId: adminData.adminId || adminData.id,
+          adminId: adminData.adminId || adminData.id || '',
           email: adminData.email,
           name: adminData.name || '관리자',
-          role: adminData.role || 'admin',
+          role: adminData.role || 'operator',
           status: adminData.status || 'active',
           isMaster: adminData.isMaster || false,
           loginFailCount: 0,

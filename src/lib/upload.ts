@@ -87,7 +87,7 @@ export async function uploadMultipleFiles(
           options?.onFileComplete?.(fileIndex, result);
           return result;
         })
-        .catch((error) => {
+        .catch((error: Error): null => {
           options?.onError?.(fileIndex, error);
           errors.push({ index: fileIndex, error });
           return null;
