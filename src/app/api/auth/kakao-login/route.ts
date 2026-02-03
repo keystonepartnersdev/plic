@@ -72,8 +72,19 @@ export async function POST(request: NextRequest) {
       const kakaoLoginData = await kakaoLoginRes.json();
       console.log('[API] Kakao login response:', kakaoLoginRes.status, kakaoLoginData);
 
-      // 백엔드 응답 그대로 반환
-      return NextResponse.json(kakaoLoginData, { status: kakaoLoginRes.status });
+      // 백엔드에서 Set-Cookie 헤더 추출
+      const setCookieHeaders = kakaoLoginRes.headers.getSetCookie?.() || [];
+      console.log('[API] Set-Cookie headers from backend:', setCookieHeaders.length);
+
+      // 응답 생성
+      const response = NextResponse.json(kakaoLoginData, { status: kakaoLoginRes.status });
+
+      // httpOnly 쿠키 전달 (백엔드에서 받은 Set-Cookie 헤더)
+      setCookieHeaders.forEach((cookie) => {
+        response.headers.append('Set-Cookie', cookie);
+      });
+
+      return response;
 
     } catch (fetchError: unknown) {
       console.error('[API] Kakao login fetch error after retries:', fetchError);

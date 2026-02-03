@@ -65,6 +65,7 @@ function LoginContent() {
       const checkRes = await fetch('/api/auth/kakao-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // httpOnly 쿠키 수신
         body: JSON.stringify({ email: kakaoEmail, kakaoId }),
       });
       const checkData = await checkRes.json();
