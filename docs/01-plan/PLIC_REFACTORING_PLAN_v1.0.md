@@ -38,7 +38,7 @@
 | P2 | 중복 | 중복 코드 다수 | ✅ 완료 | Medium |
 | P3 | 타입 | any 타입 161개 | ✅ 완료 (3개-의도적) | Medium |
 | P3 | 품질 | Error Boundary | ✅ 완료 | Medium |
-| P3 | 품질 | useEffect 의존성 누락 | ⏭️ 향후 개선 | Low |
+| P3 | 품질 | useEffect 의존성 누락 | ✅ 완료 (11→0) | Low |
 
 ---
 
