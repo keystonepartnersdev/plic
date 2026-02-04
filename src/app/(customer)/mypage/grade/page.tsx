@@ -1,12 +1,35 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
-import { cn } from '@/lib/utils';
 import { Info } from 'lucide-react';
 
 export default function GradePage() {
-  const { currentUser } = useUserStore();
+  const router = useRouter();
+  const { currentUser, isLoggedIn } = useUserStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 인증 체크
+  useEffect(() => {
+    if (mounted && !isLoggedIn) {
+      router.replace('/auth/login');
+    }
+  }, [mounted, isLoggedIn, router]);
+
+  // 로딩 중 또는 인증 체크 중
+  if (!mounted || !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
