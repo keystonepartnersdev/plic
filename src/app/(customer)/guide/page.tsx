@@ -48,8 +48,18 @@ export default function GuidePage() {
     };
   }, []);
 
-  // 선택된 카테고리의 FAQ만 표시 (category는 영문 ID)
-  const displayFaqs = faqs.filter((f) => f.category === activeCategory && f.isVisible);
+  // 선택된 카테고리의 FAQ만 표시
+  // 백엔드 API는 isVisible 필드가 없고, category는 한글/영문 혼용
+  const displayFaqs = faqs.filter((f) => {
+    const isVisible = f.isVisible !== false; // undefined면 true로 간주
+    const categoryMatch = f.category === activeCategory ||
+      (activeCategory === '서비스 이용' && f.category === 'service') ||
+      (activeCategory === '결제/수수료' && f.category === 'payment') ||
+      (activeCategory === '계정/회원' && f.category === 'account') ||
+      (activeCategory === '송금/입금' && f.category === 'transfer') ||
+      (activeCategory === '기타' && (f.category === 'other' || f.category === 'etc'));
+    return categoryMatch && isVisible;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -113,14 +123,17 @@ export default function GuidePage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {displayFaqs.map((faq) => (
+            {displayFaqs.map((faq) => {
+              // 백엔드 API는 id를, 로컬 데이터는 faqId를 사용
+              const faqKey = (faq as { id?: string }).id || faq.faqId;
+              return (
               <div
-                key={faq.faqId}
+                key={faqKey}
                 className="border border-gray-200 rounded-lg overflow-hidden"
               >
                 <button
                   onClick={() =>
-                    setExpandedFaq(expandedFaq === faq.faqId ? null : faq.faqId)
+                    setExpandedFaq(expandedFaq === faqKey ? null : faqKey)
                   }
                   className="w-full p-4 text-left flex items-start gap-3"
                 >
@@ -129,12 +142,12 @@ export default function GuidePage() {
                   <ChevronDown
                     className={cn(
                       'w-5 h-5 text-gray-400 transition-transform flex-shrink-0',
-                      expandedFaq === faq.faqId && 'rotate-180'
+                      expandedFaq === faqKey && 'rotate-180'
                     )}
                   />
                 </button>
 
-                {expandedFaq === faq.faqId && (
+                {expandedFaq === faqKey && (
                   <div className="px-4 pb-4 pt-0">
                     <div className="bg-gray-50 rounded-lg p-4 flex gap-3">
                       <span className="text-green-500 font-medium">A.</span>
@@ -145,7 +158,8 @@ export default function GuidePage() {
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
