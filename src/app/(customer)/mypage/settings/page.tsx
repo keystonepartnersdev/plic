@@ -8,7 +8,7 @@ import { useUserStore } from '@/stores';
 // httpOnly 쿠키 사용으로 tokenManager 제거
 import { cn } from '@/lib/utils';
 
-const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+// Next.js 프록시 사용으로 CORS 우회
 
 interface NotificationSettings {
   pushEnabled: boolean;
@@ -32,7 +32,7 @@ const defaultSettings: NotificationSettings = {
 
 export default function NotificationSettingsPage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -40,15 +40,15 @@ export default function NotificationSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<NotificationSettings>(defaultSettings);
 
-  // Fetch settings from API
+  // Fetch settings from API (프록시 사용)
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+      const response = await fetch('/api/users/me/settings', {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // httpOnly 쿠키 자동 전송
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.success && data.data?.settings) {
@@ -70,16 +70,16 @@ export default function NotificationSettingsPage() {
     }
   }, []);
 
-  // Save settings to API
+  // Save settings to API (프록시 사용)
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
     setIsSaving(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+      const response = await fetch('/api/users/me/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // httpOnly 쿠키 자동 전송
+        credentials: 'include',
         body: JSON.stringify({ settings: newSettings }),
       });
       const data = await response.json();
@@ -102,12 +102,12 @@ export default function NotificationSettingsPage() {
   }, [fetchSettings]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser || isLoading) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser || isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />

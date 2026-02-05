@@ -5,7 +5,6 @@ import { API_CONFIG } from './config';
 import { IUser, IDeal, IHomeBanner, INotice, IFAQ, IDiscount, IAdmin } from '@/types';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
-const IS_DEV = process.env.NODE_ENV === 'development';
 
 // 토큰 저장소 (레거시 호환용 - httpOnly 쿠키로 전환됨)
 // 어드민 토큰만 localStorage 사용 (별도 인증 체계)
@@ -184,6 +183,20 @@ export const tokenManager = {
   },
 };
 
+// 공개 API 엔드포인트 (인증 불필요, credentials 제외)
+const PUBLIC_ENDPOINTS = [
+  '/content/banners',
+  '/content/notices',
+  '/content/faqs',
+  '/content/terms',
+  '/tracking/',
+];
+
+// 엔드포인트가 공개 API인지 확인
+const isPublicEndpoint = (endpoint: string): boolean => {
+  return PUBLIC_ENDPOINTS.some(pub => endpoint.startsWith(pub));
+};
+
 // API 요청 함수
 async function request<T>(
   endpoint: string,
@@ -200,9 +213,10 @@ async function request<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  // 인증 토큰 추가
+  // 인증 토큰 추가 (공개 API가 아닌 경우에만)
+  const isPublic = isPublicEndpoint(endpoint);
   const token = tokenManager.getAccessToken();
-  if (token) {
+  if (token && !isPublic) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -217,16 +231,18 @@ async function request<T>(
   let data: { success: boolean; data?: T; error?: string; message?: string };
 
   try {
+    // 공개 API는 credentials 제외 (CORS 정책 호환)
+    // 인증 필요 API는 credentials: 'include'로 httpOnly 쿠키 전송
     response = await fetch(url, {
       ...options,
       headers,
-      credentials: 'include', // httpOnly 쿠키 자동 전송
+      ...(isPublic ? {} : { credentials: 'include' as RequestCredentials }),
     });
 
     data = await response.json();
 
-    // 토큰 만료 시 갱신 시도 (httpOnly 쿠키 기반)
-    if (response.status === 401) {
+    // 토큰 만료 시 갱신 시도 (httpOnly 쿠키 기반, 인증 필요 API만)
+    if (response.status === 401 && !isPublic) {
       try {
         // httpOnly 쿠키 기반 토큰 갱신
         const refreshResponse = await fetch('/api/auth/refresh', {
@@ -239,7 +255,7 @@ async function request<T>(
           const retryResponse = await fetch(url, {
             ...options,
             headers,
-            credentials: 'include',
+            credentials: 'include' as RequestCredentials,
           });
           const retryData = await retryResponse.json();
 
@@ -331,10 +347,10 @@ async function request<T>(
 }
 
 // ============================================
-// Auth API
+// Auth API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const authAPI = {
-  signup: (data: {
+  signup: async (data: {
     email: string;
     password: string;
     name: string;
@@ -357,57 +373,65 @@ export const authAPI = {
     kakaoId?: number;
     // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
     kakaoVerificationKey?: string;
-  }) => request<{ message: string; uid: string }>('/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-
-  confirm: (data: { email: string; code: string }) =>
-    request<{ message: string }>('/auth/confirm', {
+  }) => {
+    const response = await fetch('/api/auth/signup', {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  login: async (data: { email: string; password: string }) => {
-    const result = await request<{
-      user: IUser;
-      tokens: {
-        accessToken: string;
-        refreshToken: string;
-        idToken: string;
-        expiresIn: number;
-      };
-    }>('/auth/login', {
-      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '회원가입에 실패했습니다.');
+    }
+    return result.data as { message: string; uid: string };
+  },
 
-    tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-    return result;
+  confirm: async (data: { email: string; code: string }) => {
+    const response = await fetch('/api/auth/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '이메일 인증에 실패했습니다.');
+    }
+    return result.data as { message: string };
+  },
+
+  login: async (data: { email: string; password: string }) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '로그인에 실패했습니다.');
+    }
+    // 토큰은 httpOnly 쿠키로 자동 저장됨
+    return result.data as { user: IUser };
   },
 
   refresh: async () => {
     try {
-      const result = await request<{
-        tokens: { accessToken: string; idToken: string };
-      }>('/auth/refresh', {
+      const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        body: JSON.stringify({ refreshToken: tokenManager.getRefreshToken() }),
+        credentials: 'include',
       });
-      
-      if (result.tokens.accessToken) {
-        tokenManager.setTokens(result.tokens.accessToken, tokenManager.getRefreshToken()!);
-        return true;
-      }
+      return response.ok;
     } catch {
-      tokenManager.clearTokens();
+      return false;
     }
-    return false;
   },
 
   logout: async () => {
     try {
-      await request('/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
     } finally {
       tokenManager.clearTokens();
     }
@@ -415,79 +439,183 @@ export const authAPI = {
 };
 
 // ============================================
-// Users API
+// Users API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const usersAPI = {
-  getMe: () => request<IUser>('/users/me'),
+  getMe: async () => {
+    const response = await fetch('/api/users/me', {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as IUser;
+  },
 
-  updateMe: (data: { name?: string; phone?: string; agreements?: { marketing?: boolean } }) =>
-    request<{ message: string; user: IUser }>('/users/me', {
+  updateMe: async (data: { name?: string; phone?: string; agreements?: { marketing?: boolean } }) => {
+    const response = await fetch('/api/users/me', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; user: IUser };
+  },
 
-  withdraw: () => request<{ message: string }>('/users/me', { method: 'DELETE' }),
+  withdraw: async () => {
+    const response = await fetch('/api/users/me', {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { message: string };
+  },
 
-  getGrade: () => request<{
-    grade: { code: string; name: string; isManual: boolean };
-    fee: { rate: number; rateText: string };
-    limit: { monthly: number; used: number; remaining: number; usagePercent: number };
-    stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
-  }>('/users/me/grade'),
+  getGrade: async () => {
+    const response = await fetch('/api/users/me/grade', {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as {
+      grade: { code: string; name: string; isManual: boolean };
+      fee: { rate: number; rateText: string };
+      limit: { monthly: number; used: number; remaining: number; usagePercent: number };
+      stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
+    };
+  },
 };
 
 // ============================================
-// Deals API
+// Deals API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const dealsAPI = {
-  list: (params?: { status?: string; limit?: number }) => {
+  list: async (params?: { status?: string; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    return request<{ deals: IDeal[]; total: number }>(`/deals${queryString ? `?${queryString}` : ''}`);
+    const response = await fetch(`/api/deals${queryString ? `?${queryString}` : ''}`, {
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { deals: IDeal[]; total: number };
   },
 
-  get: (did: string) => request<{ deal: IDeal }>(`/deals/${did}`),
+  get: async (did: string) => {
+    const response = await fetch(`/api/deals/${did}`, {
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { deal: IDeal };
+  },
 
-  create: (data: {
+  create: async (data: {
     dealName: string;
     dealType: string;
     amount: number;
     recipient: { bank: string; accountNumber: string; accountHolder: string };
     senderName: string;
     attachments?: string[];
-  }) => request<{ message: string; deal: IDeal }>('/deals', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-
-  update: (did: string, data: Partial<IDeal>) =>
-    request<{ message: string; deal: IDeal }>(`/deals/${did}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-
-  cancel: (did: string) => request<{ message: string; did: string }>(`/deals/${did}`, { method: 'DELETE' }),
-
-  applyDiscount: (did: string, discountId: string) =>
-    request<{ message: string; deal: IDeal }>(`/deals/${did}/discount`, {
+  }) => {
+    const response = await fetch('/api/deals', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; deal: IDeal };
+  },
+
+  update: async (did: string, data: Partial<IDeal>) => {
+    const response = await fetch(`/api/deals/${did}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; deal: IDeal };
+  },
+
+  cancel: async (did: string) => {
+    const response = await fetch(`/api/deals/${did}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; did: string };
+  },
+
+  applyDiscount: async (did: string, discountId: string) => {
+    const response = await fetch(`/api/deals/${did}/discount`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ discountId }),
-    }),
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { message: string; deal: IDeal };
+  },
 };
 
 // ============================================
-// Discounts API
+// Discounts API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const discountsAPI = {
-  validate: (data: { code: string; amount: number }) =>
-    request<{ valid: boolean; discount: IDiscount }>('/discounts/validate', {
+  validate: async (data: { code: string; amount: number }) => {
+    const response = await fetch('/api/discounts/validate', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { valid: boolean; discount: IDiscount };
+  },
 
-  getCoupons: () => request<{ coupons: IDiscount[]; total: number }>('/discounts/coupons'),
+  getCoupons: async () => {
+    const response = await fetch('/api/discounts/coupons', {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { coupons: IDiscount[]; total: number };
+  },
 };
 
 // ============================================
@@ -528,21 +656,30 @@ export const contentAPI = {
 };
 
 // ============================================
-// Uploads API
+// Uploads API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export type UploadType = 'business-license' | 'contract' | 'bank-statement' | 'attachment' | 'temp';
 
 export const uploadsAPI = {
-  getPresignedUrl: (data: {
+  getPresignedUrl: async (data: {
     fileName: string;
     fileType: string;
     fileSize: number;
     uploadType: UploadType;
     entityId?: string;
-  }) => request<{ uploadUrl: string; fileKey: string; expiresIn: number }>('/uploads/presigned-url', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  }) => {
+    const response = await fetch('/api/uploads/presigned-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { uploadUrl: string; fileKey: string; expiresIn: number };
+  },
 };
 
 // ============================================

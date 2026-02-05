@@ -1,7 +1,7 @@
 // src/lib/tracking.ts
 // 자체 트래킹 시스템 - 이벤트 수집 및 전송
 
-const TRACKING_API_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+// Next.js 프록시 사용으로 CORS 우회
 
 // 세션/익명 ID 관리
 const getAnonymousId = (): string => {
@@ -113,7 +113,7 @@ export interface TrackingEvent {
     domReady: number;
     firstPaint?: number;
   };
-  custom?: Record<string, any>;
+  custom?: Record<string, unknown>;
 }
 
 // 이벤트 버퍼
@@ -130,7 +130,7 @@ const flushEvents = async () => {
   eventBuffer = [];
 
   try {
-    const response = await fetch(`${TRACKING_API_URL}/tracking/events`, {
+    const response = await fetch('/api/tracking/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ events: eventsToSend }),
@@ -176,7 +176,7 @@ export const tracking = {
   },
 
   // 페이지뷰 추적
-  pageview: (customData?: Record<string, any>) => {
+  pageview: (customData?: Record<string, unknown>) => {
     if (typeof window === 'undefined') return;
 
     const event: TrackingEvent = {
@@ -195,7 +195,7 @@ export const tracking = {
   },
 
   // 클릭 추적
-  click: (element: string, text?: string, href?: string, customData?: Record<string, any>) => {
+  click: (element: string, text?: string, href?: string, customData?: Record<string, unknown>) => {
     const event: TrackingEvent = {
       eventType: 'click',
       sessionId: getSessionId(),
@@ -211,7 +211,7 @@ export const tracking = {
   },
 
   // 퍼널 추적
-  funnel: (step: string, name: string, customData?: Record<string, any>) => {
+  funnel: (step: string, name: string, customData?: Record<string, unknown>) => {
     const event: TrackingEvent = {
       eventType: 'funnel',
       sessionId: getSessionId(),
@@ -258,7 +258,7 @@ export const tracking = {
   },
 
   // 커스텀 이벤트
-  event: (eventName: string, customData?: Record<string, any>) => {
+  event: (eventName: string, customData?: Record<string, unknown>) => {
     const event: TrackingEvent = {
       eventType: 'custom',
       eventName,

@@ -9,7 +9,7 @@ import { useUserStore, useDealStore } from '@/stores';
 // httpOnly 쿠키 사용으로 tokenManager 대신 credentials: 'include' 사용
 import { cn } from '@/lib/utils';
 
-const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+// Next.js 프록시 사용으로 CORS 우회
 
 // 은행 정보
 const BANK_INFO: Record<string, { name: string; color: string }> = {
@@ -51,7 +51,7 @@ interface UniqueAccount {
 
 export default function AccountsPage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
   const { deals } = useDealStore();
 
   const [mounted, setMounted] = useState(false);
@@ -60,14 +60,14 @@ export default function AccountsPage() {
   const [favoriteAccounts, setFavoriteAccounts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch favorite accounts from API
+  // Fetch favorite accounts from API (프록시 사용)
   const fetchFavoriteAccounts = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+      const response = await fetch('/api/users/me/settings', {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // httpOnly 쿠키 자동 전송
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.success && data.data?.favoriteAccounts) {
@@ -89,15 +89,15 @@ export default function AccountsPage() {
     }
   }, []);
 
-  // Save favorite accounts to API
+  // Save favorite accounts to API (프록시 사용)
   const saveFavoriteAccounts = useCallback(async (newFavorites: string[]) => {
     try {
-      await fetch(`${API_BASE_URL}/users/me/settings`, {
+      await fetch('/api/users/me/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // httpOnly 쿠키 자동 전송
+        credentials: 'include',
         body: JSON.stringify({ favoriteAccounts: newFavorites }),
       });
     } catch (error) {
@@ -113,10 +113,10 @@ export default function AccountsPage() {
   }, [fetchFavoriteAccounts]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
   // 사용자의 거래 내역에서 고유 계좌 추출
   const uniqueAccounts = useMemo(() => {
