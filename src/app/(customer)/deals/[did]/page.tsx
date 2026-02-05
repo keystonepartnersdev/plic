@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ export default function DealDetailPage() {
   const params = useParams();
   const did = params.did as string;
 
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
   const { deals, updateDeal } = useDealStore();
 
   const [mounted, setMounted] = useState(false);
@@ -55,9 +55,9 @@ export default function DealDetailPage() {
   const availableDiscountCodes = getActiveCodes() || [];
   const availableCoupons = getActiveCoupons() || [];
 
-  // 전체 할인 금액 계산 (퍼센트 합산 → 금액 순차 적용)
-  const calculateTotalDiscount = (): { total: number; details: Map<string, number> } => {
-    if (!deal) return { total: 0, details: new Map() };
+  // 전체 할인 금액 계산 (퍼센트 합산 → 금액 순차 적용) - useMemo로 최적화
+  const { total: totalDiscountAmount, details: discountDetails } = useMemo(() => {
+    if (!deal) return { total: 0, details: new Map<string, number>() };
 
     const details = new Map<string, number>();
     let remainingFee = deal.feeAmount;
@@ -92,12 +92,11 @@ export default function DealDetailPage() {
 
     const totalDiscount = deal.feeAmount - remainingFee;
     return { total: totalDiscount, details };
-  };
-
-  const { total: totalDiscountAmount, details: discountDetails } = calculateTotalDiscount();
+  }, [deal?.feeAmount, appliedDiscounts]);
   const calculatedFinalAmount = deal ? deal.totalAmount - totalDiscountAmount : 0;
 
-  // 개별 할인 금액 조회
+  // 개별 할인 금액 조회 - discountDetails를 직접 참조하는 일반 함수로 변경
+  // (useCallback의 의존성으로 Map을 사용하면 무한 렌더링 발생 가능)
   const getDiscountAmount = (discountId: string): number => {
     return discountDetails.get(discountId) || 0;
   };
@@ -107,8 +106,9 @@ export default function DealDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!mounted || !isLoggedIn) {
-      if (mounted && !isLoggedIn) {
+    if (!mounted || !_hasHydrated || !isLoggedIn) {
+      // hydration 완료 후에만 로그인 상태 체크
+      if (mounted && _hasHydrated && !isLoggedIn) {
         router.replace('/auth/login');
       }
       return;
@@ -153,7 +153,7 @@ export default function DealDetailPage() {
       router.replace('/deals');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, isLoggedIn, did, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, did, router]);
 
   // 결제대기 상태일 때 쿠폰 목록 API에서 가져오기
   useEffect(() => {
@@ -162,7 +162,7 @@ export default function DealDetailPage() {
     }
   }, [deal?.status, deal?.isPaid, fetchUserCoupons]);
 
-  if (!mounted || !isLoggedIn || !deal) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !deal) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -235,8 +235,8 @@ export default function DealDetailPage() {
     }
   };
 
-  // 할인 적용 가능 여부 체크
-  const canApplyDiscount = (discount: IDiscount): { canApply: boolean; reason?: string } => {
+  // 할인 적용 가능 여부 체크 - useCallback으로 최적화
+  const canApplyDiscount = useCallback((discount: IDiscount): { canApply: boolean; reason?: string } => {
     // 이미 적용된 할인인지 확인
     if (appliedDiscounts.some(d => d.id === discount.id)) {
       return { canApply: false, reason: '이미 적용된 할인입니다.' };
@@ -248,7 +248,7 @@ export default function DealDetailPage() {
     }
 
     // 최소 주문 금액 확인
-    if (deal.amount < discount.minAmount) {
+    if (deal && deal.amount < discount.minAmount) {
       return { canApply: false, reason: `최소 주문 금액 ${discount.minAmount.toLocaleString()}원 이상부터 사용 가능합니다.` };
     }
 
@@ -257,9 +257,8 @@ export default function DealDetailPage() {
       return { canApply: false, reason: '유효기간이 만료된 할인입니다.' };
     }
 
-    // 수수료가 이미 0원인지 확인
-    const { total: currentDiscount } = calculateTotalDiscount();
-    const remainingFee = deal.feeAmount - currentDiscount;
+    // 수수료가 이미 0원인지 확인 (totalDiscountAmount 사용)
+    const remainingFee = (deal?.feeAmount || 0) - totalDiscountAmount;
     if (remainingFee === 0) {
       return { canApply: false, reason: '수수료가 이미 전액 할인되어 추가 할인을 적용할 수 없습니다.' };
     }
@@ -277,7 +276,7 @@ export default function DealDetailPage() {
     }
 
     return { canApply: true };
-  };
+  }, [appliedDiscounts, deal?.amount, deal?.feeAmount, totalDiscountAmount]);
 
   // 거래 정보 업데이트 (할인 적용 시)
   const updateDealWithDiscounts = (newAppliedDiscounts: IDiscount[]) => {
@@ -396,22 +395,22 @@ export default function DealDetailPage() {
     setShowCouponModal(false);
   };
 
-  // 개별 할인 취소
-  const handleRemoveDiscount = (discountId: string) => {
-    const newAppliedDiscounts = appliedDiscounts.filter(d => d.id !== discountId);
-    setAppliedDiscounts(newAppliedDiscounts);
+  // 개별 할인 취소 - useCallback으로 최적화
+  const handleRemoveDiscount = useCallback((discountId: string) => {
+    setAppliedDiscounts(prev => {
+      const newAppliedDiscounts = prev.filter(d => d.id !== discountId);
+      // 거래 정보 업데이트
+      updateDealWithDiscounts(newAppliedDiscounts);
+      return newAppliedDiscounts;
+    });
+  }, []);
 
-    // 거래 정보 업데이트
-    updateDealWithDiscounts(newAppliedDiscounts);
-  };
-
-  // 전체 할인 취소
-  const handleRemoveAllDiscounts = () => {
+  // 전체 할인 취소 - useCallback으로 최적화
+  const handleRemoveAllDiscounts = useCallback(() => {
     setAppliedDiscounts([]);
-
     // 거래 정보 업데이트
     updateDealWithDiscounts([]);
-  };
+  }, []);
 
   // 할인 타입 라벨
   const getDiscountLabel = (discount: IDiscount): string => {
@@ -569,11 +568,11 @@ export default function DealDetailPage() {
     setRevisionType(null);
   };
 
-  // 기존 첨부파일 삭제 (확인 모달 표시)
-  const handleDeleteExistingAttachment = (index: number) => {
+  // 기존 첨부파일 삭제 (확인 모달 표시) - useCallback으로 최적화
+  const handleDeleteExistingAttachment = useCallback((index: number) => {
     setDeleteConfirmIndex(index);
     setShowDeleteConfirmModal(true);
-  };
+  }, []);
 
   // 기존 첨부파일 삭제 (실제 삭제)
   const confirmDeleteAttachment = () => {
