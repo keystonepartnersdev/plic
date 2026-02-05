@@ -7,6 +7,7 @@ import { Header } from '@/components/common';
 import { contentAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { IFAQ } from '@/types';
+import { DEFAULT_FAQS } from '@/lib/defaultFaqs';
 
 export default function GuidePage() {
   const [faqs, setFaqs] = useState<IFAQ[]>([]);
@@ -14,32 +15,41 @@ export default function GuidePage() {
   const [activeCategory, setActiveCategory] = useState<string>('서비스 이용');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
-  // 카테고리는 DB에 저장된 한글 이름 기준으로 정의
+  // 카테고리 정의 (백엔드 API 응답과 일치하도록 한글 사용)
   const categories = [
-    { id: 'service', name: '서비스 이용' },
-    { id: 'payment', name: '결제/수수료' },
-    { id: 'account', name: '계정/회원' },
-    { id: 'transfer', name: '송금/입금' },
-    { id: 'etc', name: '기타' },
+    { id: '서비스 이용', name: '서비스 이용' },
+    { id: '결제/수수료', name: '결제/수수료' },
+    { id: '계정/회원', name: '계정/회원' },
+    { id: '송금/입금', name: '송금/입금' },
+    { id: '기타', name: '기타' },
   ];
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchFaqs = async () => {
       try {
         const response = await contentAPI.getFaqs();
-        setFaqs(response.faqs || []);
+        // API에서 FAQ가 있으면 사용, 없으면 기본 데이터 사용
+        const apiFaqs = response.faqs || [];
+        if (isMounted) setFaqs(apiFaqs.length > 0 ? apiFaqs : DEFAULT_FAQS);
       } catch (error) {
         console.error('FAQ 로드 실패:', error);
-        setFaqs([]);
+        // API 실패 시 기본 데이터 사용
+        if (isMounted) setFaqs(DEFAULT_FAQS);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchFaqs();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // 선택된 카테고리의 FAQ만 표시
-  const displayFaqs = faqs.filter((f) => f.category === activeCategory);
+  // 선택된 카테고리의 FAQ만 표시 (category는 영문 ID)
+  const displayFaqs = faqs.filter((f) => f.category === activeCategory && f.isVisible);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -78,12 +88,12 @@ export default function GuidePage() {
             <button
               key={cat.id}
               onClick={() => {
-                setActiveCategory(cat.name);
+                setActiveCategory(cat.id);
                 setExpandedFaq(null); // 카테고리 변경 시 펼쳐진 FAQ 닫기
               }}
               className={cn(
                 'px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors',
-                activeCategory === cat.name
+                activeCategory === cat.id
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-600'
               )}

@@ -15,12 +15,13 @@ export class ContentHelper {
     return `FAQ${Date.now().toString(36).toUpperCase()}`;
   }
 
+  // 백엔드 API 응답과 일치하도록 한글 카테고리 사용
   static FAQ_CATEGORIES = [
-    { id: 'service', name: '서비스 이용' },
-    { id: 'payment', name: '결제/수수료' },
-    { id: 'account', name: '계정/회원' },
-    { id: 'transfer', name: '송금/입금' },
-    { id: 'etc', name: '기타' },
+    { id: '서비스 이용', name: '서비스 이용' },
+    { id: '결제/수수료', name: '결제/수수료' },
+    { id: '계정/회원', name: '계정/회원' },
+    { id: '송금/입금', name: '송금/입금' },
+    { id: '기타', name: '기타' },
   ];
 
   // 신규 배너 생성

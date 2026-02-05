@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronRight, ChevronDown, Sparkles, Shield, Clock, CreditCard, Edit3 } from 'lucide-react';
 import Link from 'next/link';
@@ -40,18 +40,24 @@ export default function HomePage() {
     }
   }, [mounted, isLoggedIn, router]);
 
-  // 현재 사용자의 작성중 송금
-  const userDrafts = mounted && isLoggedIn && currentUser
-    ? drafts.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'draft')
-    : [];
+  // useMemo로 필터링 최적화
+  const userDrafts = useMemo(() =>
+    mounted && isLoggedIn && currentUser
+      ? drafts.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'draft')
+      : [],
+    [mounted, isLoggedIn, currentUser, drafts]
+  );
 
   // 현재 사용자의 결제대기 송금
-  const userAwaitingDeals = mounted && isLoggedIn && currentUser
-    ? deals.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'awaiting_payment' && !d.isPaid)
-    : [];
+  const userAwaitingDeals = useMemo(() =>
+    mounted && isLoggedIn && currentUser
+      ? deals.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'awaiting_payment' && !d.isPaid)
+      : [],
+    [mounted, isLoggedIn, currentUser, deals]
+  );
 
   const banners = getVisibleBanners();
-  const faqs = getHomeFeaturedFAQs().slice(0, 5);
+  const faqs = useMemo(() => getHomeFeaturedFAQs().slice(0, 5), [getHomeFeaturedFAQs]);
 
   const formatAmount = (value: string) => {
     const numericValue = value.replace(/[^\d]/g, '');
@@ -68,22 +74,24 @@ export default function HomePage() {
   const feeRate = currentUser?.feeRate || 4.0;
   const { feeAmount, totalAmount } = DealHelper.calculateTotal(numericAmount, feeRate);
 
-  // 카테고리 이름 가져오기
-  const getCategoryName = (categoryId?: string) => {
+  // useCallback으로 핸들러 최적화
+  const getCategoryName = useCallback((categoryId?: string) => {
     const cat = ContentHelper.FAQ_CATEGORIES.find(c => c.id === categoryId);
     return cat ? cat.name : categoryId || '기타';
-  };
+  }, []);
 
-  // 카테고리 색상 가져오기
-  const getCategoryColor = (categoryId?: string): string => {
-    const colors: Record<string, string> = {
-      service: 'bg-blue-100 text-blue-700',
-      payment: 'bg-green-100 text-green-700',
-      transfer: 'bg-purple-100 text-purple-700',
-      account: 'bg-orange-100 text-orange-700',
-    };
-    return colors[categoryId || ''] || 'bg-gray-100 text-gray-700';
-  };
+  // 카테고리 색상 - 백엔드 API 응답과 일치하도록 한글 카테고리 사용
+  const categoryColors: Record<string, string> = useMemo(() => ({
+    '서비스 이용': 'bg-blue-100 text-blue-700',
+    '결제/수수료': 'bg-green-100 text-green-700',
+    '송금/입금': 'bg-purple-100 text-purple-700',
+    '계정/회원': 'bg-orange-100 text-orange-700',
+    '기타': 'bg-gray-100 text-gray-700',
+  }), []);
+
+  const getCategoryColor = useCallback((categoryId?: string): string => {
+    return categoryColors[categoryId || ''] || 'bg-gray-100 text-gray-700';
+  }, [categoryColors]);
 
   return (
     <div className="min-h-screen bg-gray-50">
