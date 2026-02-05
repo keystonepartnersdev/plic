@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -235,8 +235,8 @@ export default function DealDetailPage() {
     }
   };
 
-  // 할인 적용 가능 여부 체크 - useCallback으로 최적화
-  const canApplyDiscount = useCallback((discount: IDiscount): { canApply: boolean; reason?: string } => {
+  // 할인 적용 가능 여부 체크 - 일반 함수로 변경 (useCallback 제거로 무한 렌더링 방지)
+  const canApplyDiscount = (discount: IDiscount): { canApply: boolean; reason?: string } => {
     // 이미 적용된 할인인지 확인
     if (appliedDiscounts.some(d => d.id === discount.id)) {
       return { canApply: false, reason: '이미 적용된 할인입니다.' };
@@ -276,7 +276,7 @@ export default function DealDetailPage() {
     }
 
     return { canApply: true };
-  }, [appliedDiscounts, deal?.amount, deal?.feeAmount, totalDiscountAmount]);
+  };
 
   // 거래 정보 업데이트 (할인 적용 시)
   const updateDealWithDiscounts = (newAppliedDiscounts: IDiscount[]) => {
@@ -395,22 +395,20 @@ export default function DealDetailPage() {
     setShowCouponModal(false);
   };
 
-  // 개별 할인 취소 - useCallback으로 최적화
-  const handleRemoveDiscount = useCallback((discountId: string) => {
-    setAppliedDiscounts(prev => {
-      const newAppliedDiscounts = prev.filter(d => d.id !== discountId);
-      // 거래 정보 업데이트
-      updateDealWithDiscounts(newAppliedDiscounts);
-      return newAppliedDiscounts;
-    });
-  }, []);
+  // 개별 할인 취소 - 일반 함수로 변경 (useCallback 제거로 무한 렌더링 방지)
+  const handleRemoveDiscount = (discountId: string) => {
+    const newAppliedDiscounts = appliedDiscounts.filter(d => d.id !== discountId);
+    setAppliedDiscounts(newAppliedDiscounts);
+    // 거래 정보 업데이트
+    updateDealWithDiscounts(newAppliedDiscounts);
+  };
 
-  // 전체 할인 취소 - useCallback으로 최적화
-  const handleRemoveAllDiscounts = useCallback(() => {
+  // 전체 할인 취소 - 일반 함수로 변경 (useCallback 제거로 무한 렌더링 방지)
+  const handleRemoveAllDiscounts = () => {
     setAppliedDiscounts([]);
     // 거래 정보 업데이트
     updateDealWithDiscounts([]);
-  }, []);
+  };
 
   // 할인 타입 라벨
   const getDiscountLabel = (discount: IDiscount): string => {
@@ -568,11 +566,11 @@ export default function DealDetailPage() {
     setRevisionType(null);
   };
 
-  // 기존 첨부파일 삭제 (확인 모달 표시) - useCallback으로 최적화
-  const handleDeleteExistingAttachment = useCallback((index: number) => {
+  // 기존 첨부파일 삭제 (확인 모달 표시) - 일반 함수로 변경
+  const handleDeleteExistingAttachment = (index: number) => {
     setDeleteConfirmIndex(index);
     setShowDeleteConfirmModal(true);
-  }, []);
+  };
 
   // 기존 첨부파일 삭제 (실제 삭제)
   const confirmDeleteAttachment = () => {
