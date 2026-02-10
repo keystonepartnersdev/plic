@@ -21,7 +21,11 @@ export function AttachmentPreviewModal({
 }: AttachmentPreviewModalProps) {
   if (!preview) return null;
 
-  const isImage = preview.url.startsWith('data:image/') || preview.url.startsWith('blob:');
+  // 이미지 판별: data:image, blob, 또는 S3 presigned URL (확장자 기반)
+  const urlLower = preview.url.toLowerCase();
+  const isImage = preview.url.startsWith('data:image/') ||
+    preview.url.startsWith('blob:') ||
+    /\.(jpg|jpeg|png|gif|webp|bmp)/i.test(urlLower.split('?')[0]);
   const canNavigatePrev = preview.index > 0;
   const canNavigateNext = preview.index < totalCount - 1;
 

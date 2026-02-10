@@ -834,15 +834,33 @@ export default function AdminUserDetailPage() {
                 {user.businessInfo.businessLicenseKey && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500">사업자등록증</span>
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_S3_URL || 'https://plic-uploads-prod.s3.ap-northeast-2.amazonaws.com'}/${user.businessInfo.businessLicenseKey}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={async () => {
+                        try {
+                          const adminToken = localStorage.getItem('plic_admin_token');
+                          const res = await fetch('/api/uploads/download-url', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${adminToken}`,
+                            },
+                            body: JSON.stringify({ fileKey: user.businessInfo?.businessLicenseKey }),
+                          });
+                          const result = await res.json();
+                          if (result.success) {
+                            window.open(result.data.downloadUrl, '_blank');
+                          } else {
+                            alert(result.error || '파일을 불러올 수 없습니다.');
+                          }
+                        } catch {
+                          alert('파일을 불러오는 중 오류가 발생했습니다.');
+                        }
+                      }}
                       className="flex items-center gap-1 text-primary-400 hover:text-primary-500 font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       파일 보기
-                    </a>
+                    </button>
                   </div>
                 )}
                 {user.businessInfo.verificationMemo && (

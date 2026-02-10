@@ -1006,6 +1006,16 @@ Resources:
       Environment:
         Variables:
           NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - deals-status.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+        External:
+        - '@aws-sdk/*'
   GetBannersFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1258,6 +1268,45 @@ Resources:
         Minify: true
         Sourcemap: true
         Target: es2020
+  UserBusinessResubmitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: UserBusinessResubmitFunction
+      Handler: business-resubmit.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:GetUser
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /users/me/business
+            Method: put
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - business-resubmit.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+        External:
+        - '@aws-sdk/*'
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

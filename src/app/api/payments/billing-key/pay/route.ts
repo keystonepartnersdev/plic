@@ -8,12 +8,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { handleApiError, successResponse, Errors } from '@/lib/api-error';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
+const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,6 +92,32 @@ export async function POST(request: NextRequest) {
         }));
 
         console.log('[BillingKey Pay] Deal updated successfully');
+
+        // 거래 정보 조회하여 사용자 월 한도 사용량 업데이트
+        try {
+          const dealResult = await docClient.send(new GetCommand({
+            TableName: DEALS_TABLE,
+            Key: { did: dealId },
+          }));
+          const dealData = dealResult.Item;
+          if (dealData?.uid && dealData?.amount) {
+            await docClient.send(new UpdateCommand({
+              TableName: USERS_TABLE,
+              Key: { uid: dealData.uid },
+              UpdateExpression: 'SET usedAmount = if_not_exists(usedAmount, :zero) + :amount, totalPaymentAmount = if_not_exists(totalPaymentAmount, :zero) + :finalAmount, totalDealCount = if_not_exists(totalDealCount, :zero) + :one, updatedAt = :now',
+              ExpressionAttributeValues: {
+                ':amount': dealData.amount,
+                ':finalAmount': dealData.finalAmount || dealData.amount,
+                ':one': 1,
+                ':zero': 0,
+                ':now': new Date().toISOString(),
+              },
+            }));
+            console.log('[BillingKey Pay] User usedAmount updated:', dealData.uid);
+          }
+        } catch (userError) {
+          console.error('[BillingKey Pay] Failed to update user usedAmount:', userError);
+        }
       } catch (dbError) {
         // DB 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
         console.error('[BillingKey Pay] Failed to update deal in DB:', dbError);

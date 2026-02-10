@@ -33,12 +33,28 @@ export default function DealsPage() {
   const [mounted, setMounted] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [bannerHeight, setBannerHeight] = useState(0);
 
   useEffect(() => {
     setMounted(true);
     clearCurrentDraft();
     setPortalTarget(document.getElementById('mobile-frame'));
   }, [clearCurrentDraft]);
+
+  // RevisionBanner 높이 감지
+  useEffect(() => {
+    const updateBannerHeight = () => {
+      const banner = document.getElementById('revision-banner');
+      setBannerHeight(banner ? banner.offsetHeight : 0);
+    };
+    updateBannerHeight();
+    const observer = new MutationObserver(updateBannerHeight);
+    const frame = document.getElementById('mobile-frame');
+    if (frame) {
+      observer.observe(frame, { childList: true, subtree: true });
+    }
+    return () => observer.disconnect();
+  }, [mounted]);
 
   useEffect(() => {
     // hydration 완료 후에만 로그인 상태 체크
@@ -254,7 +270,7 @@ export default function DealsPage() {
       </Modal>
 
       {portalTarget && createPortal(
-        <div className="absolute bottom-[71px] left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="absolute left-0 right-0 px-5 z-20 pointer-events-none" style={{ bottom: 71 + bannerHeight }}>
           <button
             onClick={() => {
               // pending_verification 상태에서도 거래 생성 허용 (결제 단계에서 체크)

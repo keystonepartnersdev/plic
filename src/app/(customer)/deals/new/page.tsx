@@ -43,7 +43,7 @@ const BANKS = [
 ];
 
 // 최소 송금 금액
-const MIN_AMOUNT = 1;
+const MIN_AMOUNT = 100;
 
 function NewDealContent() {
   const router = useRouter();
@@ -526,7 +526,13 @@ function NewDealContent() {
       if (!result.success) {
         // API 오류
         setVerificationFailed(true);
-        setVerificationError(result.error?.message || '계좌 조회에 실패했습니다.');
+        const errMsg = result.error?.message || '계좌 조회에 실패했습니다.';
+        const isMaintenanceError = errMsg.includes('점검') || errMsg.includes('maintenance');
+        setVerificationError(
+          isMaintenanceError
+            ? `${errMsg} (보통 23:30~00:30 사이 은행 정기점검이 진행됩니다. 점검 종료 후 다시 시도해주세요.)`
+            : errMsg
+        );
         setIsLoading(false);
         return;
       }

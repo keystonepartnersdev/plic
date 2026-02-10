@@ -22,6 +22,7 @@ export default function PaymentPage() {
   const [deal, setDeal] = useState<IDeal | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [bannerHeight, setBannerHeight] = useState(0);
   const [userRefreshed, setUserRefreshed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('new');
   const [selectedCard, setSelectedCard] = useState<IRegisteredCard | null>(null);
@@ -31,6 +32,21 @@ export default function PaymentPage() {
     setMounted(true);
     setPortalTarget(document.getElementById('mobile-frame'));
   }, []);
+
+  // RevisionBanner 높이 감지
+  useEffect(() => {
+    const updateBannerHeight = () => {
+      const banner = document.getElementById('revision-banner');
+      setBannerHeight(banner ? banner.offsetHeight : 0);
+    };
+    updateBannerHeight();
+    const observer = new MutationObserver(updateBannerHeight);
+    const frame = document.getElementById('mobile-frame');
+    if (frame) {
+      observer.observe(frame, { childList: true, subtree: true });
+    }
+    return () => observer.disconnect();
+  }, [mounted]);
 
   // 등록된 카드가 있으면 기본 결제 방법으로 설정
   useEffect(() => {
@@ -322,9 +338,13 @@ export default function PaymentPage() {
     }
   };
 
-  // 결제 핸들러 - 일반 카드결제만 지원 (빌링키 API 미지원)
+  // 결제 핸들러 - 결제 수단에 따라 분기
   const handlePayment = async () => {
-    await handleNewCardPayment();
+    if (paymentMethod === 'registered' && selectedCard) {
+      await handleBillingKeyPayment();
+    } else {
+      await handleNewCardPayment();
+    }
   };
 
   return (
@@ -409,7 +429,7 @@ export default function PaymentPage() {
 
       {/* 결제 버튼 - Portal로 mobile-frame에 고정 */}
       {portalTarget && createPortal(
-        <div className="absolute bottom-[71px] left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="absolute left-0 right-0 px-5 z-20 pointer-events-none" style={{ bottom: 71 + bannerHeight }}>
           <button
             onClick={handlePayment}
             disabled={isLoading}

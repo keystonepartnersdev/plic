@@ -90,7 +90,7 @@ export const createDealSchema = z.object({
   dealType: dealTypeSchema,
   amount: z
     .number()
-    .min(10000, '최소 금액은 10,000원입니다')
+    .min(100, '최소 금액은 100원입니다')
     .max(50000000, '최대 금액은 50,000,000원입니다'),
   recipient: z.object({
     bank: z.string().min(1, '은행을 선택해주세요'),

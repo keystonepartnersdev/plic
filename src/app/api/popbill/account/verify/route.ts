@@ -43,7 +43,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
-      throw Errors.externalError('Popbill', result.error);
+      const errorMsg = result.error?.message || '계좌 조회에 실패했습니다.';
+      console.error('[Account Verify] Popbill error:', result.error);
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'EXTERNAL_001',
+          message: errorMsg,
+          details: result.error,
+        },
+      }, { status: 400 });
     }
 
     // 예금주 비교 (입력한 예금주와 실제 예금주 비교)

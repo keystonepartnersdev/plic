@@ -102,6 +102,13 @@ const SERVICE_SCOPES = {
 } as const;
 
 export async function getToken(serviceType: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {
+  if (!LINK_ID || !SECRET_KEY) {
+    throw new Error('Popbill 환경변수가 설정되지 않았습니다. POPBILL_LINK_ID, POPBILL_SECRET_KEY를 확인해주세요.');
+  }
+  if (!CORP_NUM) {
+    throw new Error('POPBILL_CORP_NUM 환경변수가 설정되지 않았습니다.');
+  }
+
   const serviceId = IS_TEST ? POPBILL_SERVICE_ID.TEST : POPBILL_SERVICE_ID.PROD;
   const scopes = SERVICE_SCOPES[serviceType];
   const cacheKey = `${LINK_ID}_${serviceId}_${serviceType}`;

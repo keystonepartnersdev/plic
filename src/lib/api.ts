@@ -41,6 +41,7 @@ const getActionDescription = (endpoint: string, method: string): string => {
     '/auth/refresh': { POST: '토큰 갱신' },
     '/auth/logout': { POST: '로그아웃' },
     '/users/me': { GET: '내 정보 조회', PUT: '내 정보 수정', DELETE: '회원 탈퇴' },
+    '/users/me/business': { PUT: '사업자등록증 재제출' },
     '/users/me/grade': { GET: '등급/수수료 조회' },
     '/deals': { GET: '거래 목록 조회', POST: '거래 생성' },
     '/discounts/validate': { POST: '할인코드 검증' },
@@ -514,6 +515,19 @@ export const usersAPI = {
       stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
     };
   },
+
+  resubmitBusinessVerification: async (businessLicenseKey: string) => {
+    const response = await fetchWithAuth('/api/users/me/business', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessLicenseKey }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { message: string; uid: string; verificationStatus: string };
+  },
 };
 
 // ============================================
@@ -752,10 +766,10 @@ export const adminAPI = {
 
   getDeal: (did: string) => requestWithAdminToken<{ deal: IDeal; user: IUser }>(`/admin/deals/${did}`),
 
-  updateDealStatus: (did: string, status: string, reason?: string) =>
+  updateDealStatus: (did: string, status: string, reason?: string, revisionType?: 'documents' | 'recipient', revisionMemo?: string) =>
     requestWithAdminToken<{ message: string }>(`/admin/deals/${did}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ status, reason }),
+      body: JSON.stringify({ status, reason, revisionType, revisionMemo }),
     }),
 
   // 개별 사용자 수수료/한도 설정
@@ -829,6 +843,9 @@ export const adminAPI = {
     }),
 
   // FAQ 관리
+  getFaqs: () =>
+    requestWithAdminToken<{ faqs: IFAQ[]; count: number }>('/admin/faqs'),
+
   createFaq: (data: {
     question: string;
     answer: string;

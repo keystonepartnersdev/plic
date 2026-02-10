@@ -518,15 +518,39 @@ export function useDealDetail(did: string) {
     // 첨부파일 미리보기 네비게이션
     previewIndex,
     attachmentsTotalCount: deal?.attachments?.length || 0,
-    handlePreviewNavigate: (index: number) => {
+    handlePreviewNavigate: async (index: number) => {
       if (!deal?.attachments) return;
       const attachments = deal.attachments;
       if (index >= 0 && index < attachments.length) {
         setPreviewIndex(index);
         const attachment = attachments[index];
-        const isUrl = typeof attachment === 'string' && (attachment.startsWith('http') || attachment.startsWith('data:'));
+        const isLocalUrl = typeof attachment === 'string' && (attachment.startsWith('data:') || attachment.startsWith('blob:'));
+        const isS3Key = typeof attachment === 'string' && !isLocalUrl;
+
+        if (isS3Key) {
+          // S3 fileKey → presigned URL 변환
+          try {
+            const res = await fetch('/api/uploads/download-url', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fileKey: attachment }),
+            });
+            const result = await res.json();
+            if (result.success) {
+              setPreviewAttachment({
+                url: result.data.downloadUrl,
+                name: `첨부파일 ${index + 1}`,
+                index,
+              });
+              return;
+            }
+          } catch (error) {
+            console.error('[useDealDetail] presigned URL 오류:', error);
+          }
+        }
+
         setPreviewAttachment({
-          url: isUrl ? attachment : URL.createObjectURL(attachment as unknown as Blob),
+          url: isLocalUrl ? attachment : URL.createObjectURL(attachment as unknown as Blob),
           name: `첨부파일 ${index + 1}`,
           index,
         });

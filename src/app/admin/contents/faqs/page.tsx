@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw, Database } from 'lucide-react';
-import { contentAPI, adminAPI } from '@/lib/api';
+import { adminAPI } from '@/lib/api';
 import { ContentHelper } from '@/classes';
 import { IFAQ } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
@@ -33,8 +33,13 @@ export default function AdminFAQsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await contentAPI.getFaqs();
-      setFaqs(response.faqs || []);
+      const response = await adminAPI.getFaqs();
+      // API 응답에서 faqId가 없고 id만 있는 경우 대비
+      const normalized = (response.faqs || []).map((faq: IFAQ & { id?: string }) => ({
+        ...faq,
+        faqId: faq.faqId || faq.id || '',
+      }));
+      setFaqs(normalized);
     } catch (err: unknown) {
       console.error('FAQ 목록 로드 실패:', err);
       setError(getErrorMessage(err) || 'FAQ 목록을 불러오는데 실패했습니다.');

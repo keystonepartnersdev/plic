@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { popbill } from '@/lib/popbill';
-import { handleApiError, Errors } from '@/lib/api-error';
+import { handleApiError } from '@/lib/api-error';
 import { businessVerifySchema, validateRequest } from '@/lib/validations';
 
 export async function POST(request: NextRequest) {
@@ -23,7 +23,16 @@ export async function POST(request: NextRequest) {
     const result = await popbill.verifyBusiness({ corpNum: cleanNumber });
 
     if (!result.success) {
-      throw Errors.externalError('Popbill', result.error);
+      const errorMsg = result.error?.message || '사업자 조회에 실패했습니다.';
+      console.error('[Business Verify] Popbill error:', result.error);
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'EXTERNAL_001',
+          message: errorMsg,
+          details: result.error,
+        },
+      }, { status: 400 });
     }
 
     return NextResponse.json({

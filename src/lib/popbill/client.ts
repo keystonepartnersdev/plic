@@ -18,7 +18,7 @@ import {
 } from './types';
 
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
-const USER_ID = (process.env.POPBILL_USER_ID || '').trim();
+const USER_ID = (process.env.POPBILL_USER_ID || process.env.POPBILL_LINK_ID || '').trim();
 
 /**
  * 팝빌 API URL 반환

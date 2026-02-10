@@ -27,7 +27,7 @@ export const STEP_TITLES: Record<DealStep, string> = {
 /**
  * 최소 송금 금액
  */
-export const MIN_AMOUNT = 10000;
+export const MIN_AMOUNT = 100;
 
 /**
  * 은행 목록

@@ -188,7 +188,13 @@ export default function AdminDealDetailPage() {
         ? `서류 보완 요청${revisionMemo ? `: ${revisionMemo}` : ''}`
         : `수취인 정보 보완 요청${revisionMemo ? `: ${revisionMemo}` : ''}`;
 
-      await adminAPI.updateDealStatus(deal.did, 'need_revision', reason);
+      await adminAPI.updateDealStatus(
+        deal.did,
+        'need_revision',
+        reason,
+        selectedRevisionType,
+        revisionMemo || undefined
+      );
       await fetchDeal(); // 데이터 다시 로드
       setShowRevisionConfirmModal(false);
       setSelectedRevisionType(null);
@@ -358,13 +364,36 @@ export default function AdminDealDetailPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">첨부 서류</h2>
             {deal.attachments && deal.attachments.length > 0 ? (
               <div className="space-y-2">
-                {deal.attachments.map((url, index) => (
+                {deal.attachments.map((fileKey, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-700">첨부파일 {index + 1}</span>
                     </div>
-                    <button className="text-primary-400 hover:text-primary-500">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const adminToken = localStorage.getItem('plic_admin_token');
+                          const res = await fetch('/api/uploads/download-url', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${adminToken}`,
+                            },
+                            body: JSON.stringify({ fileKey }),
+                          });
+                          const result = await res.json();
+                          if (result.success) {
+                            window.open(result.data.downloadUrl, '_blank');
+                          } else {
+                            alert(result.error || '파일을 다운로드할 수 없습니다.');
+                          }
+                        } catch {
+                          alert('파일 다운로드 중 오류가 발생했습니다.');
+                        }
+                      }}
+                      className="text-primary-400 hover:text-primary-500"
+                    >
                       <Download className="w-4 h-4" />
                     </button>
                   </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { MobileLayout, BottomNav, ErrorBoundary } from '@/components/common';
+import { MobileLayout, BottomNav, ErrorBoundary, RevisionBanner } from '@/components/common';
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -16,6 +16,8 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
           {children}
         </ErrorBoundary>
       </div>
+      {/* 보완 요청 알림 - 네비게이션 바로 위 */}
+      <RevisionBanner />
       {/* 하단 네비게이션 - 프레임 내부 하단 고정 */}
       <BottomNav />
     </MobileLayout>

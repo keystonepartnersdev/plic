@@ -58,7 +58,7 @@ export const DEAL_TYPE_LABELS: Record<TDealType, string> = {
  * 거래 금액 제한
  */
 export const DEAL_AMOUNT = {
-  MIN: 1,              // 최소 거래 금액 (1원)
+  MIN: 100,            // 최소 거래 금액 (100원, PG 최소단위)
   MAX: 100000000,      // 최대 거래 금액 (1억원)
 } as const;
 
