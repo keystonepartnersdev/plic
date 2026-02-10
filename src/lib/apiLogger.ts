@@ -1,7 +1,7 @@
 // src/lib/apiLogger.ts
 // API 호출 로깅 유틸리티 - 디버깅 및 모니터링
 
-const TRACKING_API_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/prod';
+const TRACKING_API_URL = '/api';
 
 // Correlation ID 생성
 const generateCorrelationId = () => {
@@ -215,10 +215,12 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export default {
+const apiLogger = {
   loggedFetch,
   getCorrelationId,
   newCorrelationId,
   setUserId: setApiLoggerUserId,
   flush: flushApiLogs,
 };
+
+export default apiLogger;

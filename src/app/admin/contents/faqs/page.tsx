@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw, Database } from 'lucide-react';
 import { contentAPI, adminAPI } from '@/lib/api';
 import { ContentHelper } from '@/classes';
 import { IFAQ } from '@/types';
@@ -18,6 +18,7 @@ export default function AdminFAQsPage() {
   const [editingFAQ, setEditingFAQ] = useState<IFAQ | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   // Form state
   const [question, setQuestion] = useState('');
@@ -144,6 +145,43 @@ export default function AdminFAQsPage() {
     return colors[categoryId || ''] || 'bg-gray-100 text-gray-700';
   };
 
+  // FAQ 시드 데이터 등록
+  const handleSeedFaqs = async () => {
+    if (!confirm('FAQ 샘플 데이터 40개를 등록하시겠습니까?\n(이미 등록된 FAQ가 있으면 중복될 수 있습니다)')) {
+      return;
+    }
+
+    setIsSeeding(true);
+    try {
+      const adminToken = localStorage.getItem('plic_admin_token');
+      if (!adminToken) {
+        alert('어드민 로그인이 필요합니다.');
+        return;
+      }
+
+      const response = await fetch('/api/admin/faqs/seed', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`FAQ 시드 완료!\n성공: ${result.success}개\n실패: ${result.failed?.length || 0}개`);
+        await fetchFaqs();
+      } else {
+        alert(result.error || 'FAQ 시드 실패');
+      }
+    } catch (err: unknown) {
+      console.error('FAQ seed error:', err);
+      alert(getErrorMessage(err) || 'FAQ 시드 중 오류가 발생했습니다.');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   // 로딩 상태
   if (loading && faqs.length === 0) {
     return (
@@ -170,6 +208,16 @@ export default function AdminFAQsPage() {
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             새로고침
           </button>
+          {faqs.length === 0 && (
+            <button
+              onClick={handleSeedFaqs}
+              disabled={isSeeding || isSaving}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
+            >
+              <Database className={cn("w-4 h-4", isSeeding && "animate-pulse")} />
+              {isSeeding ? '등록 중...' : '샘플 데이터'}
+            </button>
+          )}
           <button
             onClick={() => setShowForm(true)}
             disabled={isSaving}

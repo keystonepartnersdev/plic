@@ -9,7 +9,6 @@ import {
   POPBILL_API_URL,
   BANK_CODES,
   BUSINESS_STATE_CODES,
-  TIMEOUTS,
 } from './constants';
 import {
   BusinessVerifyRequest,
@@ -19,7 +18,6 @@ import {
 } from './types';
 
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
-const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim();
 const USER_ID = (process.env.POPBILL_USER_ID || '').trim();
 
 /**

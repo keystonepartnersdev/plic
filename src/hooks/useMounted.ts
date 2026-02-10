@@ -10,6 +10,8 @@ export function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // This is intentional for hydration safety - not a cascading render
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

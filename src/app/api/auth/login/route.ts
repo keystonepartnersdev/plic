@@ -1,8 +1,11 @@
 // src/app/api/auth/login/route.ts
 // Phase 1.2: httpOnly 쿠키를 통한 보안 로그인 프록시
+// Phase 2: 통합 에러 핸들링 및 Zod 검증 적용
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/config';
+import { handleApiError, Errors, successResponse } from '@/lib/api-error';
+import { loginSchema, validateRequest } from '@/lib/validations';
 
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_NAME: 'plic_access_token',
@@ -15,15 +18,9 @@ const TOKEN_CONFIG = {
 
 export async function POST(request: NextRequest) {
   try {
+    // 요청 본문 파싱 및 검증
     const body = await request.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: '이메일과 비밀번호를 입력해주세요.' },
-        { status: 400 }
-      );
-    }
+    const { email, password } = validateRequest(loginSchema, body);
 
     // 백엔드 API로 로그인 요청
     const backendResponse = await fetch(`${API_CONFIG.BASE_URL}/auth/login`, {
@@ -32,22 +29,23 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
     });
 
     const data = await backendResponse.json();
 
     if (!backendResponse.ok) {
-      return NextResponse.json(
-        { error: data.message || '로그인에 실패했습니다.' },
-        { status: backendResponse.status }
-      );
+      // 백엔드 에러를 그대로 전달
+      if (backendResponse.status === 401) {
+        throw Errors.authInvalidToken();
+      }
+      throw Errors.serverError(data.message || '로그인에 실패했습니다.');
     }
 
     // 성공 응답 생성
     const response = NextResponse.json({
       success: true,
-      user: data.user,
-      // 토큰은 httpOnly 쿠키로 전달되므로 응답에 포함하지 않음
+      data: { user: data.user },
     });
 
     // httpOnly 쿠키로 토큰 설정
@@ -73,10 +71,6 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('로그인 프록시 에러:', error);
-    return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

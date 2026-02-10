@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Mail, Check } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
-// httpOnly 쿠키 사용으로 tokenManager 제거
 import { cn } from '@/lib/utils';
 
 // Next.js 프록시 사용으로 CORS 우회

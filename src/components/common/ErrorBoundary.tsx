@@ -6,6 +6,7 @@ interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  homeUrl?: string; // 홈으로 돌아가기 URL (기본: '/')
 }
 
 interface ErrorBoundaryState {
@@ -75,6 +76,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           >
             다시 시도
           </button>
+          <button
+            onClick={() => window.location.href = this.props.homeUrl || '/'}
+            className="mt-2 text-sm text-gray-500 hover:text-primary-400 transition-colors"
+          >
+            홈으로 돌아가기
+          </button>
+          {process.env.NODE_ENV === 'development' && this.state.error && (
+            <details className="mt-4 text-left w-full max-w-md">
+              <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
+                에러 상세 정보 (개발 모드)
+              </summary>
+              <pre className="mt-2 p-3 bg-gray-100 rounded-lg text-xs text-red-600 overflow-auto max-h-32">
+                {this.state.error.message}
+                {'\n'}
+                {this.state.error.stack}
+              </pre>
+            </details>
+          )}
         </div>
       );
     }

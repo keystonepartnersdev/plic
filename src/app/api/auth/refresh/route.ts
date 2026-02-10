@@ -1,8 +1,10 @@
 // src/app/api/auth/refresh/route.ts
 // Phase 1.2: 토큰 갱신 프록시
+// Phase 2: 통합 에러 핸들링 적용
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/config';
+import { handleApiError, Errors } from '@/lib/api-error';
 
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_NAME: 'plic_access_token',
@@ -19,10 +21,7 @@ export async function POST(request: NextRequest) {
     const refreshToken = request.cookies.get(TOKEN_CONFIG.REFRESH_TOKEN_NAME)?.value;
 
     if (!refreshToken) {
-      return NextResponse.json(
-        { error: '리프레시 토큰이 없습니다.' },
-        { status: 401 }
-      );
+      throw Errors.authRequired();
     }
 
     // 백엔드 API로 토큰 갱신 요청
@@ -89,10 +88,6 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('토큰 갱신 프록시 에러:', error);
-    return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

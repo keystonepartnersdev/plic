@@ -103,6 +103,8 @@ export default function AdminUserDetailPage() {
   const [editData, setEditData] = useState({
     grade: 'basic' as TUserGrade,
     status: 'active' as TUserStatus,
+    feeRate: 4.5,
+    monthlyLimit: 20000000,
   });
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -130,6 +132,8 @@ export default function AdminUserDetailPage() {
       setEditData({
         grade: response.user.grade || 'basic',
         status: response.user.status || 'active',
+        feeRate: response.user.feeRate ?? 4.5,
+        monthlyLimit: response.user.monthlyLimit ?? 20000000,
       });
       setEditInfoData({
         name: response.user.name || '',
@@ -203,6 +207,18 @@ export default function AdminUserDetailPage() {
         await adminAPI.updateUserStatus(user.uid, editData.status);
       }
 
+      // 수수료율/월한도 변경
+      const settingsUpdate: { feeRate?: number; monthlyLimit?: number } = {};
+      if (editData.feeRate !== user.feeRate) {
+        settingsUpdate.feeRate = editData.feeRate;
+      }
+      if (editData.monthlyLimit !== user.monthlyLimit) {
+        settingsUpdate.monthlyLimit = editData.monthlyLimit;
+      }
+      if (Object.keys(settingsUpdate).length > 0) {
+        await adminAPI.updateUserSettings(user.uid, settingsUpdate);
+      }
+
       // 데이터 다시 로드
       await fetchUser();
       setIsEditing(false);
@@ -218,6 +234,8 @@ export default function AdminUserDetailPage() {
     setEditData({
       grade: user.grade,
       status: user.status,
+      feeRate: user.feeRate ?? 4.5,
+      monthlyLimit: user.monthlyLimit ?? 20000000,
     });
     setIsEditing(false);
   };
@@ -933,25 +951,75 @@ export default function AdminUserDetailPage() {
                 )}
               </div>
 
-              {/* 수수료율 - 읽기 전용 */}
+              {/* 수수료율 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">수수료율</label>
-                <p className="font-medium text-gray-900">{user.feeRate}%</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {GRADE_LABELS[user.grade]} 등급 기준: {getGradeSettings(user.grade)?.feeRate || 0}%
-                </p>
+                {isEditing ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editData.feeRate}
+                        onChange={(e) => setEditData({ ...editData, feeRate: parseFloat(e.target.value) || 0 })}
+                        className="w-full h-10 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                      />
+                      <span className="text-gray-500 font-medium">%</span>
+                    </div>
+                    {editData.feeRate !== user.feeRate && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {user.feeRate}% → {editData.feeRate}%
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-gray-900">{user.feeRate}%</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {GRADE_LABELS[user.grade]} 등급 기준: {getGradeSettings(user.grade)?.feeRate || 0}%
+                    </p>
+                  </>
+                )}
               </div>
 
-              {/* 월 한도 - 읽기 전용 */}
+              {/* 월 한도 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">월 한도</label>
-                <p className="font-medium text-gray-900">{user.monthlyLimit.toLocaleString()}원</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  사용: {user.usedAmount.toLocaleString()}원 ({Math.round(user.usedAmount / user.monthlyLimit * 100)}%)
-                </p>
-                <p className="text-xs text-gray-500">
-                  {GRADE_LABELS[user.grade]} 등급 기준: {(getGradeSettings(user.grade)?.monthlyLimit || 0).toLocaleString()}원
-                </p>
+                {isEditing ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editData.monthlyLimit}
+                        onChange={(e) => setEditData({ ...editData, monthlyLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full h-10 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+                        step="1000000"
+                        min="0"
+                      />
+                      <span className="text-gray-500 font-medium text-sm whitespace-nowrap">원</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      = {(editData.monthlyLimit / 10000).toLocaleString()}만원
+                    </p>
+                    {editData.monthlyLimit !== user.monthlyLimit && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {(user.monthlyLimit / 10000).toLocaleString()}만원 → {(editData.monthlyLimit / 10000).toLocaleString()}만원
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-gray-900">{user.monthlyLimit.toLocaleString()}원</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      사용: {user.usedAmount.toLocaleString()}원 ({Math.round(user.usedAmount / user.monthlyLimit * 100)}%)
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {GRADE_LABELS[user.grade]} 등급 기준: {(getGradeSettings(user.grade)?.monthlyLimit || 0).toLocaleString()}원
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* 상태 */}

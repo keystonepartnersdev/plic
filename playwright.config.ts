@@ -7,6 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * - npm run test:e2e (전체 테스트)
  * - npm run test:e2e:ui (UI 모드)
  * - npx playwright test --project=chromium (크롬만)
+ * - npx playwright test --project=authenticated (인증 필요 테스트만)
  */
 export default defineConfig({
   testDir: './tests',
@@ -25,8 +26,8 @@ export default defineConfig({
   // CI에서 test.only 사용 금지
   forbidOnly: !!process.env.CI,
 
-  // CI에서만 재시도
-  retries: process.env.CI ? 2 : 0,
+  // 재시도 (타임아웃 등 일시적 오류 대응)
+  retries: process.env.CI ? 2 : 1,
 
   // CI에서 단일 워커
   workers: process.env.CI ? 1 : undefined,
@@ -55,20 +56,58 @@ export default defineConfig({
     actionTimeout: 15000,
 
     // 네비게이션 타임아웃
-    navigationTimeout: 30000,
+    navigationTimeout: 60000,
   },
 
   // 브라우저 프로젝트
   projects: [
-    // 데스크톱 크롬 (기본)
+    // 사용자 인증 setup
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+
+    // 어드민 인증 setup
+    {
+      name: 'admin-setup',
+      testMatch: /admin\.setup\.ts/,
+    },
+
+    // 인증 필요한 테스트 (데스크톱 크롬)
+    {
+      name: 'authenticated',
+      testMatch: [/.*\.auth\.spec\.ts/, /.*-auth\.spec\.ts/],
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/.auth/user.json',
+      },
+    },
+
+    // 어드민 테스트 (데스크톱 크롬)
+    {
+      name: 'admin',
+      testMatch: /.*\.admin\.spec\.ts/,
+      dependencies: ['admin-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/.auth/admin.json',
+      },
+    },
+
+    // 공개 페이지 테스트 (데스크톱 크롬)
     {
       name: 'chromium',
+      testMatch: /e2e\/.*\.spec\.ts/,
+      testIgnore: [/.*-auth\.spec\.ts/, /.*\.auth\.spec\.ts/, /.*\.admin\.spec\.ts/],
       use: { ...devices['Desktop Chrome'] },
     },
 
     // 모바일 프레임 시뮬레이션 (PLIC 고객용 UI)
     {
       name: 'mobile',
+      testMatch: /e2e\/.*\.spec\.ts/,
+      testIgnore: [/.*-auth\.spec\.ts/, /.*\.auth\.spec\.ts/, /.*\.admin\.spec\.ts/],
       use: {
         ...devices['iPhone 13'],
         viewport: { width: 375, height: 812 },

@@ -163,7 +163,7 @@ export class DealHelper {
           actor,
           actorId,
         },
-        ...deal.history,
+        ...(deal.history || []),
       ],
       updatedAt: new Date().toISOString(),
     };

@@ -16,7 +16,7 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || '';
-const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
+const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || process.env.COGNITO_CLIENT_ID || '';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 const KAKAO_VERIFICATIONS_TABLE = 'plic-kakao-verifications';
 
@@ -177,8 +177,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           { Name: 'email', Value: email },
           { Name: 'name', Value: name },
           { Name: 'phone_number', Value: `+82${phone.slice(1)}` }, // 국제 형식으로 변환
-          { Name: 'custom:uid', Value: uid },
-          { Name: 'custom:userType', Value: userType || 'personal' },
         ],
       });
 
@@ -230,8 +228,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                 { Name: 'email', Value: email },
                 { Name: 'name', Value: name },
                 { Name: 'phone_number', Value: `+82${phone.slice(1)}` },
-                { Name: 'custom:uid', Value: uid },
-                { Name: 'custom:userType', Value: userType || 'personal' },
               ],
             });
 
@@ -281,9 +277,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       isVerified: false,
       status: 'pending',
       grade: 'basic',
-      feeRate: 2.5,
+      feeRate: 4.5,
       isGradeManual: false,
-      monthlyLimit: 5000000,
+      monthlyLimit: 20000000,
       usedAmount: 0,
       agreements: {
         service: agreements.service,

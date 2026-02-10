@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAdminStore } from '@/stores';
 import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/common';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -174,7 +175,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* 메인 콘텐츠 */}
       <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </main>
     </div>
   );

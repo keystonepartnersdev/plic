@@ -47,7 +47,7 @@ export interface ISystemSettings {
 
 export const defaultSettings: ISystemSettings = {
   gradeSettings: {
-    basic: { feeRate: 4.0, monthlyLimit: 10000000 },
+    basic: { feeRate: 4.5, monthlyLimit: 20000000 },
     platinum: { feeRate: 3.5, monthlyLimit: 30000000 },
     b2b: { feeRate: 3.0, monthlyLimit: 100000000 },
     employee: { feeRate: 1.0, monthlyLimit: 100000000 },
@@ -201,7 +201,7 @@ export const useSettingsStore = create<SettingsStore>()(
       name: 'plic-settings',
       storage: createJSONStorage(() => localStorage),
       // 데이터 마이그레이션: gradeSettings가 없거나 불완전한 경우 기본값으로 채움
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState) => {
         if (persistedState && typeof persistedState === 'object') {
           const state = persistedState as { settings?: ISystemSettings };
           if (state.settings) {

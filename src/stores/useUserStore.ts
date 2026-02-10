@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IUser, TUserGrade, IGradeChangeResult } from '@/types';
 import { IRegisteredCard } from '@/types/payment';
-import { usersAPI, authAPI } from '@/lib/api';
+import { usersAPI } from '@/lib/api';
 import {
   processAutoGradeChange as processGradeChange,
   resetMonthlyUsage as resetUsage,
@@ -21,6 +21,7 @@ interface IUserState {
   apiError: string | null;
   registeredCards: IRegisteredCard[];
   users: IUser[];
+  _hasHydrated: boolean;
 
   // API 연동 메서드
   login: (email: string, password: string) => Promise<void>;
@@ -53,6 +54,7 @@ interface IUserState {
 
   resetMonthlyUsage: () => void;
   clearApiError: () => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useUserStore = create(
@@ -64,6 +66,7 @@ export const useUserStore = create(
       apiError: null,
       registeredCards: [],
       users: sampleUsers,
+      _hasHydrated: false,
 
       // ============================================
       // API 연동 메서드
@@ -89,9 +92,9 @@ export const useUserStore = create(
             verifiedAt: result.user.verifiedAt,
             status: result.user.status || 'active',
             grade: result.user.grade || 'basic',
-            feeRate: result.user.feeRate ?? 2.5,
+            feeRate: result.user.feeRate ?? 4.5,
             isGradeManual: result.user.isGradeManual ?? false,
-            monthlyLimit: result.user.monthlyLimit ?? 5000000,
+            monthlyLimit: result.user.monthlyLimit ?? 20000000,
             usedAmount: result.user.usedAmount ?? 0,
             agreements: result.user.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
             totalPaymentAmount: result.user.totalPaymentAmount ?? 0,
@@ -151,9 +154,9 @@ export const useUserStore = create(
             verifiedAt: userData.verifiedAt,
             status: userData.status || 'active',
             grade: userData.grade || 'basic',
-            feeRate: userData.feeRate ?? 2.5,
+            feeRate: userData.feeRate ?? 4.5,
             isGradeManual: userData.isGradeManual ?? false,
-            monthlyLimit: userData.monthlyLimit ?? 5000000,
+            monthlyLimit: userData.monthlyLimit ?? 20000000,
             usedAmount: userData.usedAmount ?? 0,
             agreements: userData.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
             totalPaymentAmount: userData.totalPaymentAmount ?? 0,
@@ -192,7 +195,7 @@ export const useUserStore = create(
         set({ isLoading: true, apiError: null });
         try {
           // API 호출
-          const result = await usersAPI.updateMe({
+          await usersAPI.updateMe({
             name: updates.name,
             phone: updates.phone,
             agreements: updates.agreements ? { marketing: updates.agreements.marketing } : undefined,
@@ -242,6 +245,7 @@ export const useUserStore = create(
       },
 
       clearApiError: () => set({ apiError: null }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
 
       // ============================================
       // 로컬 메서드 (기존 호환용)
@@ -380,6 +384,15 @@ export const useUserStore = create(
     {
       name: 'plic-user-storage',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        // localStorage에서 hydration 완료 후 호출
+        state?.setHasHydrated(true);
+      },
+      partialize: (state) => {
+        // _hasHydrated는 localStorage에 저장하지 않음
+        const { _hasHydrated, ...rest } = state;
+        return rest as IUserState;
+      },
     }
   )
 );

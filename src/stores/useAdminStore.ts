@@ -130,7 +130,7 @@ export const useAdminStore = create(
       name: 'plic-admin-storage',
       storage: createJSONStorage(() => localStorage),
       version: 3, // 버전 업그레이드 - 하드코딩된 비밀번호 제거
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState, version) => {
         // 이전 버전에서 오는 경우 세션 초기화 (보안 강화)
         if (version < 3) {
           return {
@@ -138,9 +138,9 @@ export const useAdminStore = create(
             isLoggedIn: false,
             adminList: [],
             currentAdmin: null,
-          };
+          } as unknown as IAdminState;
         }
-        return persistedState;
+        return persistedState as IAdminState;
       },
     }
   )

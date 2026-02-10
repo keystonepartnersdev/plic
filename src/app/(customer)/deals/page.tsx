@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
 
 export default function DealsPage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
   const { setDeals } = useDealStore();
   const { drafts, loadDraft, deleteDraft, clearCurrentDraft } = useDealDraftStore();
 
@@ -41,10 +41,11 @@ export default function DealsPage() {
   }, [clearCurrentDraft]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    // hydration 완료 후에만 로그인 상태 체크
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
   useEffect(() => {
     const fetchDeals = async () => {
@@ -65,6 +66,11 @@ export default function DealsPage() {
         setDeals(filteredApiDeals);
       } catch (error) {
         console.error('[DealsPage] 거래 목록 로드 실패:', error);
+        // 인증 만료 시 로그인 페이지로 이동
+        if (error instanceof Error && (error.message.includes('인증') || error.message.includes('로그인'))) {
+          router.replace('/auth/login');
+          return;
+        }
         setLocalDeals([]);
         setDeals([]);
       } finally {
@@ -76,31 +82,47 @@ export default function DealsPage() {
     }
   }, [mounted, isLoggedIn, setDeals]);
 
-  if (!mounted || !isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]" />
-      </div>
-    );
-  }
+  // useMemo로 필터링 최적화 - hooks는 반드시 조건부 return 전에 호출
+  const userDrafts = useMemo(() =>
+    drafts.filter((d) => d.uid === currentUser?.uid && d.status && d.status === 'draft'),
+    [drafts, currentUser?.uid]
+  );
 
-  const userDrafts = drafts.filter((d) => d.uid === currentUser?.uid && d.status && d.status === 'draft');
   // 결제 전 거래 (draft 또는 awaiting_payment 상태이면서 미결제)
-  const unpaidDeals = deals.filter((d) => d.status && (d.status === 'draft' || d.status === 'awaiting_payment') && !d.isPaid);
-  const activeTabConfig = tabs.find((t) => t.id === activeTab) || tabs[0];
+  const unpaidDeals = useMemo(() =>
+    deals.filter((d) => d.status && (d.status === 'draft' || d.status === 'awaiting_payment') && !d.isPaid),
+    [deals]
+  );
+
+  const activeTabConfig = useMemo(() =>
+    tabs.find((t) => t.id === activeTab) || tabs[0],
+    [activeTab]
+  );
+
   // 결제 완료된 진행중 거래 (draft/awaiting_payment 제외)
-  const filteredDeals = deals.filter((d) => d.status && activeTabConfig.statuses.includes(d.status) && d.status !== 'draft' && d.status !== 'awaiting_payment');
+  const filteredDeals = useMemo(() =>
+    deals.filter((d) => d.status && activeTabConfig.statuses.includes(d.status) && d.status !== 'draft' && d.status !== 'awaiting_payment'),
+    [deals, activeTabConfig.statuses]
+  );
 
-  const getTabCount = (tab: TabType) => {
-    const tabConfig = tabs.find((t) => t.id === tab) || tabs[0];
-    const dealCount = deals.filter((d) => d.status && tabConfig.statuses.includes(d.status)).length;
-    if (tab === 'progress') {
-      return dealCount + userDrafts.length;
-    }
-    return dealCount;
-  };
+  // 탭별 카운트를 미리 계산 - useMemo로 최적화
+  const tabCounts = useMemo(() => {
+    const counts: Record<TabType, number> = {
+      progress: 0,
+      revision: 0,
+      completed: 0,
+    };
+    tabs.forEach((tab) => {
+      const dealCount = deals.filter((d) => d.status && tab.statuses.includes(d.status)).length;
+      counts[tab.id] = tab.id === 'progress' ? dealCount + userDrafts.length : dealCount;
+    });
+    return counts;
+  }, [deals, userDrafts.length]);
 
-  const handleDraftClick = (draftId: string) => {
+  const getTabCount = useCallback((tab: TabType) => tabCounts[tab], [tabCounts]);
+
+  // useCallback으로 핸들러 최적화
+  const handleDraftClick = useCallback((draftId: string) => {
     // pending_verification 상태에서도 드래프트 수정 허용 (결제 단계에서 체크)
     const canAccessDraft = currentUser?.status === 'active' || currentUser?.status === 'pending_verification';
     if (!canAccessDraft) {
@@ -109,7 +131,16 @@ export default function DealsPage() {
     }
     loadDraft(draftId);
     router.push(`/deals/new?draft=${draftId}`);
-  };
+  }, [currentUser?.status, loadDraft, router]);
+
+  // 조건부 early return은 모든 hooks 호출 후에
+  if (!mounted || !_hasHydrated || !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative bg-gray-50">
@@ -257,7 +288,8 @@ export default function DealsPage() {
   );
 }
 
-function DealCard({ deal }: { deal: IDeal }) {
+// React.memo로 DealCard 최적화
+const DealCard = memo(function DealCard({ deal }: { deal: IDeal }) {
   const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
   const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
 
@@ -333,4 +365,4 @@ function DealCard({ deal }: { deal: IDeal }) {
       </p>
     </Link>
   );
-}
+});

@@ -112,6 +112,37 @@ Resources:
         KeyType: HASH
       - AttributeName: sk
         KeyType: RANGE
+  WithdrawnUsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-withdrawn-users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: uid
+        AttributeType: S
+      KeySchema:
+      - AttributeName: uid
+        KeyType: HASH
+  WithdrawnDealsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: plic-withdrawn-deals
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: wdid
+        AttributeType: S
+      - AttributeName: uid
+        AttributeType: S
+      KeySchema:
+      - AttributeName: wdid
+        KeyType: HASH
+      GlobalSecondaryIndexes:
+      - IndexName: uid-index
+        KeySchema:
+        - AttributeName: uid
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
   AttachmentsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -164,17 +195,24 @@ Resources:
             Ref: CognitoUserPool
           COGNITO_CLIENT_ID:
             Ref: CognitoUserPoolClient
+          USER_POOL_CLIENT_ID:
+            Ref: CognitoUserPoolClient
           NODE_OPTIONS: ' --enable-source-maps'
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
             Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName: plic-kakao-verifications
       - Version: '2012-10-17'
         Statement:
         - Effect: Allow
           Action:
           - cognito-idp:SignUp
           - cognito-idp:AdminCreateUser
+          - cognito-idp:AdminConfirmSignUp
+          - cognito-idp:AdminGetUser
+          - cognito-idp:AdminDeleteUser
           Resource:
             Fn::GetAtt:
             - CognitoUserPool
@@ -257,6 +295,7 @@ Resources:
   KakaoLoginFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: plic-KakaoLoginFunction
       CodeUri: KakaoLoginFunction
       Handler: kakao-login.handler
       Environment:
@@ -382,6 +421,15 @@ Resources:
             Path: /users/me
             Method: get
     Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - me.ts
+        External:
+        - '@aws-sdk/*'
+        Minify: true
+        Sourcemap: true
+        Target: es2020
       SamResourceId: GetMeFunction
   UpdateMeFunction:
     Type: AWS::Serverless::Function
@@ -428,6 +476,15 @@ Resources:
       - DynamoDBCrudPolicy:
           TableName:
             Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: WithdrawnUsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: WithdrawnDealsTable
       - Version: '2012-10-17'
         Statement:
         - Effect: Allow
@@ -867,6 +924,66 @@ Resources:
           NODE_OPTIONS: ' --enable-source-maps'
     Metadata:
       SamResourceId: AdminUsersGradeFunction
+  AdminUsersSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminUsersSettingsFunction
+      Handler: users-settings.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/users/{uid}/settings
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - users-settings.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminUsersSettingsFunction
+  AdminBusinessVerifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminBusinessVerifyFunction
+      Handler: business-verify.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/users/{uid}/business
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - business-verify.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: AdminBusinessVerifyFunction
   AdminDealsListFunction:
     Type: AWS::Serverless::Function
     Properties:

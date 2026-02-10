@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError, Errors } from '@/lib/api-error';
 
 const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 const MAX_RETRIES = 3;
@@ -46,10 +47,7 @@ export async function POST(request: NextRequest) {
     const { email, kakaoId } = body;
 
     if (!email || !kakaoId) {
-      return NextResponse.json(
-        { success: false, error: '이메일과 카카오 ID가 필요합니다.' },
-        { status: 400 }
-      );
+      return Errors.inputMissingField('email, kakaoId').toResponse();
     }
 
     // 백엔드 카카오 로그인 API 직접 호출
@@ -95,9 +93,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error: unknown) {
     console.error('[API] /api/auth/kakao-login error:', error);
-    return NextResponse.json(
-      { success: false, error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

@@ -3,7 +3,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { IDealDraft, TDealStep, TDealType, IDraftDocument } from '@/types';
+import { IDealDraft, TDealStep, TDealType } from '@/types';
 import { API_CONFIG } from '@/lib/config';
 import { getErrorMessage } from '@/lib/utils';
 

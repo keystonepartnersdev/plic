@@ -45,15 +45,6 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["LogoutFunction"]
 
-[function_build_definitions.d15e1448-a2c6-471a-bf79-f9212ff7b693]
-codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/GetMeFunction"
-runtime = "nodejs20.x"
-architecture = "x86_64"
-handler = "me.handler"
-manifest_hash = ""
-packagetype = "Zip"
-functions = ["GetMeFunction"]
-
 [function_build_definitions.28284c5b-0750-40da-ad99-4995f86b58a4]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/UpdateMeFunction"
 runtime = "nodejs20.x"
@@ -281,6 +272,17 @@ Target = "es2020"
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 [function_build_definitions.52382298-20ef-49dc-bf17-ac83642b5438]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminFaqsSeedFunction"
 runtime = "nodejs20.x"
@@ -298,6 +300,17 @@ EntryPoints = ["faqs-seed.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -321,6 +334,17 @@ Target = "es2020"
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 [function_build_definitions.f8292235-38af-4d45-86e7-297f9bb16731]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminTermsManageFunction"
 runtime = "nodejs20.x"
@@ -338,6 +362,17 @@ EntryPoints = ["terms-manage.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -361,6 +396,17 @@ Target = "es2020"
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 [function_build_definitions.e3cd22b5-6114-4ff2-9dc8-b1c261f22b2a]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/KakaoLoginFunction"
 runtime = "nodejs20.x"
@@ -369,5 +415,64 @@ handler = "kakao-login.handler"
 manifest_hash = ""
 packagetype = "Zip"
 functions = ["KakaoLoginFunction"]
+
+[function_build_definitions.2498bfca-879a-4d9a-add2-04022221df02]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminBusinessVerifyFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "business-verify.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["AdminBusinessVerifyFunction"]
+
+[function_build_definitions.2498bfca-879a-4d9a-add2-04022221df02.metadata]
+BuildMethod = "esbuild"
+
+[function_build_definitions.2498bfca-879a-4d9a-add2-04022221df02.metadata.BuildProperties]
+EntryPoints = ["business-verify.ts"]
+Minify = true
+Sourcemap = true
+Target = "es2020"
+
+
+
+
+[function_build_definitions.a457ff89-3046-46f3-8d64-b37c9e023ed9]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/GetMeFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "me.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["GetMeFunction"]
+
+[function_build_definitions.a457ff89-3046-46f3-8d64-b37c9e023ed9.metadata]
+BuildMethod = "esbuild"
+
+[function_build_definitions.a457ff89-3046-46f3-8d64-b37c9e023ed9.metadata.BuildProperties]
+EntryPoints = ["me.ts"]
+Minify = true
+Sourcemap = true
+Target = "es2020"
+External = ["@aws-sdk/*"]
+
+
+[function_build_definitions.1ec279b1-3e26-4417-ba5a-6c6c94240129]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminUsersSettingsFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "users-settings.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["AdminUsersSettingsFunction"]
+
+[function_build_definitions.1ec279b1-3e26-4417-ba5a-6c6c94240129.metadata]
+BuildMethod = "esbuild"
+
+[function_build_definitions.1ec279b1-3e26-4417-ba5a-6c6c94240129.metadata.BuildProperties]
+EntryPoints = ["users-settings.ts"]
+Minify = true
+Sourcemap = true
+Target = "es2020"
 
 [layer_build_definitions]

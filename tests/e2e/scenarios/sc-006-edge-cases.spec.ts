@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * SC-006: 엣지 케이스 시나리오
+ * SC-006: 엣지 케이스 시나리오 (비로그인)
  * 에러 처리, 권한, 한도 등 예외 상황 테스트
  */
 test.describe('SC-006: 엣지 케이스 - 비로그인 접근 제어', () => {
@@ -173,71 +173,4 @@ test.describe('SC-006: 엣지 케이스 - 폼 유효성', () => {
   });
 });
 
-test.describe('SC-006: 엣지 케이스 (로그인 필요)', () => {
-
-  test.skip('TC-006-02: 정지 회원 접근 제한', async ({ page }) => {
-    // 정지된 회원으로 로그인 후 테스트
-    // 송금 신청 시 "계정이 정지되었습니다" 메시지 확인
-  });
-
-  test.skip('TC-006-03: 대기 회원 제한 기능', async ({ page }) => {
-    // pending_verification 상태 회원 테스트
-    // 결제 단계에서 "심사 대기 중" 안내 확인
-  });
-
-  test.skip('TC-006-04: 거래 금액 한도 체크 - 최소 금액', async ({ page }) => {
-    await page.goto('/deals/new');
-
-    // 거래유형 선택 후 금액 입력
-    await page.getByText(/물품매입/).click();
-    await page.getByRole('button', { name: /다음/ }).click();
-
-    // 0원 입력
-    await page.getByRole('textbox').fill('0');
-
-    // 에러 메시지 확인
-    await expect(page.getByText(/최소|1,000원 이상/)).toBeVisible();
-  });
-
-  test.skip('TC-006-04: 거래 금액 한도 체크 - 최대 금액', async ({ page }) => {
-    await page.goto('/deals/new');
-
-    // 거래유형 선택 후 금액 입력
-    await page.getByText(/물품매입/).click();
-    await page.getByRole('button', { name: /다음/ }).click();
-
-    // 한도 초과 금액 입력
-    await page.getByRole('textbox').fill('100000000');
-
-    // 에러 메시지 확인
-    await expect(page.getByText(/최대|한도 초과/)).toBeVisible();
-  });
-
-  test.skip('TC-006-05: 세션 만료 처리', async ({ page }) => {
-    // 세션 만료 시 자동 로그아웃 및 리다이렉트 테스트
-    // API 401 응답 시 처리 확인
-  });
-
-  test.skip('TC-006-06: 네트워크 에러 처리', async ({ page }) => {
-    // 네트워크 에러 시 적절한 메시지 표시 확인
-    // page.route()로 네트워크 차단 후 테스트
-  });
-
-  test.skip('TC-006-07: 중복 제출 방지', async ({ page }) => {
-    // 버튼 더블클릭 시 중복 요청 방지 확인
-    // 처리 중 버튼 disabled + 로딩 표시
-  });
-
-  test.skip('TC-006-09: 파일 업로드 예외 - 용량 초과', async ({ page }) => {
-    // 15MB 이상 파일 업로드 시 에러 메시지 확인
-  });
-
-  test.skip('TC-006-09: 파일 업로드 예외 - 지원하지 않는 형식', async ({ page }) => {
-    // .exe 파일 업로드 시 에러 메시지 확인
-  });
-
-  test.skip('TC-006-10: 타인 거래 접근 차단', async ({ page }) => {
-    // 로그인 사용자 A가 사용자 B의 거래에 접근 시도
-    // "권한 없음" 또는 404 확인
-  });
-});
+// 인증 필요한 테스트는 sc-006-edge-cases-auth.spec.ts 파일에서 실행

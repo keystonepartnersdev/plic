@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getErrorMessage } from '@/lib/utils';
 
+// 프로덕션 환경에서는 시드 API 비활성화
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 // FAQ 데이터 (FAQ_CONTENT.md 기반)
 const faqData = [
   // 1. 서비스 이용
@@ -301,6 +304,11 @@ const categoryMap: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  // 프로덕션 환경에서는 404 반환
+  if (IS_PRODUCTION) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
+
   try {
     // 백엔드 API URL
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plic.kr';
@@ -370,6 +378,11 @@ export async function POST(request: NextRequest) {
 
 // GET으로 FAQ 데이터 확인
 export async function GET() {
+  // 프로덕션 환경에서는 404 반환
+  if (IS_PRODUCTION) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
+
   return NextResponse.json({
     message: 'FAQ 시드 데이터',
     count: faqData.length,

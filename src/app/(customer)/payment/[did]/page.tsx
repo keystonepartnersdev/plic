@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
-import { CreditCard, AlertCircle, Clock, Shield, CheckCircle, ChevronRight, Check } from 'lucide-react';
+import { CreditCard, AlertCircle, Clock, Shield, CheckCircle, ChevronRight, Check, XCircle } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { dealsAPI } from '@/lib/api';
@@ -16,7 +16,7 @@ export default function PaymentPage() {
   const params = useParams();
   const did = params.did as string;
 
-  const { currentUser, isLoggedIn, fetchCurrentUser, registeredCards } = useUserStore();
+  const { currentUser, isLoggedIn, fetchCurrentUser, registeredCards, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [deal, setDeal] = useState<IDeal | null>(null);
@@ -52,12 +52,12 @@ export default function PaymentPage() {
   }, [mounted, isLoggedIn, userRefreshed, fetchCurrentUser]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
       return;
     }
 
-    if (mounted && isLoggedIn && userRefreshed) {
+    if (mounted && _hasHydrated && isLoggedIn && userRefreshed) {
       // API에서 거래 정보 가져오기
       dealsAPI.get(did).then(response => {
         if (response.deal && !response.deal.isPaid) {
@@ -69,9 +69,9 @@ export default function PaymentPage() {
         router.replace('/deals');
       });
     }
-  }, [mounted, isLoggedIn, userRefreshed, did, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, userRefreshed, did, router]);
 
-  if (!mounted || !isLoggedIn || !userRefreshed || !deal || !currentUser) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !userRefreshed || !deal || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -79,8 +79,61 @@ export default function PaymentPage() {
     );
   }
 
-  // 사업자 인증 대기 상태 체크
-  if (currentUser.status === 'pending_verification') {
+  // 사업자 인증 대기/거절 상태 체크 (businessInfo.verificationStatus 기준)
+  const isBusinessUser = currentUser.userType === 'business';
+  const verificationStatus = currentUser.businessInfo?.verificationStatus;
+  if (isBusinessUser && verificationStatus !== 'verified') {
+    const isRejected = verificationStatus === 'rejected';
+
+    if (isRejected) {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <Header title="결제하기" showBack />
+          <div className="px-5 py-12">
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                사업자 인증 거절
+              </h2>
+              <p className="text-gray-500 mb-6">
+                사업자 인증이 거절되어<br />
+                결제 및 송금이 불가합니다.<br /><br />
+                사업자 등록증을 다시 첨부하여<br />
+                재심사를 요청해주세요.
+              </p>
+              {currentUser.businessInfo?.verificationMemo && (
+                <div className="bg-red-50 rounded-xl p-4 text-left mb-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-red-800">
+                      <p className="font-medium mb-1">거절 사유</p>
+                      <p className="text-red-700">
+                        {currentUser.businessInfo.verificationMemo}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => router.push('/mypage/edit')}
+                className="w-full h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl mb-3"
+              >
+                사업자 등록증 재첨부
+              </button>
+              <button
+                onClick={() => router.back()}
+                className="w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
+              >
+                돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50">
         <Header title="결제하기" showBack />
@@ -173,9 +226,11 @@ export default function PaymentPage() {
       }
 
       // 결제창으로 이동
-      if (data.authPageUrl) {
-        window.location.href = data.authPageUrl;
+      const authPageUrl = data.data?.authPageUrl || data.authPageUrl;
+      if (authPageUrl) {
+        window.location.href = authPageUrl;
       } else {
+        console.error('[Payment] Missing authPageUrl in response:', data);
         alert('결제창 URL을 받지 못했습니다.');
         setIsLoading(false);
       }
@@ -280,11 +335,11 @@ export default function PaymentPage() {
       <div className="bg-white px-5 py-6 mb-2">
         <p className="text-sm text-gray-500 mb-1">결제 금액</p>
         <p className="text-3xl font-bold text-gray-900">
-          {deal.finalAmount.toLocaleString()}
+          {(deal.finalAmount ?? 0).toLocaleString()}
           <span className="text-lg font-normal text-gray-500">원</span>
         </p>
         <p className="text-sm text-gray-500 mt-2">
-          송금 {deal.amount.toLocaleString()}원 + 수수료 {deal.feeAmount.toLocaleString()}원
+          송금 {(deal.amount ?? 0).toLocaleString()}원 + 수수료 {(deal.feeAmount ?? 0).toLocaleString()}원
         </p>
       </div>
 
@@ -294,17 +349,17 @@ export default function PaymentPage() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-500">받는 분</span>
-            <span className="font-medium text-gray-900">{deal.recipient.accountHolder}</span>
+            <span className="font-medium text-gray-900">{deal.recipient?.accountHolder ?? '-'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">입금 계좌</span>
             <span className="font-medium text-gray-900">
-              {deal.recipient.bank} {deal.recipient.accountNumber}
+              {deal.recipient?.bank ?? '-'} {deal.recipient?.accountNumber ?? '-'}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">송금 금액</span>
-            <span className="font-medium text-gray-900">{deal.amount.toLocaleString()}원</span>
+            <span className="font-medium text-gray-900">{(deal.amount ?? 0).toLocaleString()}원</span>
           </div>
         </div>
       </div>
@@ -369,7 +424,7 @@ export default function PaymentPage() {
           >
             {isLoading
               ? '결제창 이동 중...'
-              : `${deal.finalAmount.toLocaleString()}원 결제하기`
+              : `${(deal.finalAmount ?? 0).toLocaleString()}원 결제하기`
             }
           </button>
         </div>,

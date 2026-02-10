@@ -6,19 +6,18 @@ import { Agreement } from './types';
 /**
  * 회원가입 스텝 타입
  */
-export type SignupStep = 'agreement' | 'phoneVerify' | 'info' | 'businessInfo' | 'complete';
+export type SignupStep = 'agreement' | 'info' | 'businessInfo' | 'complete';
 
 /**
  * 스텝 순서 (네비게이션용)
  */
-export const STEP_ORDER: SignupStep[] = ['agreement', 'phoneVerify', 'info', 'businessInfo', 'complete'];
+export const STEP_ORDER: SignupStep[] = ['agreement', 'info', 'businessInfo', 'complete'];
 
 /**
  * 스텝 제목
  */
 export const STEP_TITLES: Record<SignupStep, string> = {
   agreement: '약관 동의',
-  phoneVerify: '카카오 인증',
   info: '회원 정보 입력',
   businessInfo: '사업자 정보 입력',
   complete: '가입 완료',
@@ -48,6 +47,4 @@ export const FILE_LIMITS = {
 export const STORAGE_KEYS = {
   SIGNUP_STEP: 'signup_step',
   SIGNUP_AGREEMENTS: 'signup_agreements',
-  SIGNUP_KAKAO_VERIFIED: 'signup_kakao_verified',
-  SIGNUP_KAKAO_DATA: 'signup_kakao_data',
 } as const;

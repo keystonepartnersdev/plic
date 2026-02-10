@@ -1,8 +1,10 @@
 // src/app/api/auth/me/route.ts
 // Phase 1.2: 현재 로그인 상태 확인 (httpOnly 쿠키 기반)
+// Phase 2: 통합 에러 핸들링 적용
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/config';
+import { handleApiError, successResponse } from '@/lib/api-error';
 
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_NAME: 'plic_access_token',
@@ -14,10 +16,7 @@ export async function GET(request: NextRequest) {
     const accessToken = request.cookies.get(TOKEN_CONFIG.ACCESS_TOKEN_NAME)?.value;
 
     if (!accessToken) {
-      return NextResponse.json(
-        { success: false, isLoggedIn: false, user: null },
-        { status: 200 }
-      );
+      return successResponse({ isLoggedIn: false, user: null });
     }
 
     // 백엔드 API로 사용자 정보 요청
@@ -27,28 +26,23 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
+      signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
     });
 
     if (!backendResponse.ok) {
       // 토큰 만료 등의 이유로 인증 실패
-      return NextResponse.json(
-        { success: false, isLoggedIn: false, user: null },
-        { status: 200 }
-      );
+      return successResponse({ isLoggedIn: false, user: null });
     }
 
     const data = await backendResponse.json();
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       isLoggedIn: true,
       user: data.user || data.data || data,
     });
   } catch (error) {
-    console.error('인증 상태 확인 에러:', error);
-    return NextResponse.json(
-      { isLoggedIn: false, user: null },
-      { status: 200 }
-    );
+    // 네트워크 오류 시에도 로그인 상태 확인 실패로 처리 (500 반환 대신)
+    console.error('[API] /api/auth/me error:', error);
+    return successResponse({ isLoggedIn: false, user: null });
   }
 }

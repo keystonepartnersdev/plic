@@ -43,14 +43,34 @@ var USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 var USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || "";
 var USERS_TABLE = process.env.USERS_TABLE || "plic-users";
 var KAKAO_SECRET = process.env.KAKAO_AUTH_SECRET || "plic-kakao-secret-key-2024";
-var corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type,Authorization",
-  "Access-Control-Allow-Methods": "POST,OPTIONS"
+var ALLOWED_ORIGINS = ["https://plic.kr", "https://www.plic.kr", "https://plic.vercel.app", "http://localhost:3000", "http://localhost:3001"];
+function getCorsHeaders(origin) {
+  var allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Credentials": "true"
+  };
+}
+var TOKEN_CONFIG = {
+  ACCESS_TOKEN_NAME: "plic_access_token",
+  REFRESH_TOKEN_NAME: "plic_refresh_token",
+  ACCESS_TOKEN_MAX_AGE: 60 * 60,
+  REFRESH_TOKEN_MAX_AGE: 7 * 24 * 60 * 60
 };
-var response = (statusCode, body) => ({
+function createSetCookie(name, value, maxAge) {
+  return name + "=" + value + "; HttpOnly; Secure; SameSite=Lax; Max-Age=" + maxAge + "; Path=/";
+}
+var response = (statusCode, body, origin) => ({
   statusCode,
-  headers: corsHeaders,
+  headers: getCorsHeaders(origin),
+  body: JSON.stringify(body)
+});
+var responseWithCookies = (statusCode, body, cookies, origin) => ({
+  statusCode,
+  headers: getCorsHeaders(origin),
+  multiValueHeaders: { "Set-Cookie": cookies },
   body: JSON.stringify(body)
 });
 function generateKakaoPassword(kakaoId) {
@@ -58,15 +78,16 @@ function generateKakaoPassword(kakaoId) {
   return `Kk${hash.substring(0, 20)}!1`;
 }
 var handler = async (event) => {
+  var origin = event.headers?.origin || event.headers?.Origin;
   if (event.httpMethod === "OPTIONS") {
-    return response(200, {});
+    return response(200, {}, origin);
   }
   try {
     if (!event.body) {
       return response(400, {
         success: false,
         error: "\uC694\uCCAD \uBCF8\uBB38\uC774 \uD544\uC694\uD569\uB2C8\uB2E4."
-      });
+      }, origin);
     }
     const body = JSON.parse(event.body);
     const { email, kakaoId } = body;
@@ -74,7 +95,7 @@ var handler = async (event) => {
       return response(400, {
         success: false,
         error: "\uC774\uBA54\uC77C\uACFC \uCE74\uCE74\uC624 ID\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
-      });
+      }, origin);
     }
     const queryResult = await docClient.send(new import_lib_dynamodb.QueryCommand({
       TableName: USERS_TABLE,
@@ -87,7 +108,7 @@ var handler = async (event) => {
         success: true,
         exists: false,
         message: "\uB4F1\uB85D\uB418\uC9C0 \uC54A\uC740 \uC0AC\uC6A9\uC790\uC785\uB2C8\uB2E4."
-      });
+      }, origin);
     }
     const user = queryResult.Items[0];
     const isFullyRegistered = user.isVerified === true && user.agreements?.service === true && user.agreements?.privacy === true && user.agreements?.thirdParty === true && user.status !== "withdrawn";
@@ -98,13 +119,13 @@ var handler = async (event) => {
         // 완전히 가입되지 않았으므로 새 가입 취급
         incomplete: true,
         message: "\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4. \uB2E4\uC2DC \uAC00\uC785\uD574\uC8FC\uC138\uC694."
-      });
+      }, origin);
     }
     if (user.kakaoId && String(user.kakaoId) !== String(kakaoId)) {
       return response(401, {
         success: false,
         error: "\uCE74\uCE74\uC624 \uACC4\uC815\uC774 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
-      });
+      }, origin);
     }
     if (!user.kakaoId) {
       await docClient.send(new import_lib_dynamodb.UpdateCommand({
@@ -142,9 +163,16 @@ var handler = async (event) => {
         return response(401, {
           success: false,
           error: "\uC778\uC99D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
-        });
+        }, origin);
       }
-      return response(200, {
+      var cookies = [];
+      if (authResult.AuthenticationResult.AccessToken) {
+        cookies.push(createSetCookie(TOKEN_CONFIG.ACCESS_TOKEN_NAME, authResult.AuthenticationResult.AccessToken, TOKEN_CONFIG.ACCESS_TOKEN_MAX_AGE));
+      }
+      if (authResult.AuthenticationResult.RefreshToken) {
+        cookies.push(createSetCookie(TOKEN_CONFIG.REFRESH_TOKEN_NAME, authResult.AuthenticationResult.RefreshToken, TOKEN_CONFIG.REFRESH_TOKEN_MAX_AGE));
+      }
+      return responseWithCookies(200, {
         success: true,
         exists: true,
         autoLogin: true,
@@ -168,7 +196,7 @@ var handler = async (event) => {
             expiresIn: authResult.AuthenticationResult.ExpiresIn
           }
         }
-      });
+      }, cookies, origin);
     } catch (authError) {
       console.error("Cognito \uC778\uC99D \uC2E4\uD328:", authError);
       if (authError.name === "UserNotConfirmedException") {
@@ -177,19 +205,19 @@ var handler = async (event) => {
           exists: false,
           incomplete: true,
           message: "\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4."
-        });
+        }, origin);
       }
       return response(401, {
         success: false,
         error: "\uCE74\uCE74\uC624 \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
-      });
+      }, origin);
     }
   } catch (error) {
     console.error("\uCE74\uCE74\uC624 \uB85C\uADF8\uC778 \uC624\uB958:", error);
     return response(500, {
       success: false,
       error: error.message || "\uC11C\uBC84 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4."
-    });
+    }, origin);
   }
 };
 // Annotate the CommonJS export names for ESM import in node:

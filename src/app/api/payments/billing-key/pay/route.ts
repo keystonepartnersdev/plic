@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { handleApiError, successResponse, Errors } from '@/lib/api-error';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -33,10 +34,7 @@ export async function POST(request: NextRequest) {
     // 필수값 검증
     if (!billingKey || !amount || !goodsName) {
       console.log('[BillingKey Pay] Missing required fields');
-      return NextResponse.json(
-        { error: '필수 필드(billingKey, amount, goodsName)가 누락되었습니다.' },
-        { status: 400 }
-      );
+      return Errors.inputMissingField('billingKey, amount, goodsName').toResponse();
     }
 
     const trackId = dealId || softpayment.generateDealNumber();
@@ -99,8 +97,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       trxId,
       trackId: resultTrackId,
       amount: response.data?.amount,
@@ -112,9 +109,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[BillingKey Pay] Error:', error);
-    return NextResponse.json(
-      { error: '빌링키 결제 처리 중 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

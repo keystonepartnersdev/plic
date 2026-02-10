@@ -1,65 +1,62 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-02-04T16:30:00.000Z",
-  "activeFeatures": ["refactoring", "jwt-httponly"],
-  "primaryFeature": "jwt-httponly",
+  "lastUpdated": "2026-02-05T10:00:00.000Z",
+  "activeFeatures": ["backend-api-fullstack"],
+  "primaryFeature": "backend-api-fullstack",
   "features": {
     "refactoring": {
-      "phase": "completed",
-      "phaseNumber": 4,
+      "phase": "archived",
       "matchRate": 100,
-      "iterationCount": 0,
-      "requirements": [
-        "보안 강화",
-        "설정 중앙화",
-        "컴포넌트 분할",
-        "중복 코드 제거",
-        "타입 안전성",
-        "코드 품질 개선"
-      ],
-      "documents": {
-        "plan": "docs/01-plan/PLIC_REFACTORING_PLAN_v1.0.md",
-        "roadmap": "docs/ROADMAP.md",
-        "log": "docs/logs/REFACTORING-LOG.md"
-      },
-      "timestamps": {
-        "started": "2026-02-02T11:10:55.913Z",
-        "lastUpdated": "2026-02-04T10:00:00.000Z",
-        "completed": "2026-02-04T10:00:00.000Z"
-      },
-      "results": {
-        "anyTypes": "161 → 3 (98% 감소)",
-        "qualityScore": "62 → 93 (+31 향상)",
-        "strictMode": "활성화",
-        "largeComponents": "3개 → 0개 분할 완료"
-      }
+      "startedAt": "2026-02-02T11:10:55.913Z",
+      "archivedAt": "2026-02-04T18:00:00.000Z",
+      "archivedTo": "docs/archive/2026-02/refactoring/"
     },
     "jwt-httponly": {
-      "phase": "completed",
-      "phaseNumber": 4,
+      "phase": "archived",
       "matchRate": 100,
-      "iterationCount": 0,
-      "requirements": [
-        "XSS 방어 강화",
-        "httpOnly 쿠키 전환",
-        "CORS credentials 설정",
-        "Lambda 함수 수정"
-      ],
-      "documents": {
-        "design": "docs/02-design/features/jwt-httponly-migration.design.md",
-        "deployment": "docs/02-design/features/jwt-httponly-deployment-guide.md"
-      },
-      "timestamps": {
-        "started": "2026-02-04T12:00:00.000Z",
-        "lastUpdated": "2026-02-04T16:30:00.000Z",
-        "completed": "2026-02-04T16:30:00.000Z"
-      },
-      "results": {
-        "lambdaFunctions": "kakao-login, signup 배포 완료",
-        "apiGateway": "CORS credentials 설정 완료",
-        "frontend": "Set-Cookie 전달 구현 완료",
-        "securityLevel": "High → Secure"
-      }
+      "startedAt": "2026-02-04T12:00:00.000Z",
+      "archivedAt": "2026-02-04T18:00:00.000Z",
+      "archivedTo": "docs/archive/2026-02/jwt-httponly/"
+    },
+    "error-boundary": {
+      "phase": "archived",
+      "matchRate": 100,
+      "startedAt": "2026-02-04T18:10:00.000Z",
+      "archivedAt": "2026-02-04T18:35:00.000Z",
+      "archivedTo": "docs/archive/2026-02/error-boundary/"
+    },
+    "e2e-auth-tests": {
+      "phase": "archived",
+      "matchRate": 100,
+      "iterationCount": 3,
+      "startedAt": "2026-02-04T18:45:00.000Z",
+      "archivedAt": "2026-02-04T20:00:00.000Z",
+      "archivedTo": "docs/archive/2026-02/e2e-auth-tests/"
+    },
+    "performance-optimization": {
+      "phase": "archived",
+      "matchRate": 100,
+      "iterationCount": 1,
+      "startedAt": "2026-02-04T20:10:00.000Z",
+      "archivedAt": "2026-02-04T21:00:00.000Z",
+      "archivedTo": "docs/archive/2026-02/performance-optimization/"
+    },
+    "zustand-hydration": {
+      "phase": "archived",
+      "matchRate": 100,
+      "iterationCount": 1,
+      "startedAt": "2026-02-04T21:10:00.000Z",
+      "archivedAt": "2026-02-04T21:35:00.000Z",
+      "archivedTo": "docs/archive/2026-02/zustand-hydration/"
+    },
+    "backend-api-fullstack": {
+      "phase": "completed",
+      "matchRate": 100,
+      "iterationCount": 2,
+      "startedAt": "2026-02-05T10:00:00.000Z",
+      "planCompletedAt": "2026-02-05T10:05:00.000Z",
+      "doCompletedAt": "2026-02-05T11:00:00.000Z",
+      "checkCompletedAt": "2026-02-05T13:00:00.000Z"
     }
   },
   "pipeline": {
@@ -70,13 +67,13 @@
   "session": {
     "startedAt": "2026-02-02T11:10:55.913Z",
     "onboardingCompleted": true,
-    "lastActivity": "2026-02-04T16:30:00.000Z"
+    "lastActivity": "2026-02-04T21:35:00.000Z"
   },
   "summary": {
-    "totalPhases": 7,
-    "completedPhases": 7,
+    "totalFeatures": 6,
+    "completedFeatures": 6,
+    "archivedFeatures": ["refactoring", "jwt-httponly", "error-boundary", "e2e-auth-tests", "performance-optimization", "zustand-hydration"],
     "progress": "100%",
-    "status": "completed",
-    "completedFeatures": ["refactoring", "jwt-httponly"]
+    "status": "all_features_archived"
   }
 }

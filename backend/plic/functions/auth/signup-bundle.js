@@ -85,8 +85,9 @@ var cognitoClient = new import_client_cognito_identity_provider.CognitoIdentityP
 var dynamoClient = new import_client_dynamodb.DynamoDBClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(dynamoClient);
 var USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
-var USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || "";
+var USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || process.env.COGNITO_CLIENT_ID || "";
 var USERS_TABLE = process.env.USERS_TABLE || "plic-users";
+var KAKAO_VERIFICATIONS_TABLE = "plic-kakao-verifications";
 var corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type,Authorization",
@@ -109,7 +110,25 @@ var handler = async (event) => {
       });
     }
     const body = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerified, kakaoId } = body;
+    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
+    let { kakaoVerified, kakaoId } = body;
+    if (kakaoVerificationKey) {
+      try {
+        const verificationResult = await docClient.send(new import_lib_dynamodb.GetCommand({
+          TableName: KAKAO_VERIFICATIONS_TABLE,
+          Key: { verificationKey: kakaoVerificationKey }
+        }));
+        if (verificationResult.Item && verificationResult.Item.kakaoId) {
+          console.log(`[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4\uB85C \uC870\uD68C \uC131\uACF5: ${verificationResult.Item.email}`);
+          kakaoVerified = true;
+          kakaoId = verificationResult.Item.kakaoId;
+        } else {
+          console.log(`[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4 \uC870\uD68C \uC2E4\uD328 \uB610\uB294 \uB9CC\uB8CC: ${kakaoVerificationKey}`);
+        }
+      } catch (verifyError) {
+        console.error("[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4 \uC870\uD68C \uC624\uB958:", verifyError);
+      }
+    }
     if (!email || !password || !name || !phone) {
       return response(400, {
         success: false,
@@ -159,10 +178,7 @@ var handler = async (event) => {
         UserAttributes: [
           { Name: "email", Value: email },
           { Name: "name", Value: name },
-          { Name: "phone_number", Value: `+82${phone.slice(1)}` },
-          // 국제 형식으로 변환
-          { Name: "custom:uid", Value: uid },
-          { Name: "custom:userType", Value: userType || "personal" }
+          { Name: "phone_number", Value: `+82${phone.slice(1)}` }
         ]
       });
       await cognitoClient.send(signUpCommand);
@@ -202,9 +218,7 @@ var handler = async (event) => {
               UserAttributes: [
                 { Name: "email", Value: email },
                 { Name: "name", Value: name },
-                { Name: "phone_number", Value: `+82${phone.slice(1)}` },
-                { Name: "custom:uid", Value: uid },
-                { Name: "custom:userType", Value: userType || "personal" }
+                { Name: "phone_number", Value: `+82${phone.slice(1)}` }
               ]
             });
             await cognitoClient.send(retrySignUpCommand);
@@ -248,9 +262,9 @@ var handler = async (event) => {
       isVerified: false,
       status: "pending",
       grade: "basic",
-      feeRate: 2.5,
+      feeRate: 4.5,
       isGradeManual: false,
-      monthlyLimit: 5e6,
+      monthlyLimit: 2e7,
       usedAmount: 0,
       agreements: {
         service: agreements.service,
@@ -276,15 +290,30 @@ var handler = async (event) => {
         verifiedAt: null
       };
     }
+    if (kakaoVerified && kakaoId) {
+      try {
+        await cognitoClient.send(new import_client_cognito_identity_provider.AdminConfirmSignUpCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: email
+        }));
+        console.log(`[Signup] \uCE74\uCE74\uC624 \uC0AC\uC6A9\uC790 \uC790\uB3D9 \uD655\uC778 \uC644\uB8CC: ${email}`);
+        userItem.isVerified = true;
+        userItem.status = "active";
+      } catch (confirmError) {
+        console.error("[Signup] \uCE74\uCE74\uC624 \uC0AC\uC6A9\uC790 \uC790\uB3D9 \uD655\uC778 \uC2E4\uD328:", confirmError);
+      }
+    }
     await docClient.send(new import_lib_dynamodb.PutCommand({
       TableName: USERS_TABLE,
       Item: userItem
     }));
+    var successMessage = kakaoVerified ? "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBC14\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4." : "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uBA54\uC77C\uB85C \uC804\uC1A1\uB41C \uC778\uC99D\uCF54\uB4DC\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.";
     return response(200, {
       success: true,
       data: {
-        message: "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uBA54\uC77C\uB85C \uC804\uC1A1\uB41C \uC778\uC99D\uCF54\uB4DC\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.",
-        uid
+        message: successMessage,
+        uid,
+        autoConfirmed: kakaoVerified || false
       }
     });
   } catch (error) {

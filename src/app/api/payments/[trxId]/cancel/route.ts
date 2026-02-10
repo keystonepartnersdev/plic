@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
+import { handleApiError, successResponse, Errors } from '@/lib/api-error';
 
 export async function POST(
   request: NextRequest,
@@ -18,17 +19,11 @@ export async function POST(
     const { amount, dealNumber } = body;
 
     if (!rootTrxId) {
-      return NextResponse.json(
-        { error: '원거래번호(trxId)가 필요합니다.' },
-        { status: 400 }
-      );
+      return Errors.inputMissingField('trxId').toResponse();
     }
 
     if (!amount) {
-      return NextResponse.json(
-        { error: '취소금액(amount)이 필요합니다.' },
-        { status: 400 }
-      );
+      return Errors.inputMissingField('amount').toResponse();
     }
 
     // 취소용 trackId 생성
@@ -56,8 +51,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       trxId: response.data?.trxId,
       rootTrxId: response.data?.rootTrxId,
       authCd: response.data?.authCd,
@@ -67,9 +61,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('[Payment Cancel] Error:', error);
-    return NextResponse.json(
-      { error: '취소 처리 중 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

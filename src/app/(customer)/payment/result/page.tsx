@@ -14,14 +14,14 @@ function PaymentResultContent() {
   const processedRef = useRef(false);
 
   const { updateDeal, deals } = useDealStore();
-  const { currentUser, updateUser, isLoggedIn } = useUserStore();
+  const { currentUser, updateUser, isLoggedIn, _hasHydrated } = useUserStore();
 
   // 인증 체크
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
   // URL 파라미터에서 결제 결과 추출
   const success = searchParams.get('success') === 'true';
@@ -58,7 +58,7 @@ function PaymentResultContent() {
               description: `${Number(amount || deal.finalAmount).toLocaleString()}원 결제가 완료되었습니다.`,
               actor: 'system',
             },
-            ...deal.history,
+            ...(deal.history || []),
           ],
         });
 
@@ -74,7 +74,7 @@ function PaymentResultContent() {
     }
   }, [mounted, success, dealId, deals, updateDeal, currentUser, updateUser, trxId, amount]);
 
-  if (!mounted || !isLoggedIn) {
+  if (!mounted || !_hasHydrated || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />

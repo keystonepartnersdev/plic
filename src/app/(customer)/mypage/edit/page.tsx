@@ -10,7 +10,7 @@ import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn, updateUser } = useUserStore();
+  const { currentUser, isLoggedIn, updateUser, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,12 +47,12 @@ export default function EditProfilePage() {
   const hasChanges = formData.name !== originalData.name || formData.phone !== originalData.phone;
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />

@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { IHomeBanner, INotice, IFAQ } from '@/types';
 import { contentAPI } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
+import { DEFAULT_FAQS, DEFAULT_HOME_FAQS } from '@/lib/defaultFaqs';
 
 interface IContentState {
   banners: IHomeBanner[];
@@ -120,28 +121,33 @@ export const useContentStore = create(
         set({ isLoading: true, apiError: null });
         try {
           const result = await contentAPI.getFaqs(category);
+          const apiFaqs = result.faqs || [];
 
           if (category) {
             // 특정 카테고리만 업데이트
+            const categoryFaqs = apiFaqs.length > 0 ? apiFaqs : DEFAULT_FAQS.filter(f => f.category === category);
             set((state) => ({
               faqsByCategory: {
                 ...state.faqsByCategory,
-                [category]: result.faqs,
+                [category]: categoryFaqs,
               },
               isLoading: false,
             }));
           } else {
-            // 전체 FAQ 업데이트
+            // 전체 FAQ 업데이트 (API 결과 없으면 기본 데이터 사용)
+            const finalFaqs = apiFaqs.length > 0 ? apiFaqs : DEFAULT_FAQS;
             set({
-              faqs: result.faqs,
+              faqs: finalFaqs,
               faqsByCategory: result.grouped || {},
               isLoading: false,
             });
           }
-        } catch (error: unknown) {
+        } catch {
+          // API 실패 시 기본 데이터 사용
           set({
+            faqs: DEFAULT_FAQS,
             isLoading: false,
-            apiError: getErrorMessage(error) || 'FAQ를 불러오는데 실패했습니다.',
+            apiError: null, // 기본 데이터로 표시하므로 에러 메시지 숨김
           });
         }
       },
@@ -203,7 +209,11 @@ export const useContentStore = create(
 
       getVisibleFAQs: () => get().faqs.filter((f) => f.isVisible).sort((a, b) => a.priority - b.priority),
 
-      getHomeFeaturedFAQs: () => get().faqs.filter((f) => f.isVisible && f.isHomeFeatured).sort((a, b) => a.priority - b.priority),
+      getHomeFeaturedFAQs: () => {
+        const apiFaqs = get().faqs.filter((f) => f.isVisible && f.isHomeFeatured).sort((a, b) => a.priority - b.priority);
+        // API에서 가져온 FAQ가 없으면 기본 FAQ 반환
+        return apiFaqs.length > 0 ? apiFaqs : DEFAULT_HOME_FAQS;
+      },
 
       getFAQsByCategory: (category) => {
         // API에서 불러온 faqsByCategory가 있으면 사용, 없으면 로컬 faqs 필터링

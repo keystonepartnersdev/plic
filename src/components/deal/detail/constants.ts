@@ -1,8 +1,6 @@
 // src/components/deal/detail/constants.ts
 // Phase 3.2: 거래 상세 페이지 상수
 
-import { TDealStatus } from '@/types';
-
 /**
  * 상태별 색상 클래스
  */

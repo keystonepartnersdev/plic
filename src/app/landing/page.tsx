@@ -89,9 +89,9 @@ function Navigation() {
 // ==================== Hero ====================
 function Hero() {
   return (
-    <section className="relative flex flex-col bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20">
+    <section className="relative flex flex-col bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
       {/* 텍스트 + 버튼 영역 */}
-      <div className="max-w-4xl mx-auto px-6 w-full text-center pt-24 pb-12 lg:pt-32 lg:pb-20">
+      <div className="max-w-4xl mx-auto px-6 w-full text-center pt-24 pb-4 lg:pt-32 lg:pb-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -133,60 +133,51 @@ function Hero() {
         </motion.div>
       </div>
 
-      {/* 모바일 이미지 영역 - 버튼 아래 별도 섹션 */}
-      <div className="lg:hidden flex flex-col items-center gap-6 px-6 py-12 bg-gradient-to-b from-transparent to-gray-50">
-        <motion.img
+      {/* 폰 목업 - 모바일: 세로 폰 1개 중앙 */}
+      <div className="md:hidden flex justify-center px-6 pb-4">
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          src="/landing/test.png"
-          alt="PLIC App"
-          className="w-full max-w-[280px]"
-        />
-        <motion.img
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.0 }}
-          src="/landing/test2.png"
-          alt="PLIC App"
-          className="w-full max-w-[250px]"
-        />
+          transition={{ duration: 0.8, delay: 0.6 }}
+        >
+          <img
+            src="/landing/test2.png"
+            alt="PLIC 거래 유형 선택"
+            className="w-[220px] drop-shadow-2xl mx-auto"
+          />
+        </motion.div>
       </div>
 
-      {/* 데스크톱 이미지 - 절대 위치 */}
-      <motion.div
-        initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-        className="hidden lg:block absolute pointer-events-none"
-        style={{
-          top: '500px',
-          left: 'calc((100vw - 1280px) / 2 + 24px)',
-        }}
-      >
-        <img
-          src="/landing/test2.png"
-          alt="PLIC App"
-          style={{ width: '380px' }}
-        />
-      </motion.div>
+      {/* 폰 목업 - 데스크톱: 2개 나란히 */}
+      <div className="hidden md:flex justify-center px-6 pb-2 lg:pb-4">
+        <div className="relative flex items-center justify-center" style={{ maxWidth: '1000px', width: '100%' }}>
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="relative z-10 flex-shrink-0"
+          >
+            <img
+              src="/landing/test2.png"
+              alt="PLIC 거래 유형 선택"
+              className="w-[286px] lg:w-[338px] drop-shadow-2xl"
+            />
+          </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-        className="hidden lg:block absolute pointer-events-none"
-        style={{
-          top: '340px',
-          right: '10px',
-        }}
-      >
-        <img
-          src="/landing/test.png"
-          alt="PLIC App"
-          style={{ width: '1280px' }}
-        />
-      </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="relative z-0 ml-4 lg:ml-6 flex-shrink-0"
+          >
+            <img
+              src="/landing/test.png"
+              alt="PLIC 메인 화면"
+              className="w-[700px] lg:w-[832px] drop-shadow-2xl"
+            />
+          </motion.div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -208,7 +199,7 @@ function CardBanner() {
 
   return (
     <section
-      className="w-full flex flex-col justify-center mt-24"
+      className="w-full flex flex-col justify-center"
       style={{ height: '110px', backgroundColor: '#f1f2f5' }}
     >
       <style jsx>{`
@@ -572,7 +563,7 @@ function Reviews() {
         }
         .reviews-scroll-container {
           display: flex;
-          animation: reviewScroll 40s linear infinite;
+          animation: reviewScroll 10s linear infinite;
         }
         .reviews-scroll-container:hover {
           animation-play-state: paused;

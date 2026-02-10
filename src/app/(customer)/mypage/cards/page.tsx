@@ -30,7 +30,7 @@ const CARD_COMPANIES = [
 function CardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, isLoggedIn, registeredCards, addCard, removeCard, setDefaultCard } = useUserStore();
+  const { currentUser, isLoggedIn, registeredCards, addCard, removeCard, setDefaultCard, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -89,12 +89,12 @@ function CardsPageContent() {
   }, [mounted, currentUser, searchParams, addCard, registeredCards.length, router]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />

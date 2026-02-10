@@ -86,6 +86,9 @@ const getActionDescription = (endpoint: string, method: string): string => {
   if (endpoint.match(/^\/admin\/users\/[^/]+\/grade$/)) {
     return '회원 등급 변경';
   }
+  if (endpoint.match(/^\/admin\/users\/[^/]+\/settings$/)) {
+    return '회원 수수료/한도 설정';
+  }
   if (endpoint.match(/^\/admin\/users\/[^/]+\/business$/)) {
     return '사업자 인증 처리';
   }
@@ -126,8 +129,8 @@ const getActionDescription = (endpoint: string, method: string): string => {
 const sendLog = (log: ApiLogEntry) => {
   if (typeof window === 'undefined') return;
 
-  // fetch 사용 (fire-and-forget)
-  fetch(`${API_BASE_URL}/tracking/api-log`, {
+  // fetch 사용 (fire-and-forget) - Next.js 프록시 경유 (CORS 우회)
+  fetch('/api/tracking/api-log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ logs: [log] }),
@@ -439,13 +442,34 @@ export const authAPI = {
 };
 
 // ============================================
+// 인증 프록시 요청 헬퍼 (401 시 자동 토큰 갱신)
+// ============================================
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const response = await fetch(url, { ...options, credentials: 'include' });
+
+  if (response.status === 401) {
+    // 토큰 갱신 시도
+    const refreshResponse = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (refreshResponse.ok) {
+      // 갱신 성공 → 원래 요청 재시도
+      return fetch(url, { ...options, credentials: 'include' });
+    }
+    // 갱신 실패 → 원래 401 응답 반환
+  }
+
+  return response;
+}
+
+// ============================================
 // Users API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const usersAPI = {
   getMe: async () => {
-    const response = await fetch('/api/users/me', {
-      credentials: 'include',
-    });
+    const response = await fetchWithAuth('/api/users/me');
     const data = await response.json();
     if (!response.ok || !data.success) {
       throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
@@ -454,11 +478,10 @@ export const usersAPI = {
   },
 
   updateMe: async (data: { name?: string; phone?: string; agreements?: { marketing?: boolean } }) => {
-    const response = await fetch('/api/users/me', {
+    const response = await fetchWithAuth('/api/users/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-      credentials: 'include',
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -468,9 +491,8 @@ export const usersAPI = {
   },
 
   withdraw: async () => {
-    const response = await fetch('/api/users/me', {
+    const response = await fetchWithAuth('/api/users/me', {
       method: 'DELETE',
-      credentials: 'include',
     });
     const data = await response.json();
     if (!response.ok || !data.success) {
@@ -480,9 +502,7 @@ export const usersAPI = {
   },
 
   getGrade: async () => {
-    const response = await fetch('/api/users/me/grade', {
-      credentials: 'include',
-    });
+    const response = await fetchWithAuth('/api/users/me/grade');
     const data = await response.json();
     if (!response.ok || !data.success) {
       throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
@@ -505,9 +525,7 @@ export const dealsAPI = {
     if (params?.status) query.append('status', params.status);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    const response = await fetch(`/api/deals${queryString ? `?${queryString}` : ''}`, {
-      credentials: 'include',
-    });
+    const response = await fetchWithAuth(`/api/deals${queryString ? `?${queryString}` : ''}`);
     const result = await response.json();
     if (!response.ok || !result.success) {
       throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
@@ -516,9 +534,7 @@ export const dealsAPI = {
   },
 
   get: async (did: string) => {
-    const response = await fetch(`/api/deals/${did}`, {
-      credentials: 'include',
-    });
+    const response = await fetchWithAuth(`/api/deals/${did}`);
     const result = await response.json();
     if (!response.ok || !result.success) {
       throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
@@ -530,15 +546,14 @@ export const dealsAPI = {
     dealName: string;
     dealType: string;
     amount: number;
-    recipient: { bank: string; accountNumber: string; accountHolder: string };
+    recipient: { bank: string; accountNumber: string; accountHolder: string; isVerified?: boolean };
     senderName: string;
     attachments?: string[];
   }) => {
-    const response = await fetch('/api/deals', {
+    const response = await fetchWithAuth('/api/deals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-      credentials: 'include',
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -548,11 +563,10 @@ export const dealsAPI = {
   },
 
   update: async (did: string, data: Partial<IDeal>) => {
-    const response = await fetch(`/api/deals/${did}`, {
+    const response = await fetchWithAuth(`/api/deals/${did}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-      credentials: 'include',
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -562,9 +576,8 @@ export const dealsAPI = {
   },
 
   cancel: async (did: string) => {
-    const response = await fetch(`/api/deals/${did}`, {
+    const response = await fetchWithAuth(`/api/deals/${did}`, {
       method: 'DELETE',
-      credentials: 'include',
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -574,11 +587,10 @@ export const dealsAPI = {
   },
 
   applyDiscount: async (did: string, discountId: string) => {
-    const response = await fetch(`/api/deals/${did}/discount`, {
+    const response = await fetchWithAuth(`/api/deals/${did}/discount`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ discountId }),
-      credentials: 'include',
     });
     const data = await response.json();
     if (!response.ok || !data.success) {
@@ -593,11 +605,10 @@ export const dealsAPI = {
 // ============================================
 export const discountsAPI = {
   validate: async (data: { code: string; amount: number }) => {
-    const response = await fetch('/api/discounts/validate', {
+    const response = await fetchWithAuth('/api/discounts/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-      credentials: 'include',
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -607,9 +618,7 @@ export const discountsAPI = {
   },
 
   getCoupons: async () => {
-    const response = await fetch('/api/discounts/coupons', {
-      credentials: 'include',
-    });
+    const response = await fetchWithAuth('/api/discounts/coupons');
     const data = await response.json();
     if (!response.ok || !data.success) {
       throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
@@ -668,11 +677,10 @@ export const uploadsAPI = {
     uploadType: UploadType;
     entityId?: string;
   }) => {
-    const response = await fetch('/api/uploads/presigned-url', {
+    const response = await fetchWithAuth('/api/uploads/presigned-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-      credentials: 'include',
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -687,14 +695,22 @@ export const uploadsAPI = {
 // ============================================
 export const adminAPI = {
   login: async (data: { email: string; password: string }) => {
-    const result = await request<{ admin: IAdmin; token: string }>('/admin/auth/login', {
+    // Next.js API 프록시를 통해 로그인 (CORS 우회)
+    const response = await fetch('/api/admin/auth/login', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plic_admin_token', result.token);
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || '로그인에 실패했습니다.');
     }
-    return result;
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('plic_admin_token', result.data.token);
+    }
+    return result.data as { admin: IAdmin; token: string };
   },
 
   // 회원 관리
@@ -740,6 +756,13 @@ export const adminAPI = {
     requestWithAdminToken<{ message: string }>(`/admin/deals/${did}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status, reason }),
+    }),
+
+  // 개별 사용자 수수료/한도 설정
+  updateUserSettings: (uid: string, settings: { feeRate?: number; monthlyLimit?: number }) =>
+    requestWithAdminToken<{ message: string; uid: string; feeRate: number; monthlyLimit: number }>(`/admin/users/${uid}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(settings),
     }),
 
   // 사업자 인증 관리

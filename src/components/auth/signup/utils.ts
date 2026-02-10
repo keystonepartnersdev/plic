@@ -11,8 +11,6 @@ export function getInitialStep(): SignupStep {
   if (typeof window === 'undefined') return 'agreement';
 
   const urlParams = new URLSearchParams(window.location.search);
-  const verified = urlParams.get('verified');
-  const verificationKey = urlParams.get('verificationKey');
   const fromLogin = urlParams.get('fromLogin');
 
   // 로그인에서 온 신규 회원 → 항상 약관동의부터
@@ -21,18 +19,9 @@ export function getInitialStep(): SignupStep {
     return 'agreement';
   }
 
-  // 카카오 인증 콜백으로 돌아온 경우 → 저장된 step 복원
-  if (verified === 'true' && verificationKey) {
-    const savedStep = sessionStorage.getItem(STORAGE_KEYS.SIGNUP_STEP);
-    if (savedStep && ['agreement', 'phoneVerify', 'info', 'businessInfo'].includes(savedStep)) {
-      return savedStep as SignupStep;
-    }
-    return 'phoneVerify';
-  }
-
   // 일반 접근 → 저장된 step 복원 또는 agreement
   const savedStep = sessionStorage.getItem(STORAGE_KEYS.SIGNUP_STEP);
-  if (savedStep && ['agreement', 'phoneVerify', 'info', 'businessInfo'].includes(savedStep)) {
+  if (savedStep && ['agreement', 'info', 'businessInfo'].includes(savedStep)) {
     return savedStep as SignupStep;
   }
 
@@ -82,8 +71,6 @@ export function saveAgreements(agreements: Agreement[]): void {
 export function clearSignupData(): void {
   sessionStorage.removeItem(STORAGE_KEYS.SIGNUP_AGREEMENTS);
   sessionStorage.removeItem(STORAGE_KEYS.SIGNUP_STEP);
-  sessionStorage.removeItem(STORAGE_KEYS.SIGNUP_KAKAO_VERIFIED);
-  sessionStorage.removeItem(STORAGE_KEYS.SIGNUP_KAKAO_DATA);
 }
 
 /**
@@ -133,14 +120,6 @@ export function isValidPassword(password: string): boolean {
 export function isValidBusinessNumber(num: string): boolean {
   const digits = num.replace(/-/g, '');
   return digits.length === 10;
-}
-
-/**
- * 카카오 ID로부터 결정적 비밀번호 생성 (Cognito 정책 충족)
- */
-export function generateKakaoPassword(kakaoId: number): string {
-  const idStr = kakaoId.toString(16).padStart(12, '0');
-  return `Kk${idStr.substring(0, 10)}Px1!`;
 }
 
 /**

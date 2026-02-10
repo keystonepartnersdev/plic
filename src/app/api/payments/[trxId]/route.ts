@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment, STATUS_MAPPING } from '@/lib/softpayment';
+import { handleApiError, successResponse, Errors } from '@/lib/api-error';
 
 export async function GET(
   request: NextRequest,
@@ -16,10 +17,7 @@ export async function GET(
     const { trxId } = await params;
 
     if (!trxId) {
-      return NextResponse.json(
-        { error: '거래번호(trxId)가 필요합니다.' },
-        { status: 400 }
-      );
+      return Errors.inputMissingField('trxId').toResponse();
     }
 
     console.log('[Payment Status] Checking trxId:', trxId);
@@ -38,8 +36,7 @@ export async function GET(
 
     const data = response.data;
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       trxId: data?.trxId,
       trackId: data?.trackId,
       status: data?.status,
@@ -61,9 +58,6 @@ export async function GET(
     });
   } catch (error) {
     console.error('[Payment Status] Error:', error);
-    return NextResponse.json(
-      { error: '상태 조회 중 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

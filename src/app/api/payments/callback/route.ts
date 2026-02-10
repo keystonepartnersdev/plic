@@ -8,12 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-
-const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
-const docClient = DynamoDBDocumentClient.from(dynamoClient);
-const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
+import { API_CONFIG } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -73,32 +68,34 @@ export async function POST(request: NextRequest) {
     const approvedTrxId = approveResponse.data?.trxId || trxId;
     const trackId = approveResponse.data?.trackId || '';
 
-    // 승인 성공 시 DB에 결제 정보 저장 (pgTransactionId 포함)
+    // 승인 성공 시 백엔드 API를 통해 결제 정보 업데이트
     if (dealId) {
       try {
-        console.log('[Payment Callback] Updating deal in DB:', { dealId, trxId: approvedTrxId });
+        console.log('[Payment Callback] Updating deal via backend API:', { dealId, trxId: approvedTrxId });
 
-        await docClient.send(new UpdateCommand({
-          TableName: DEALS_TABLE,
-          Key: { did: dealId },
-          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, updatedAt = :updatedAt',
-          ExpressionAttributeNames: {
-            '#status': 'status',
+        const updateResponse = await fetch(`${API_CONFIG.BASE_URL}/deals/${dealId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          ExpressionAttributeValues: {
-            ':isPaid': true,
-            ':paidAt': new Date().toISOString(),
-            ':status': 'reviewing',
-            ':pgTrxId': approvedTrxId,
-            ':pgTrackId': trackId,
-            ':updatedAt': new Date().toISOString(),
-          },
-        }));
+          body: JSON.stringify({
+            isPaid: true,
+            paidAt: new Date().toISOString(),
+            status: 'reviewing',
+            pgTransactionId: approvedTrxId,
+            pgTrackId: trackId,
+          }),
+        });
 
-        console.log('[Payment Callback] Deal updated successfully');
-      } catch (dbError) {
-        // DB 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
-        console.error('[Payment Callback] Failed to update deal in DB:', dbError);
+        if (updateResponse.ok) {
+          console.log('[Payment Callback] Deal updated successfully via API');
+        } else {
+          const errorData = await updateResponse.json().catch(() => ({}));
+          console.error('[Payment Callback] API update failed:', updateResponse.status, errorData);
+        }
+      } catch (apiError) {
+        // API 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
+        console.error('[Payment Callback] Failed to update deal via API:', apiError);
       }
     }
 

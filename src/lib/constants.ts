@@ -58,7 +58,7 @@ export const DEAL_TYPE_LABELS: Record<TDealType, string> = {
  * 거래 금액 제한
  */
 export const DEAL_AMOUNT = {
-  MIN: 10000,          // 최소 거래 금액 (1만원)
+  MIN: 1,              // 최소 거래 금액 (1원)
   MAX: 100000000,      // 최대 거래 금액 (1억원)
 } as const;
 
@@ -88,31 +88,40 @@ export const USER_STATUS_LABELS: Record<TUserStatus, string> = {
 } as const;
 
 /**
- * 기본 등급별 수수료율 (%)
+ * 단일 등급 설정 (2026-02-06)
+ * - 등급 제도 폐지, 모든 회원 동일 조건
+ */
+export const PLIC_SETTINGS = {
+  FEE_RATE: 4.5,              // 수수료율 4.5%
+  MONTHLY_LIMIT: 20000000,    // 월 한도 2천만원
+} as const;
+
+/**
+ * @deprecated 등급별 수수료율 - 단일 등급으로 전환됨. PLIC_SETTINGS.FEE_RATE 사용
  */
 export const DEFAULT_FEE_RATES: Record<TUserGrade, number> = {
-  basic: 5.5,
+  basic: 4.5,
   platinum: 4.5,
-  b2b: 3.5,
-  employee: 3.0,
+  b2b: 4.5,
+  employee: 4.5,
 } as const;
 
 /**
- * 기본 등급별 월 한도 (원)
+ * @deprecated 등급별 월 한도 - 단일 등급으로 전환됨. PLIC_SETTINGS.MONTHLY_LIMIT 사용
  */
 export const DEFAULT_MONTHLY_LIMITS: Record<TUserGrade, number> = {
-  basic: 30000000,      // 3천만원
-  platinum: 50000000,   // 5천만원
-  b2b: 100000000,       // 1억원
-  employee: 50000000,   // 5천만원
+  basic: 20000000,      // 2천만원
+  platinum: 20000000,   // 2천만원
+  b2b: 20000000,        // 2천만원
+  employee: 20000000,   // 2천만원
 } as const;
 
 /**
- * 등급 승급/강등 기준 금액
+ * @deprecated 등급 제도 폐지됨
  */
 export const GRADE_THRESHOLDS = {
-  PLATINUM_UPGRADE: 10000000,   // 플래티넘 승급: 전월 1천만원 이상
-  PLATINUM_MAINTAIN: 5000000,   // 플래티넘 유지: 전월 5백만원 이상
+  PLATINUM_UPGRADE: 10000000,
+  PLATINUM_MAINTAIN: 5000000,
 } as const;
 
 // ============================================

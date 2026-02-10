@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getKakaoAuthUrl, generateVerificationKey } from '@/lib/kakao';
-import { getErrorMessage } from '@/lib/utils';
+import { handleApiError } from '@/lib/api-error';
 
 /**
  * 카카오 인증 시작 - 인가 URL로 리다이렉트
@@ -36,9 +36,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error: unknown) {
     console.error('카카오 인증 시작 오류:', error);
-    return NextResponse.json(
-      { error: '카카오 인증을 시작할 수 없습니다.', message: getErrorMessage(error) },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

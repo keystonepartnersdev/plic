@@ -6,7 +6,7 @@ import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Downl
 import { Header, Modal } from '@/components/common';
 import { dealsAPI } from '@/lib/api';
 import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
-import { useUserStore, useDealStore, useDealDraftStore, useAdminUserStore } from '@/stores';
+import { useUserStore, useDealStore, useDealDraftStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
@@ -43,15 +43,15 @@ const BANKS = [
 ];
 
 // 최소 송금 금액
-const MIN_AMOUNT = 10000;
+const MIN_AMOUNT = 1;
 
 function NewDealContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
   const { addDeal } = useDealStore();
   const { currentDraft, startNewDraft, updateDraft, setCurrentStep, submitDraft, loadDraft, clearCurrentDraft } = useDealDraftStore();
-  const { getUserById, updateUser } = useAdminUserStore();
+  // useAdminUserStore 제거 - currentUser에서 직접 한도 정보 사용
 
   const [step, setStep] = useState<Step>('type');
   const [isLoading, setIsLoading] = useState(false);
@@ -295,12 +295,12 @@ function NewDealContent() {
   }, [dealType, amount, discountCode, recipient, senderName, attachments, draftInitialized]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -315,10 +315,9 @@ function NewDealContent() {
     0
   );
 
-  // 한도 검증을 위한 사용자 데이터 조회
-  const adminUser = getUserById(currentUser.uid);
-  const usedAmount = adminUser?.usedAmount || 0;
-  const monthlyLimit = adminUser?.monthlyLimit || currentUser.monthlyLimit || 10000000;
+  // 한도 검증을 위한 사용자 데이터 조회 - DB값을 Single Source of Truth로 사용
+  const usedAmount = currentUser.usedAmount || 0;
+  const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const isOverLimit = numericAmount > remainingLimit;
   const wouldExceedLimit = usedAmount + numericAmount > monthlyLimit;
@@ -597,7 +596,7 @@ function NewDealContent() {
         attachments: attachmentData,
       };
 
-      console.log('[NewDeal] Creating deal...');
+      console.log('[NewDeal] Creating deal with data:', JSON.stringify(dealData, null, 2));
       const response = await dealsAPI.create(dealData);
       console.log('[NewDeal] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
 

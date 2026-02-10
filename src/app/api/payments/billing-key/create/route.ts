@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
+import { handleApiError, successResponse, Errors } from '@/lib/api-error';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,17 +57,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       trackId,
       trxId: response.data?.trxId,
       authPageUrl: response.data?.authPageUrl,
     });
   } catch (error) {
     console.error('[BillingKey Create] Error:', error);
-    return NextResponse.json(
-      { error: '빌링키 발급 요청 중 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

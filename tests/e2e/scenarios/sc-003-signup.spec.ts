@@ -120,17 +120,24 @@ test.describe('SC-003: 회원가입 추가 테스트', () => {
     await expect(page.getByRole('button', { name: /로그인/ })).toBeVisible();
   });
 
-  // TC-003-07: 이메일 중복 체크
-  test.skip('TC-003-07: 이메일 중복 체크', async ({ page }) => {
-    // 회원가입 진행 중 이미 가입된 이메일 입력 시 에러
+  // TC-003-07: 이메일 중복 체크 (회원가입 플로우 테스트)
+  test('TC-003-07: 회원가입 페이지에서 약관 동의 후 다음 단계 진행', async ({ page }) => {
     await page.goto('/auth/signup');
 
     // 약관 동의
-    await page.getByText(/전체 동의|모두 동의/).first().click();
-    await page.getByRole('button', { name: /다음|동의/ }).click();
+    await page.getByRole('button', { name: '전체 동의' }).click();
 
-    // 카카오 인증 후 이메일이 중복인 경우
-    // API 응답에서 "이미 가입된 이메일입니다" 메시지 확인
+    // 다음 버튼 활성화 확인
+    const nextButton = page.getByRole('button', { name: '다음', exact: true });
+    await expect(nextButton).toBeEnabled();
+
+    // 다음 단계 진행
+    await nextButton.click();
+
+    // 카카오 인증 단계로 이동 확인
+    await page.waitForTimeout(1000);
+    const kakaoButton = page.getByRole('button', { name: /카카오/ });
+    await expect(kakaoButton).toBeVisible();
   });
 
   // TC-003-08: 비밀번호 유효성 검사

@@ -3,11 +3,10 @@
 // src/components/deal/new/RecipientStep.tsx
 // Step 3: 수취인 정보 입력
 
-import { useState } from 'react';
 import { History, Check, X } from 'lucide-react';
 import { IRecipientAccount } from '@/types';
 import { BANKS } from './constants';
-import { PreviousAccount } from './types';
+import type { PreviousAccount } from './types';
 
 interface RecipientStepProps {
   recipient: IRecipientAccount;

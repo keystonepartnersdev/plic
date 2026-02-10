@@ -10,14 +10,14 @@ export default function ServiceTermsPage() {
         <div className="prose prose-sm max-w-none">
           <h2 className="text-lg font-bold mb-4">제1조 (목적)</h2>
           <p className="text-gray-700 mb-4">
-            본 약관은 PLIC(이하 "회사")가 제공하는 카드 매입대금 정산대행 서비스(이하 "서비스")의 이용조건 및 절차, 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
+            본 약관은 PLIC(이하 &quot;회사&quot;)가 제공하는 카드 매입대금 정산대행 서비스(이하 &quot;서비스&quot;)의 이용조건 및 절차, 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
           </p>
 
           <h2 className="text-lg font-bold mb-4">제2조 (용어의 정의)</h2>
           <p className="text-gray-700 mb-4">
-            1. "서비스"란 회사가 제공하는 카드 매입대금 정산대행 서비스를 말합니다.<br/>
-            2. "회원"이란 본 약관에 동의하고 서비스 이용 계약을 체결한 자를 말합니다.<br/>
-            3. "거래"란 회원이 서비스를 통해 신청한 카드 결제 및 송금 건을 말합니다.
+            1. &quot;서비스&quot;란 회사가 제공하는 카드 매입대금 정산대행 서비스를 말합니다.<br/>
+            2. &quot;회원&quot;이란 본 약관에 동의하고 서비스 이용 계약을 체결한 자를 말합니다.<br/>
+            3. &quot;거래&quot;란 회원이 서비스를 통해 신청한 카드 결제 및 송금 건을 말합니다.
           </p>
 
           <h2 className="text-lg font-bold mb-4">제3조 (약관의 효력 및 변경)</h2>
