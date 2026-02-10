@@ -207,15 +207,6 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["AdminDealsGetFunction"]
 
-[function_build_definitions.df2b394c-d4f1-4081-9eab-c7db87255d57]
-codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminDealsStatusFunction"
-runtime = "nodejs20.x"
-architecture = "x86_64"
-handler = "deals-status.handler"
-manifest_hash = ""
-packagetype = "Zip"
-functions = ["AdminDealsStatusFunction"]
-
 [function_build_definitions.36571851-50af-47d6-8af8-1b4f6ec8159a]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/GetBannersFunction"
 runtime = "nodejs20.x"
@@ -283,6 +274,8 @@ Target = "es2020"
 
 
 
+
+
 [function_build_definitions.52382298-20ef-49dc-bf17-ac83642b5438]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminFaqsSeedFunction"
 runtime = "nodejs20.x"
@@ -300,6 +293,8 @@ EntryPoints = ["faqs-seed.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
 
 
 
@@ -345,6 +340,8 @@ Target = "es2020"
 
 
 
+
+
 [function_build_definitions.f8292235-38af-4d45-86e7-297f9bb16731]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminTermsManageFunction"
 runtime = "nodejs20.x"
@@ -362,6 +359,8 @@ EntryPoints = ["terms-manage.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
 
 
 
@@ -407,6 +406,8 @@ Target = "es2020"
 
 
 
+
+
 [function_build_definitions.e3cd22b5-6114-4ff2-9dc8-b1c261f22b2a]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/KakaoLoginFunction"
 runtime = "nodejs20.x"
@@ -437,6 +438,8 @@ Target = "es2020"
 
 
 
+
+
 [function_build_definitions.a457ff89-3046-46f3-8d64-b37c9e023ed9]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/GetMeFunction"
 runtime = "nodejs20.x"
@@ -457,6 +460,8 @@ Target = "es2020"
 External = ["@aws-sdk/*"]
 
 
+
+
 [function_build_definitions.1ec279b1-3e26-4417-ba5a-6c6c94240129]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminUsersSettingsFunction"
 runtime = "nodejs20.x"
@@ -474,5 +479,45 @@ EntryPoints = ["users-settings.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
+
+[function_build_definitions.59a7366f-8d09-46ce-899d-639ebdabcabf]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminDealsStatusFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "deals-status.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["AdminDealsStatusFunction"]
+
+[function_build_definitions.59a7366f-8d09-46ce-899d-639ebdabcabf.metadata]
+BuildMethod = "esbuild"
+
+[function_build_definitions.59a7366f-8d09-46ce-899d-639ebdabcabf.metadata.BuildProperties]
+EntryPoints = ["deals-status.ts"]
+Minify = true
+Sourcemap = true
+Target = "es2020"
+External = ["@aws-sdk/*"]
+
+[function_build_definitions.4eea57f9-02b9-455a-b8d6-d9d32c3f8ab3]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/UserBusinessResubmitFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "business-resubmit.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["UserBusinessResubmitFunction"]
+
+[function_build_definitions.4eea57f9-02b9-455a-b8d6-d9d32c3f8ab3.metadata]
+BuildMethod = "esbuild"
+
+[function_build_definitions.4eea57f9-02b9-455a-b8d6-d9d32c3f8ab3.metadata.BuildProperties]
+EntryPoints = ["business-resubmit.ts"]
+Minify = true
+Sourcemap = true
+Target = "es2020"
+External = ["@aws-sdk/*"]
 
 [layer_build_definitions]
