@@ -55,3 +55,10 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 /tests/.auth/
+
+# SAM build artifacts
+.aws-sam/
+**/build 2/
+
+# bkit temp
+docs/docs/
