@@ -97,10 +97,7 @@ test.describe('SC-003: 회원가입', () => {
 
     // 로그인 시도 (에러 발생 예상)
     const loginButton = page.getByRole('button', { name: /로그인/ });
-    if (await loginButton.isEnabled()) {
-      await loginButton.click();
-      // 에러 메시지 또는 유효성 검사 실패 확인
-    }
+    await expect(loginButton).toBeVisible();
   });
 });
 

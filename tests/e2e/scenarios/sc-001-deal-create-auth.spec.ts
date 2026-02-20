@@ -110,9 +110,8 @@ test.describe('SC-001: 거래 생성 (인증)', () => {
         await page.waitForTimeout(500);
 
         // 수수료가 계산되어 표시되는지 확인 (5.5% = 5,500원)
-        const feeText = await page.getByText(/5,500|수수료/).isVisible();
         // 수수료 표시 여부만 확인 (금액은 UI에 따라 다를 수 있음)
-        expect(feeText || true).toBeTruthy();
+        await expect(page.getByText(/5,500|수수료/).first()).toBeVisible();
       }
     }
   });

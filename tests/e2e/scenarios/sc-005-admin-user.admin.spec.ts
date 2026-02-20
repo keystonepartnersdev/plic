@@ -40,8 +40,7 @@ test.describe('SC-005: 어드민 회원 관리 (어드민 인증)', () => {
     expect(url).toContain('/admin');
 
     // 테이블 또는 리스트가 있는지 확인
-    const hasContent = await page.getByText(/회원|사용자|이메일/).first().isVisible();
-    expect(hasContent || true).toBeTruthy();
+    await expect(page.getByText(/회원|사용자|이메일/).first()).toBeVisible();
   });
 
   test('TC-005-02: 회원 검색 기능', async ({ page }) => {

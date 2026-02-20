@@ -55,8 +55,7 @@ test.describe('SC-002: 결제 (인증)', () => {
     await page.waitForTimeout(1500);
 
     // 실패 메시지가 표시되어야 함 (또는 리다이렉트)
-    const hasFailureContent = await page.getByText(/실패|취소|오류/).first().isVisible();
-    expect(hasFailureContent || true).toBeTruthy();
+    await expect(page.getByText(/실패|취소|오류/).first()).toBeVisible();
   });
 
   test('TC-002-05: 거래내역 페이지 접근 (로그인 상태)', async ({ page }) => {
