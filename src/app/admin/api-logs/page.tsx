@@ -115,7 +115,32 @@ export default function AdminApiLogsPage() {
         params.correlationId = searchCorrelationId;
       }
       const response = await adminAPI.getApiLogs(params) as ApiLogsData;
-      setData(response);
+
+      // 기본값 설정 - stats가 없는 경우 대비
+      const defaultStats = {
+        total: 0,
+        success: 0,
+        clientError: 0,
+        serverError: 0,
+        networkError: 0,
+        avgExecutionTime: 0,
+        successRate: 0,
+      };
+
+      setData({
+        ...response,
+        stats: response.stats || defaultStats,
+        categoryStats: response.categoryStats || {},
+        topErrors: response.topErrors || [],
+        recentErrors: response.recentErrors || [],
+        slowRequests: response.slowRequests || [],
+        hourlyStats: response.hourlyStats || [],
+        usersWithMostErrors: response.usersWithMostErrors || [],
+        methodDistribution: response.methodDistribution || {},
+        topEndpoints: response.topEndpoints || [],
+        logs: response.logs || [],
+        hasMore: response.hasMore || false,
+      });
     } catch (err: unknown) {
       console.error('API Logs 데이터 로드 실패:', err);
       setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
@@ -227,7 +252,7 @@ export default function AdminApiLogsPage() {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
         </div>
-      ) : !data ? (
+      ) : !data || !data.stats ? (
         <div className="text-center py-16 text-gray-400">데이터를 불러올 수 없습니다</div>
       ) : (
         <>
