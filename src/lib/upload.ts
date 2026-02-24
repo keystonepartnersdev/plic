@@ -156,7 +156,7 @@ async function uploadToS3(
  * S3 파일 URL 생성 (공개 URL 또는 서명된 URL 필요)
  */
 export function getS3FileUrl(fileKey: string): string {
-  const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME || 'plic-uploads-prod';
+  const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET_NAME || 'plic-attachments-804887692492';
   const region = process.env.NEXT_PUBLIC_AWS_REGION || 'ap-northeast-2';
   return `https://${bucketName}.s3.${region}.amazonaws.com/${fileKey}`;
 }

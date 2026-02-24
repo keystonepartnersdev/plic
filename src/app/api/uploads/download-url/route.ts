@@ -11,7 +11,7 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const REGION = process.env.AWS_REGION || 'ap-northeast-2';
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'plic-uploads-prod';
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'plic-attachments-804887692492';
 
 const s3Client = new S3Client({ region: REGION });
 
