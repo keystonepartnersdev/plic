@@ -19,17 +19,17 @@ export default function AdminDealsPage() {
 
   const statuses = [
     { value: 'all', label: '전체' },
-    ...Object.entries(DealHelper.STATUS_CONFIG).map(([key, config]) => ({
+    ...Object.entries(DealHelper.STATUS_CONFIG || {}).map(([key, config]) => ({
       value: key,
-      label: config.name,
+      label: config?.name || '알 수 없음',
     })),
   ];
 
   const dealTypes = [
     { value: 'all', label: '전체' },
-    ...Object.entries(DealHelper.DEAL_TYPE_CONFIG).map(([key, config]) => ({
+    ...Object.entries(DealHelper.DEAL_TYPE_CONFIG || {}).map(([key, config]) => ({
       value: key,
-      label: config.name,
+      label: config?.name || '알 수 없음',
     })),
   ];
 

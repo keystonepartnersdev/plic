@@ -171,11 +171,11 @@ export class DealHelper {
 
   // 거래 종류 설정 반환
   static getDealTypeConfig(dealType: TDealType): IDealTypeConfig {
-    return this.DEAL_TYPE_CONFIG[dealType];
+    return this.DEAL_TYPE_CONFIG[dealType] || { name: '알 수 없음', icon: 'HelpCircle', requiredDocs: [], optionalDocs: [], description: '' };
   }
 
   // 거래 상태 설정 반환
   static getStatusConfig(status: TDealStatus): IStatusConfig {
-    return this.STATUS_CONFIG[status];
+    return this.STATUS_CONFIG[status] || { name: '알 수 없음', color: 'gray', tab: 'progress' };
   }
 }
