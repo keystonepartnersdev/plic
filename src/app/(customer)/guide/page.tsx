@@ -68,24 +68,30 @@ export default function GuidePage() {
       <div className="bg-white px-5 py-6 mb-2">
         <h2 className="text-lg font-bold mb-4">고객센터</h2>
         <div className="space-y-3">
-          <a href="https://pf.kakao.com/_xample" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-yellow-600" />
+          <a href="http://pf.kakao.com/_xnQKhX" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="font-medium">카카오톡 상담</p>
+                <p className="text-sm text-gray-500">평일 09:00~18:00</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium">카카오톡 상담</p>
-              <p className="text-sm text-gray-500">평일 09:00~18:00</p>
-            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
           </a>
 
-          <a href="mailto:support@plic.kr" className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <Mail className="w-5 h-5 text-green-600" />
+          <a href="mailto:support@plic.kr" className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <Mail className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="font-medium">이메일 문의</p>
+                <p className="text-sm text-gray-500">support@plic.kr</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium">이메일 문의</p>
-              <p className="text-sm text-gray-500">support@plic.kr</p>
-            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
           </a>
         </div>
       </div>

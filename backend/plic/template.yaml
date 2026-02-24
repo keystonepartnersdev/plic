@@ -1016,6 +1016,34 @@ Resources:
         Target: es2020
         External:
         - '@aws-sdk/*'
+  AdminDealsUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminDealsUpdateFunction
+      Handler: deals-update.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /admin/deals/{did}/update
+            Method: put
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - deals-update.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+        External:
+        - '@aws-sdk/*'
   GetBannersFunction:
     Type: AWS::Serverless::Function
     Properties:

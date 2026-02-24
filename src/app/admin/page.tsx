@@ -2,8 +2,9 @@
 import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
-import { Users, FileText, CreditCard, TrendingUp, RefreshCw } from 'lucide-react';
+import { Users, FileText, CreditCard, CheckCircle, RefreshCw } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
+import { DealHelper } from '@/classes';
 import { IUser, IDeal } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -38,10 +39,8 @@ export default function AdminDashboardPage() {
   // 통계 계산
   const totalUsers = users.length;
   const totalDeals = deals.length;
-  const pendingDeals = deals.filter((d) =>
-    d.status && ['pending', 'reviewing', 'hold'].includes(d.status)
-  ).length;
   const completedDeals = deals.filter((d) => d.status && d.status === 'completed');
+  const completedDealsCount = completedDeals.length;
   const totalPaymentAmount = completedDeals.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
 
   const stats = [
@@ -58,9 +57,9 @@ export default function AdminDashboardPage() {
       color: 'bg-green-50 text-green-600',
     },
     {
-      label: '진행중 거래',
-      value: pendingDeals.toLocaleString(),
-      icon: TrendingUp,
+      label: '총 거래완료 건수',
+      value: completedDealsCount.toLocaleString(),
+      icon: CheckCircle,
       color: 'bg-yellow-50 text-yellow-600',
     },
     {
@@ -160,18 +159,22 @@ export default function AdminDashboardPage() {
                       {(deal.amount || 0).toLocaleString()}원
                     </td>
                     <td className="py-4">
-                      <span className={`
-                        inline-flex px-3 py-1 text-xs font-bold rounded-full
-                        ${deal.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          deal.status === 'pending' ? 'bg-blue-100 text-blue-700' :
-                          deal.status === 'need_revision' ? 'bg-red-100 text-red-700' :
-                          'bg-gray-100 text-gray-700'}
-                      `}>
-                        {deal.status === 'completed' ? '완료' :
-                          deal.status === 'pending' ? '진행중' :
-                          deal.status === 'need_revision' ? '보완필요' :
-                          deal.status || '-'}
-                      </span>
+                      {(() => {
+                        const statusConfig = DealHelper.getStatusConfig(deal.status);
+                        const colorMap: Record<string, string> = {
+                          blue: 'bg-blue-100 text-blue-700',
+                          yellow: 'bg-yellow-100 text-yellow-700',
+                          orange: 'bg-orange-100 text-orange-700',
+                          red: 'bg-red-100 text-red-700',
+                          gray: 'bg-gray-100 text-gray-700',
+                          green: 'bg-green-100 text-green-700',
+                        };
+                        return (
+                          <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${colorMap[statusConfig.color] || 'bg-gray-100 text-gray-700'}`}>
+                            {statusConfig.name}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-4 text-sm text-gray-500 font-medium">
                       {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString('ko-KR') : '-'}

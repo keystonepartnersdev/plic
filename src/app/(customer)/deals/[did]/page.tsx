@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Header } from '@/components/common';
 import {
@@ -16,10 +17,12 @@ import {
   RevisionRecipientModal,
   RevisionConfirmModal,
   DeleteConfirmModal,
+  EditDealModal,
 } from '@/components/deal/detail';
 import { DealDeleteModal } from './components/DealDeleteModal';
 import { RevisionAlert } from './components/RevisionAlert';
 import { DealActions } from './components/DealActions';
+import { IDeal } from '@/types';
 
 export default function DealDetailPage() {
   const params = useParams();
@@ -90,6 +93,10 @@ export default function DealDetailPage() {
     handleOpenPreview,
   } = useDealDetail(did);
 
+  // 수정 모달 상태
+  const [editModalType, setEditModalType] = useState<'amount' | 'recipient' | 'attachments' | null>(null);
+  const [localDeal, setLocalDeal] = useState<IDeal | null>(null);
+
   // 로딩 상태
   if (!mounted || !_hasHydrated || !isLoggedIn || !deal) {
     return (
@@ -99,7 +106,18 @@ export default function DealDetailPage() {
     );
   }
 
-  const showDiscountSection = (deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid;
+  // 실제 표시할 거래 데이터 (수정 후 반영)
+  const displayDeal = localDeal || deal;
+
+  const showDiscountSection = (displayDeal.status === 'draft' || displayDeal.status === 'awaiting_payment') && !displayDeal.isPaid;
+
+  // 수정 가능 여부: 결제 전 & draft/awaiting_payment 상태일 때만
+  const canEdit = !displayDeal.isPaid &&
+    (displayDeal.status === 'draft' || displayDeal.status === 'awaiting_payment');
+
+  const handleDealUpdate = (updatedDeal: IDeal) => {
+    setLocalDeal(updatedDeal);
+  };
 
   return (
     <div className="relative min-h-screen bg-gray-50 pb-24">
@@ -144,22 +162,52 @@ export default function DealDetailPage() {
       />
 
       {/* 금액 정보 */}
-      <AmountCard
-        deal={deal}
-        appliedDiscounts={appliedDiscounts}
-        getDiscountLabel={getDiscountLabel}
-        getDiscountAmount={getDiscountAmount}
-        calculatedFinalAmount={calculatedFinalAmount}
-      />
+      <div className="relative">
+        <AmountCard
+          deal={displayDeal}
+          appliedDiscounts={appliedDiscounts}
+          getDiscountLabel={getDiscountLabel}
+          getDiscountAmount={getDiscountAmount}
+          calculatedFinalAmount={calculatedFinalAmount}
+        />
+        {canEdit && (
+          <button
+            onClick={() => setEditModalType('amount')}
+            className="absolute top-4 right-5 text-sm text-primary-400 font-medium hover:text-primary-500"
+          >
+            수정
+          </button>
+        )}
+      </div>
 
       {/* 수취인 정보 */}
-      <RecipientCard deal={deal} senderName={currentUser?.name} />
+      <div className="relative">
+        <RecipientCard deal={displayDeal} senderName={currentUser?.name} />
+        {canEdit && (
+          <button
+            onClick={() => setEditModalType('recipient')}
+            className="absolute top-4 right-5 text-sm text-primary-400 font-medium hover:text-primary-500"
+          >
+            수정
+          </button>
+        )}
+      </div>
 
       {/* 첨부 서류 */}
-      <AttachmentsCard
-        deal={deal}
-        onPreview={handleOpenPreview}
-      />
+      <div className="relative">
+        <AttachmentsCard
+          deal={displayDeal}
+          onPreview={handleOpenPreview}
+        />
+        {canEdit && (
+          <button
+            onClick={() => setEditModalType('attachments')}
+            className="absolute top-4 right-5 text-sm text-primary-400 font-medium hover:text-primary-500"
+          >
+            수정
+          </button>
+        )}
+      </div>
 
       {/* 거래 이력 */}
       <DealHistory deal={deal} />
@@ -244,6 +292,17 @@ export default function DealDetailPage() {
           isDeleting={isDeleting}
           onConfirm={handleDeleteDeal}
           onCancel={() => setShowDealDeleteModal(false)}
+        />
+      )}
+
+      {/* 수정 모달 */}
+      {mounted && editModalType && (
+        <EditDealModal
+          isOpen={!!editModalType}
+          onClose={() => setEditModalType(null)}
+          deal={displayDeal}
+          onUpdate={handleDealUpdate}
+          editType={editModalType}
         />
       )}
     </div>

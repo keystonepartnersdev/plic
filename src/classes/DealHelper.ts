@@ -107,7 +107,7 @@ export class DealHelper {
 
   // 거래 상태 설정
   static STATUS_CONFIG: Record<TDealStatus, IStatusConfig> = {
-    draft: { name: '작성중', color: 'orange', tab: 'progress' },
+    draft: { name: '결제대기', color: 'orange', tab: 'progress' },
     awaiting_payment: { name: '결제대기', color: 'orange', tab: 'progress' },
     pending: { name: '진행중', color: 'blue', tab: 'progress' },
     reviewing: { name: '검토중', color: 'yellow', tab: 'progress' },

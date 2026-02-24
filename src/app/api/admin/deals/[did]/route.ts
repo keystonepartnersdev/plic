@@ -9,3 +9,11 @@ export async function GET(
   const { did } = await params;
   return proxyAdminRequest(request, `/admin/deals/${did}`);
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ did: string }> }
+) {
+  const { did } = await params;
+  return proxyAdminRequest(request, `/admin/deals/${did}`, { method: 'PUT' });
+}

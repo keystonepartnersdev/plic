@@ -25,3 +25,4 @@ export { RevisionDocumentsModal } from './RevisionDocumentsModal';
 export { RevisionRecipientModal } from './RevisionRecipientModal';
 export { RevisionConfirmModal } from './RevisionConfirmModal';
 export { DeleteConfirmModal } from './DeleteConfirmModal';
+export { EditDealModal } from './EditDealModal';

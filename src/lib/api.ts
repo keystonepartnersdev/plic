@@ -774,6 +774,12 @@ export const adminAPI = {
       body: JSON.stringify({ status, reason, revisionType, revisionMemo }),
     }),
 
+  updateDeal: (did: string, data: Partial<IDeal>) =>
+    requestWithAdminToken<{ message: string; deal: IDeal }>(`/admin/deals/${did}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   // 개별 사용자 수수료/한도 설정
   updateUserSettings: (uid: string, settings: { feeRate?: number; monthlyLimit?: number }) =>
     requestWithAdminToken<{ message: string; uid: string; feeRate: number; monthlyLimit: number }>(`/admin/users/${uid}/settings`, {

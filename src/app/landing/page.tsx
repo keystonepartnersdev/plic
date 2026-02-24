@@ -816,7 +816,7 @@ function CTA() {
               <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
             </Link>
 
-            <a href="mailto:support@plic.kr" className="w-full sm:w-auto px-10 py-5 bg-white/10 backdrop-blur-md text-white rounded-full font-bold text-lg hover:bg-white/20 transition-all duration-300 border-2 border-white/30 flex items-center justify-center gap-3">
+            <a href="http://pf.kakao.com/_xnQKhX" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto px-10 py-5 bg-white/10 backdrop-blur-md text-white rounded-full font-bold text-lg hover:bg-white/20 transition-all duration-300 border-2 border-white/30 flex items-center justify-center gap-3">
               <MessageCircle size={24} />
               문의하기
             </a>

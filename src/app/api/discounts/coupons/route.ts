@@ -28,13 +28,20 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Lambda 에러 시 빈 배열 반환
+    if (!response.ok) {
+      console.log('[API Proxy] /discounts/coupons Lambda returned', response.status);
+      return NextResponse.json({ success: true, data: { coupons: [] } }, { status: 200 });
+    }
+
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('[API Proxy] /discounts/coupons GET error:', error);
+    // 에러 시에도 빈 쿠폰 목록 반환
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: '서버 오류가 발생했습니다.' } },
-      { status: 500 }
+      { success: true, data: { coupons: [] } },
+      { status: 200 }
     );
   }
 }

@@ -22,11 +22,13 @@ import {
   RefreshCw,
   File,
   Users,
+  Edit3,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus, IUser } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
+import { AdminEditDealModal } from './AdminEditDealModal';
 
 const statusColors: Record<string, string> = {
   blue: 'bg-blue-100 text-blue-700',
@@ -53,6 +55,9 @@ export default function AdminDealDetailPage() {
   const [showRevisionConfirmModal, setShowRevisionConfirmModal] = useState(false);
   const [selectedRevisionType, setSelectedRevisionType] = useState<'documents' | 'recipient' | null>(null);
   const [revisionMemo, setRevisionMemo] = useState('');
+
+  // 수정 모달 상태
+  const [editModalType, setEditModalType] = useState<'amount' | 'recipient' | 'attachments' | null>(null);
 
   // API에서 거래 정보 로드
   const fetchDeal = async () => {
@@ -106,6 +111,10 @@ export default function AdminDealDetailPage() {
 
   const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
   const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
+
+  // 수정 가능 여부: 결제 전 & draft/awaiting_payment 상태일 때만
+  const canEdit = !deal.isPaid &&
+    (deal.status === 'draft' || deal.status === 'awaiting_payment');
 
   const handleStatusChange = async (newStatus: TDealStatus) => {
     // 보완 요청일 경우 모달 열기
@@ -291,7 +300,18 @@ export default function AdminDealDetailPage() {
 
           {/* 금액 정보 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">금액 정보</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">금액 정보</h2>
+              {canEdit && (
+                <button
+                  onClick={() => setEditModalType('amount')}
+                  className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  수정
+                </button>
+              )}
+            </div>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-500">결제 금액</span>
@@ -330,7 +350,18 @@ export default function AdminDealDetailPage() {
 
           {/* 수취인 정보 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">수취인 정보</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">수취인 정보</h2>
+              {canEdit && (
+                <button
+                  onClick={() => setEditModalType('recipient')}
+                  className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  수정
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">은행</p>
@@ -362,7 +393,18 @@ export default function AdminDealDetailPage() {
 
           {/* 첨부 서류 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">첨부 서류</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">첨부 서류</h2>
+              {canEdit && (
+                <button
+                  onClick={() => setEditModalType('attachments')}
+                  className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  수정
+                </button>
+              )}
+            </div>
             {deal.attachments && deal.attachments.length > 0 ? (
               <div className="space-y-2">
                 {deal.attachments.map((fileKey, index) => (
@@ -424,7 +466,7 @@ export default function AdminDealDetailPage() {
                   </button>
                   {deal.status === 'hold' ? (
                     <button
-                      onClick={() => handleStatusChange('pending')}
+                      onClick={() => handleStatusChange(deal.isPaid ? 'pending' : 'awaiting_payment')}
                       disabled={isProcessing}
                       className="w-full flex items-center justify-center gap-2 h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
@@ -632,6 +674,17 @@ export default function AdminDealDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 수정 모달 */}
+      {editModalType && (
+        <AdminEditDealModal
+          isOpen={!!editModalType}
+          onClose={() => setEditModalType(null)}
+          deal={deal}
+          onUpdate={fetchDeal}
+          editType={editModalType}
+        />
       )}
     </div>
   );
