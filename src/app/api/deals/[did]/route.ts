@@ -12,7 +12,17 @@ import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
-const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+// AWS 자격증명 확인용 로깅
+const hasAWSCredentials = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+console.log('[DynamoDB] AWS credentials available:', hasAWSCredentials);
+
+const dynamoClient = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'ap-northeast-2',
+  credentials: hasAWSCredentials ? {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  } : undefined,
+});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
 
@@ -176,15 +186,18 @@ export async function PUT(
     }
 
     // DynamoDB 업데이트
-    console.log(`[API] PUT /deals/${did} - Updating in DynamoDB table: ${DEALS_TABLE}`);
+    console.log(`[API] PUT /deals/${did} - Updating in DynamoDB table: ${DEALS_TABLE}, AWS creds: ${hasAWSCredentials}`);
+    console.log(`[API] PUT /deals/${did} - UpdateExpression:`, updateExpressions.join(', '));
     try {
-      await docClient.send(new UpdateCommand({
+      const updateResult = await docClient.send(new UpdateCommand({
         TableName: DEALS_TABLE,
         Key: { did },
         UpdateExpression: `SET ${updateExpressions.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
+        ReturnValues: 'ALL_NEW',
       }));
+      console.log(`[API] PUT /deals/${did} - DynamoDB update result:`, JSON.stringify(updateResult.Attributes));
     } catch (updateError) {
       console.error(`[API] PUT /deals/${did} DynamoDB update error:`, updateError);
       return NextResponse.json(
