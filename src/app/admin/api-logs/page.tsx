@@ -324,11 +324,15 @@ export default function AdminApiLogsPage() {
                 {data.categoryStats && Object.keys(data.categoryStats).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {Object.entries(data.categoryStats).map(([category, stats]) => {
+                      if (!stats) return null;
                       const config = CATEGORY_CONFIG[category] || {
                         name: category,
                         icon: <Activity className="w-4 h-4" />,
                         color: 'text-gray-600 bg-gray-100'
                       };
+                      const successRate = stats.successRate ?? 0;
+                      const avgTime = stats.avgTime ?? 0;
+                      const errorCount = stats.error ?? 0;
                       return (
                         <div
                           key={category}
@@ -343,27 +347,27 @@ export default function AdminApiLogsPage() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-500">성공률</span>
-                              <span className={cn('font-medium', getHealthColor(stats.successRate))}>
-                                {stats.successRate}%
+                              <span className={cn('font-medium', getHealthColor(successRate))}>
+                                {successRate}%
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-500">평균응답</span>
                               <span className={cn(
                                 'font-medium',
-                                stats.avgTime > 2000 ? 'text-red-600' :
-                                stats.avgTime > 1000 ? 'text-yellow-600' : 'text-gray-900'
+                                avgTime > 2000 ? 'text-red-600' :
+                                avgTime > 1000 ? 'text-yellow-600' : 'text-gray-900'
                               )}>
-                                {stats.avgTime}ms
+                                {avgTime}ms
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-500">에러</span>
                               <span className={cn(
                                 'font-medium',
-                                stats.error > 0 ? 'text-red-600' : 'text-green-600'
+                                errorCount > 0 ? 'text-red-600' : 'text-green-600'
                               )}>
-                                {stats.error}건
+                                {errorCount}건
                               </span>
                             </div>
                           </div>

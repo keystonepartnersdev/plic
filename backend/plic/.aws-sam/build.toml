@@ -276,6 +276,9 @@ Target = "es2020"
 
 
 
+
+
+
 [function_build_definitions.52382298-20ef-49dc-bf17-ac83642b5438]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminFaqsSeedFunction"
 runtime = "nodejs20.x"
@@ -293,6 +296,9 @@ EntryPoints = ["faqs-seed.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
+
 
 
 
@@ -342,6 +348,9 @@ Target = "es2020"
 
 
 
+
+
+
 [function_build_definitions.f8292235-38af-4d45-86e7-297f9bb16731]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminTermsManageFunction"
 runtime = "nodejs20.x"
@@ -359,6 +368,9 @@ EntryPoints = ["terms-manage.ts"]
 Minify = true
 Sourcemap = true
 Target = "es2020"
+
+
+
 
 
 
@@ -408,6 +420,9 @@ Target = "es2020"
 
 
 
+
+
+
 [function_build_definitions.e3cd22b5-6114-4ff2-9dc8-b1c261f22b2a]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/KakaoLoginFunction"
 runtime = "nodejs20.x"
@@ -440,6 +455,9 @@ Target = "es2020"
 
 
 
+
+
+
 [function_build_definitions.a457ff89-3046-46f3-8d64-b37c9e023ed9]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/GetMeFunction"
 runtime = "nodejs20.x"
@@ -458,6 +476,9 @@ Minify = true
 Sourcemap = true
 Target = "es2020"
 External = ["@aws-sdk/*"]
+
+
+
 
 
 
@@ -482,6 +503,9 @@ Target = "es2020"
 
 
 
+
+
+
 [function_build_definitions.59a7366f-8d09-46ce-899d-639ebdabcabf]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminDealsStatusFunction"
 runtime = "nodejs20.x"
@@ -501,6 +525,9 @@ Sourcemap = true
 Target = "es2020"
 External = ["@aws-sdk/*"]
 
+
+
+
 [function_build_definitions.4eea57f9-02b9-455a-b8d6-d9d32c3f8ab3]
 codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/UserBusinessResubmitFunction"
 runtime = "nodejs20.x"
@@ -519,5 +546,29 @@ Minify = true
 Sourcemap = true
 Target = "es2020"
 External = ["@aws-sdk/*"]
+
+
+
+
+[function_build_definitions.bbf3c960-5e7a-4d1e-ba95-f987c5a8be4f]
+codeuri = "/Users/taegyulee/Desktop/PLIC/backend/plic/AdminBusinessAnalyticsFunction"
+runtime = "nodejs20.x"
+architecture = "x86_64"
+handler = "business-analytics.handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["AdminBusinessAnalyticsFunction"]
+
+[function_build_definitions.bbf3c960-5e7a-4d1e-ba95-f987c5a8be4f.metadata]
+BuildMethod = "esbuild"
+
+[function_build_definitions.bbf3c960-5e7a-4d1e-ba95-f987c5a8be4f.metadata.BuildProperties]
+EntryPoints = ["business-analytics.ts"]
+Minify = true
+Sourcemap = true
+Target = "es2020"
+External = ["@aws-sdk/*"]
+
+
 
 [layer_build_definitions]

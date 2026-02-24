@@ -207,7 +207,9 @@ async function request<T>(
   options: RequestInit = {},
   skipLogging = false
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // /content/* 엔드포인트는 /api/content/* 프록시 라우트로 리다이렉트
+  const apiEndpoint = endpoint.startsWith('/content/') ? `/api${endpoint}` : endpoint;
+  const url = `${API_BASE_URL}${apiEndpoint}`;
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
   const method = options.method || 'GET';
@@ -1055,7 +1057,9 @@ export const adminAPI = {
 
 // 관리자 토큰으로 요청
 async function requestWithAdminToken<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // /admin/* 엔드포인트는 /api/admin/* 프록시 라우트로 리다이렉트
+  const apiEndpoint = endpoint.startsWith('/admin/') ? `/api${endpoint}` : endpoint;
+  const url = `${API_BASE_URL}${apiEndpoint}`;
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
   const method = options.method || 'GET';
