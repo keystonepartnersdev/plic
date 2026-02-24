@@ -1,10 +1,8 @@
 // src/app/api/admin/business-analytics/route.ts
-// Proxy API route for business analytics (CORS bypass)
-// Falls back to mock data if Lambda endpoint is not available
+import { NextRequest, NextResponse } from 'next/server';
+import { API_CONFIG } from '@/lib/config';
 
-import { NextResponse } from 'next/server';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const LAMBDA_URL = API_CONFIG.LAMBDA_URL;
 
 // Mock data for when Lambda is not deployed
 const getMockData = () => ({
@@ -72,13 +70,7 @@ const getMockData = () => ({
       paidDealCount: 0,
     },
     dealTypeAnalysis: [],
-    transferFunnel: [
-      { step: 'transfer_start', name: '송금 시작', count: 0, conversionFromPrev: 100, conversionFromStart: 100 },
-      { step: 'transfer_info', name: '정보 입력', count: 0, conversionFromPrev: 0, conversionFromStart: 0 },
-      { step: 'transfer_attachment', name: '증빙 업로드', count: 0, conversionFromPrev: 0, conversionFromStart: 0 },
-      { step: 'transfer_confirm', name: '확인', count: 0, conversionFromPrev: 0, conversionFromStart: 0 },
-      { step: 'transfer_complete', name: '거래 생성', count: 0, conversionFromPrev: 0, conversionFromStart: 0 },
-    ],
+    transferFunnel: [],
     trends: {
       dailySignups: [],
       dailyDeals: [],
@@ -89,11 +81,11 @@ const getMockData = () => ({
   },
 });
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('Authorization');
 
-    const response = await fetch(`${API_BASE_URL}/admin/business-analytics`, {
+    const response = await fetch(`${LAMBDA_URL}/admin/business-analytics`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -101,17 +93,15 @@ export async function GET(request: Request) {
       },
     });
 
-    // If Lambda returns 403/404, return mock data
     if (response.status === 403 || response.status === 404) {
-      console.log('Lambda endpoint not available, returning mock data');
+      console.log('[business-analytics] Lambda not available, returning mock data');
       return NextResponse.json(getMockData(), { status: 200 });
     }
 
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Business Analytics API Error:', error);
-    // Return mock data on error
+    console.error('[business-analytics] Error:', error);
     return NextResponse.json(getMockData(), { status: 200 });
   }
 }

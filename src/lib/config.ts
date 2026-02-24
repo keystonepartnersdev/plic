@@ -6,7 +6,11 @@
  * API 설정
  */
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod',
+  // Use Next.js API routes (proxy) to avoid CORS issues
+  // Set NEXT_PUBLIC_API_BASE_URL='' for production
+  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
+  // Direct AWS Lambda URL (for server-side API routes only)
+  LAMBDA_URL: process.env.AWS_LAMBDA_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod',
   TIMEOUT: 30000, // 30초
 } as const;
 
