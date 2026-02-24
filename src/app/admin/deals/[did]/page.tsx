@@ -18,6 +18,7 @@ import {
   CheckCircle,
   XCircle,
   Pause,
+  Play,
   RefreshCw,
   File,
   Users,
@@ -421,14 +422,25 @@ export default function AdminDealDetailPage() {
                     <CheckCircle className="w-4 h-4" />
                     거래 완료 처리
                   </button>
-                  <button
-                    onClick={() => handleStatusChange('hold')}
-                    disabled={isProcessing}
-                    className="w-full flex items-center justify-center gap-2 h-10 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Pause className="w-4 h-4" />
-                    보류 처리
-                  </button>
+                  {deal.status === 'hold' ? (
+                    <button
+                      onClick={() => handleStatusChange('pending')}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Play className="w-4 h-4" />
+                      진행 재개
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStatusChange('hold')}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 h-10 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Pause className="w-4 h-4" />
+                      보류 처리
+                    </button>
+                  )}
                   <button
                     onClick={() => handleStatusChange('need_revision')}
                     disabled={isProcessing}
