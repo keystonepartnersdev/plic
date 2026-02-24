@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
@@ -78,34 +78,32 @@ export async function PUT(
 
     const body = await request.json();
     console.log(`[API] PUT /deals/${did} body:`, JSON.stringify(body));
-    console.log(`[API] PUT /deals/${did} using table:`, DEALS_TABLE);
-    console.log(`[API] PUT /deals/${did} AWS_REGION:`, process.env.AWS_REGION);
 
-    // 현재 거래 조회
-    let getResult;
-    try {
-      getResult = await docClient.send(new GetCommand({
-        TableName: DEALS_TABLE,
-        Key: { did },
-      }));
-      console.log(`[API] PUT /deals/${did} GetCommand result:`, JSON.stringify(getResult));
-    } catch (dbError) {
-      console.error(`[API] PUT /deals/${did} DynamoDB GetCommand error:`, dbError);
-      return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: 'DynamoDB 조회 실패', details: String(dbError) } },
-        { status: 500 }
-      );
+    // Lambda를 통해 현재 거래 조회 (권한 검증 포함)
+    const lambdaResponse = await fetch(`${API_BASE_URL}/deals/${did}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!lambdaResponse.ok) {
+      const errorData = await lambdaResponse.json();
+      console.log(`[API] PUT /deals/${did} - Lambda GET failed:`, lambdaResponse.status, errorData);
+      return NextResponse.json(errorData, { status: lambdaResponse.status });
     }
 
-    if (!getResult.Item) {
-      console.log(`[API] PUT /deals/${did} - Deal not found in table ${DEALS_TABLE}`);
+    const lambdaData = await lambdaResponse.json();
+    if (!lambdaData.success || !lambdaData.data?.deal) {
       return NextResponse.json(
-        { success: false, error: { code: 'NOT_FOUND', message: '거래를 찾을 수 없습니다.', table: DEALS_TABLE, did } },
+        { success: false, error: { code: 'NOT_FOUND', message: '거래를 찾을 수 없습니다.' } },
         { status: 404 }
       );
     }
 
-    const deal = getResult.Item;
+    const deal = lambdaData.data.deal;
+    console.log(`[API] PUT /deals/${did} - Deal found via Lambda:`, deal.status, 'isPaid:', deal.isPaid);
 
     // 수정 가능 조건 체크: 결제 전 & draft/awaiting_payment 상태만
     if (deal.isPaid) {
@@ -178,19 +176,39 @@ export async function PUT(
     }
 
     // DynamoDB 업데이트
-    await docClient.send(new UpdateCommand({
-      TableName: DEALS_TABLE,
-      Key: { did },
-      UpdateExpression: `SET ${updateExpressions.join(', ')}`,
-      ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: expressionAttributeValues,
-    }));
+    console.log(`[API] PUT /deals/${did} - Updating in DynamoDB table: ${DEALS_TABLE}`);
+    try {
+      await docClient.send(new UpdateCommand({
+        TableName: DEALS_TABLE,
+        Key: { did },
+        UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+      }));
+    } catch (updateError) {
+      console.error(`[API] PUT /deals/${did} DynamoDB update error:`, updateError);
+      return NextResponse.json(
+        { success: false, error: { code: 'DB_ERROR', message: 'DynamoDB 업데이트 실패', details: String(updateError) } },
+        { status: 500 }
+      );
+    }
 
-    // 업데이트된 거래 조회
-    const updatedResult = await docClient.send(new GetCommand({
-      TableName: DEALS_TABLE,
-      Key: { did },
-    }));
+    // Lambda를 통해 업데이트된 거래 다시 조회
+    const updatedResponse = await fetch(`${API_BASE_URL}/deals/${did}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    let updatedDeal = deal;
+    if (updatedResponse.ok) {
+      const updatedData = await updatedResponse.json();
+      if (updatedData.success && updatedData.data?.deal) {
+        updatedDeal = updatedData.data.deal;
+      }
+    }
 
     console.log(`[API] PUT /deals/${did} success`);
 
@@ -198,7 +216,7 @@ export async function PUT(
       success: true,
       data: {
         message: '거래가 수정되었습니다.',
-        deal: updatedResult.Item,
+        deal: updatedDeal,
       },
     });
   } catch (error) {
