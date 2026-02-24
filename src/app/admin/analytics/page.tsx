@@ -163,7 +163,8 @@ export default function AdminAnalyticsPage() {
     setError(null);
     try {
       const token = localStorage.getItem('plic_admin_token');
-      const response = await fetch(`${API_BASE}/admin/business-analytics`, {
+      // Use Next.js API route to avoid CORS issues
+      const response = await fetch('/api/admin/business-analytics', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const result = await response.json();

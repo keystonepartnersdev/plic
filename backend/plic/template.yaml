@@ -1307,6 +1307,50 @@ Resources:
         Target: es2020
         External:
         - '@aws-sdk/*'
+  AdminBusinessAnalyticsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AdminBusinessAnalyticsFunction
+      Handler: business-analytics.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: DealsTable
+      - DynamoDBCrudPolicy:
+          TableName: plic-events
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AdminsTable
+      Events:
+        Get:
+          Type: Api
+          Properties:
+            Path: /admin/business-analytics
+            Method: get
+        Options:
+          Type: Api
+          Properties:
+            Path: /admin/business-analytics
+            Method: options
+      Environment:
+        Variables:
+          USERS_TABLE: plic-users
+          DEALS_TABLE: plic-deals
+          EVENTS_TABLE: plic-events
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - business-analytics.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+        External:
+        - '@aws-sdk/*'
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL
