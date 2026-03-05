@@ -221,12 +221,9 @@ interface VerificationResult {
 }
 
 // DynamoDB 클라이언트 초기화
+// AWS SDK 기본 자격증명 체인 사용 (환경변수 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY 자동 감지)
 const dynamoClient = new DynamoDBClient({
-  region: 'ap-northeast-2',
-  credentials: {
-    accessKeyId: (process.env.AWS_ACCESS_KEY_ID || '').trim(),
-    secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || '').trim(),
-  },
+  region: process.env.AWS_REGION || 'ap-northeast-2',
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
