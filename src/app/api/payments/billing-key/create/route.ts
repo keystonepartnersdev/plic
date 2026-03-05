@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
           error: softpayment.getResultMessage(response.resCode),
           resCode: response.resCode,
           retryable: isRetryable,
-          rawResponse: response, // 디버깅용
         },
         { status: isRetryable ? 503 : 400 }
       );

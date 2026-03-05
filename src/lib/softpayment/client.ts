@@ -18,9 +18,36 @@ import {
   BillingPaymentResponse,
 } from './types';
 import { CARD_CODES, RESULT_CODES, ERROR_CLASSIFICATION, TIMEOUTS } from './constants';
+import { PAYMENT_CONFIG, ENV } from '../config';
 
-const API_URL = process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr';
-const PAY_KEY = process.env.SOFTPAYMENT_PAY_KEY || '';
+const API_URL = PAYMENT_CONFIG.API_URL;
+const PAY_KEY = PAYMENT_CONFIG.PAY_KEY;
+
+/**
+ * 민감정보를 마스킹한 로깅 (개발 환경에서만)
+ */
+function logRequest(url: string, body: Record<string, unknown>) {
+  if (!ENV.IS_DEV) return;
+  const safeBody = { ...body };
+  // 민감 정보 마스킹
+  if (safeBody.payerTel) safeBody.payerTel = '***masked***';
+  if (safeBody.payerEmail) safeBody.payerEmail = '***masked***';
+  console.log('[Softpayment API] Request:', { url, body: safeBody });
+}
+
+function logResponse(status: number, data: Record<string, unknown>) {
+  if (!ENV.IS_DEV) return;
+  const safeData = { ...data };
+  // 민감 정보 마스킹 (카드번호 등)
+  if (safeData.data && typeof safeData.data === 'object') {
+    const dataObj = safeData.data as Record<string, unknown>;
+    if (dataObj.payInfo && typeof dataObj.payInfo === 'object') {
+      const payInfo = dataObj.payInfo as Record<string, unknown>;
+      if (payInfo.cardInfo) payInfo.cardInfo = '***masked***';
+    }
+  }
+  console.log('[Softpayment API] Response:', { status, resCode: safeData.resCode, success: safeData.success });
+}
 
 /**
  * API 호출 헬퍼
@@ -34,10 +61,7 @@ async function apiCall<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  console.log('[Softpayment API] Request:', {
-    url,
-    body: JSON.stringify(body, null, 2),
-  });
+  logRequest(url, body);
 
   try {
     const response = await fetch(url, {
@@ -54,10 +78,7 @@ async function apiCall<T>(
 
     const data = await response.json();
 
-    console.log('[Softpayment API] Response:', {
-      status: response.status,
-      data: JSON.stringify(data, null, 2),
-    });
+    logResponse(response.status, data);
 
     // HTTP 에러 응답 처리
     if (!response.ok) {
