@@ -33,7 +33,7 @@ export async function GET(): Promise<NextResponse<HealthStatus>> {
 
   // 백엔드 헬스체크 (선택적)
   try {
-    const backendResponse = await fetch(`${API_CONFIG.BASE_URL}/health`, {
+    const backendResponse = await fetch(`${API_CONFIG.LAMBDA_URL}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000), // 5초 타임아웃
     });

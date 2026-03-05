@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
       throw Errors.authRequired();
     }
 
-    // 백엔드 API로 토큰 갱신 요청
-    const backendResponse = await fetch(`${API_CONFIG.BASE_URL}/auth/refresh`, {
+    // 백엔드 Lambda API로 토큰 갱신 요청 (서버사이드에서는 LAMBDA_URL 사용)
+    const backendResponse = await fetch(`${API_CONFIG.LAMBDA_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
