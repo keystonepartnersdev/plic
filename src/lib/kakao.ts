@@ -249,24 +249,19 @@ export async function saveVerificationResult(key: string, result: VerificationRe
 }
 
 export async function getVerificationResult(key: string): Promise<VerificationResult | null> {
-  try {
-    const response = await docClient.send(new GetCommand({
-      TableName: VERIFICATION_TABLE,
-      Key: { verificationKey: key },
-    }));
+  const response = await docClient.send(new GetCommand({
+    TableName: VERIFICATION_TABLE,
+    Key: { verificationKey: key },
+  }));
 
-    if (!response.Item) return null;
+  if (!response.Item) return null;
 
-    return {
-      kakaoId: response.Item.kakaoId,
-      nickname: response.Item.nickname,
-      email: response.Item.email,
-      verifiedAt: response.Item.verifiedAt,
-    };
-  } catch (error) {
-    console.error('DynamoDB 조회 오류:', error);
-    return null;
-  }
+  return {
+    kakaoId: response.Item.kakaoId,
+    nickname: response.Item.nickname,
+    email: response.Item.email,
+    verifiedAt: response.Item.verifiedAt,
+  };
 }
 
 export async function deleteVerificationResult(key: string): Promise<void> {

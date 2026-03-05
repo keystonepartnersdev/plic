@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getVerificationResult } from '@/lib/kakao';
 import { handleApiError, successResponse, Errors } from '@/lib/api-error';
 
