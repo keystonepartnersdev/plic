@@ -24,7 +24,11 @@ export const secureAuth = {
     const data = await response.json();
 
     if (!response.ok) {
-      // error가 문자열이면 그대로, 객체면 .message 추출
+      // 401은 항상 로그인 실패 메시지 표시 (BFF가 객체/문자열 어느 형태든 대응)
+      if (response.status === 401) {
+        throw new Error('올바르지 않은 회원ID/PW입니다.');
+      }
+      // 기타 에러: 문자열이면 그대로, 객체면 .message 추출
       const errorMsg = typeof data.error === 'string'
         ? data.error
         : (data.error?.message || data.message || '로그인에 실패했습니다.');

@@ -79,30 +79,32 @@ export const useUserStore = create(
           const result = await secureAuth.login(email, password);
 
           // API에서 받은 사용자 정보로 상태 업데이트
+          // BFF 응답 형식 양쪽 호환: result.user (플랫) 또는 result.data.user (중첩)
+          const rawUser = result.user || result.data?.user;
           const user: IUser = {
-            uid: result.user.uid,
-            name: result.user.name,
-            phone: result.user.phone,
-            email: result.user.email,
-            userType: result.user.userType || 'personal',
-            businessInfo: result.user.businessInfo,
-            authType: result.user.authType || 'direct',
-            socialProvider: result.user.socialProvider || null,
-            isVerified: result.user.isVerified ?? true,
-            verifiedAt: result.user.verifiedAt,
-            status: result.user.status || 'active',
-            grade: result.user.grade || 'basic',
-            feeRate: result.user.feeRate ?? 4.5,
-            isGradeManual: result.user.isGradeManual ?? false,
-            monthlyLimit: result.user.monthlyLimit ?? 20000000,
-            usedAmount: result.user.usedAmount ?? 0,
-            agreements: result.user.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
-            totalPaymentAmount: result.user.totalPaymentAmount ?? 0,
-            totalDealCount: result.user.totalDealCount ?? 0,
-            lastMonthPaymentAmount: result.user.lastMonthPaymentAmount ?? 0,
-            history: result.user.history || [],
-            createdAt: result.user.createdAt || new Date().toISOString(),
-            updatedAt: result.user.updatedAt || new Date().toISOString(),
+            uid: rawUser.uid,
+            name: rawUser.name,
+            phone: rawUser.phone,
+            email: rawUser.email,
+            userType: rawUser.userType || 'personal',
+            businessInfo: rawUser.businessInfo,
+            authType: rawUser.authType || 'direct',
+            socialProvider: rawUser.socialProvider || null,
+            isVerified: rawUser.isVerified ?? true,
+            verifiedAt: rawUser.verifiedAt,
+            status: rawUser.status || 'active',
+            grade: rawUser.grade || 'basic',
+            feeRate: rawUser.feeRate ?? 4.5,
+            isGradeManual: rawUser.isGradeManual ?? false,
+            monthlyLimit: rawUser.monthlyLimit ?? 20000000,
+            usedAmount: rawUser.usedAmount ?? 0,
+            agreements: rawUser.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
+            totalPaymentAmount: rawUser.totalPaymentAmount ?? 0,
+            totalDealCount: rawUser.totalDealCount ?? 0,
+            lastMonthPaymentAmount: rawUser.lastMonthPaymentAmount ?? 0,
+            history: rawUser.history || [],
+            createdAt: rawUser.createdAt || new Date().toISOString(),
+            updatedAt: rawUser.updatedAt || new Date().toISOString(),
           };
 
           // users 배열에도 추가/업데이트
@@ -139,7 +141,12 @@ export const useUserStore = create(
             set({ isLoading: false });
             return;
           }
-          const userData = meResult.user;
+          // BFF 응답 형식 양쪽 호환: meResult.user (플랫) 또는 meResult.data (중첩)
+          const userData = meResult.user || meResult.data?.user || meResult.data;
+          if (!userData?.uid) {
+            set({ isLoading: false });
+            return;
+          }
 
           const user: IUser = {
             uid: userData.uid,

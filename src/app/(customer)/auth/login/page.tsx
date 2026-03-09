@@ -143,8 +143,11 @@ function LoginContent() {
       const result = await secureAuth.login(email, password);
 
       // 토큰은 httpOnly 쿠키로 자동 저장됨
-      // 사용자 정보만 저장
-      setUser(result.user);
+      // 사용자 정보만 저장 (BFF 응답 형식 양쪽 호환: result.user 또는 result.data.user)
+      const user = result.user || result.data?.user;
+      if (user) {
+        setUser(user);
+      }
 
       router.replace('/');
     } catch (err: unknown) {
