@@ -10,7 +10,7 @@ import { LINKHUB_AUTH_URL, POPBILL_SERVICE_ID } from './constants';
 const LINK_ID = (process.env.POPBILL_LINK_ID || '').trim();
 const SECRET_KEY = (process.env.POPBILL_SECRET_KEY || '').trim();
 const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim(); // 회원 사업자번호
-const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
+const IS_TEST = (process.env.POPBILL_IS_TEST || '').trim() === 'true';
 const LINKHUB_API_VERSION = '2.0';
 
 // 토큰 캐시 (메모리)

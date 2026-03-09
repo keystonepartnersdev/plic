@@ -17,7 +17,7 @@ import {
   AccountVerifyResponse,
 } from './types';
 
-const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
+const IS_TEST = (process.env.POPBILL_IS_TEST || '').trim() === 'true';
 const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim();
 const USER_ID = (process.env.POPBILL_USER_ID || '').trim();
 
