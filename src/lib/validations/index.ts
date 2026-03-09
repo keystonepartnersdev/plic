@@ -59,6 +59,11 @@ export const signupSchema = z.object({
   }),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: passwordSchema,
+  newPassword: passwordSchema,
+});
+
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, '리프레시 토큰이 필요합니다'),
 });
@@ -246,5 +251,6 @@ export type CreateDealInput = z.infer<typeof createDealSchema>;
 export type UpdateDealInput = z.infer<typeof updateDealSchema>;
 export type BillingKeyCreateInput = z.infer<typeof billingKeyCreateSchema>;
 export type BillingKeyPayInput = z.infer<typeof billingKeyPaySchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type BusinessVerifyInput = z.infer<typeof businessVerifySchema>;
 export type AccountVerifyInput = z.infer<typeof accountVerifySchema>;

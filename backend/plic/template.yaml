@@ -323,6 +323,34 @@ Resources:
           Properties:
             Path: /auth/kakao-login
             Method: post
+  ChangePasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ChangePasswordFunction
+      Handler: change-password.handler
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID:
+            Ref: CognitoUserPool
+          COGNITO_CLIENT_ID:
+            Ref: CognitoUserPoolClient
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:ChangePassword
+          Resource:
+            Fn::GetAtt:
+            - CognitoUserPool
+            - Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/change-password
+            Method: post
   RefreshFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -75,6 +75,31 @@ export const secureAuth = {
   },
 
   /**
+   * 비밀번호 변경
+   */
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const response = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errorMsg = typeof data.error === 'string'
+        ? data.error
+        : (data.error?.message || data.message || '비밀번호 변경에 실패했습니다.');
+      throw new Error(errorMsg);
+    }
+
+    return data;
+  },
+
+  /**
    * 현재 로그인 상태 확인
    */
   getMe: async () => {
