@@ -211,10 +211,10 @@ export const popbill = {
       return {
         success: true,
         data: {
-          bankCode,
-          accountNumber: cleanAccountNumber,
+          bankCode: result.bankCode || bankCode,
+          accountNumber: result.accountNumber || cleanAccountNumber,
           accountHolder: result.accountName,
-          checkDate: new Date().toISOString(),
+          checkDate: result.checkDT || new Date().toISOString(),
         },
       };
     } catch (error) {
