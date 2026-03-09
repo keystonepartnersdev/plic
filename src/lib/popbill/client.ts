@@ -18,7 +18,8 @@ import {
 } from './types';
 
 const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
-const USER_ID = (process.env.POPBILL_USER_ID || process.env.POPBILL_LINK_ID || '').trim();
+const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim();
+const USER_ID = (process.env.POPBILL_USER_ID || '').trim();
 
 /**
  * 팝빌 API URL 반환
@@ -37,7 +38,8 @@ async function apiCall<T>(
   body?: Record<string, unknown> | string[]
 ): Promise<T> {
   const baseUrl = getPopbillUrl();
-  const url = `${baseUrl}${endpoint}`;
+  // 팝빌 REST API는 /{CorpNum}/... 경로 구조 사용
+  const url = `${baseUrl}/${CORP_NUM}${endpoint}`;
 
   console.log('[Popbill API] Request:', { baseUrl, endpoint, url, method, body, tokenLength: token?.length });
 
@@ -155,12 +157,12 @@ export const popbill = {
         };
       }
 
-      if (cleanAccountNumber.length < 10 || cleanAccountNumber.length > 16) {
+      if (cleanAccountNumber.length < 7 || cleanAccountNumber.length > 14) {
         return {
           success: false,
           error: {
             code: -12000002,
-            message: '계좌번호 형식이 올바르지 않습니다.',
+            message: '계좌번호는 7자리 이상 14자리 이하여야 합니다.',
           },
         };
       }

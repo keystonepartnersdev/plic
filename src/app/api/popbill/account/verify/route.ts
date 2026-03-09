@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     // 계좌번호 정규화
     const cleanAccountNumber = accountNumber.replace(/-/g, '');
 
-    if (cleanAccountNumber.length < 10 || cleanAccountNumber.length > 16) {
-      throw Errors.inputInvalid({ message: '계좌번호 형식이 올바르지 않습니다.' });
+    if (cleanAccountNumber.length < 7 || cleanAccountNumber.length > 14) {
+      throw Errors.inputInvalid({ message: '계좌번호는 7자리 이상 14자리 이하여야 합니다.' });
     }
 
     // 팝빌 API 호출
