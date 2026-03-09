@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = validateRequest(loginSchema, body);
 
-    // 백엔드 Lambda API로 로그인 요청 (서버사이드에서는 LAMBDA_URL 사용)
+    // 백엔드 API로 로그인 요청
     const backendResponse = await fetch(`${API_CONFIG.LAMBDA_URL}/auth/login`, {
       method: 'POST',
       headers: {

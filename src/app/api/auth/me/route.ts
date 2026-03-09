@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return successResponse({ isLoggedIn: false, user: null });
     }
 
-    // 백엔드 Lambda API로 사용자 정보 요청 (서버사이드에서는 LAMBDA_URL 사용)
+    // 백엔드 API로 사용자 정보 요청
     const backendResponse = await fetch(`${API_CONFIG.LAMBDA_URL}/users/me`, {
       method: 'GET',
       headers: {

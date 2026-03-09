@@ -10,7 +10,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // 서버사이드에서는 LAMBDA_URL 사용
     const response = await fetch(`${API_CONFIG.LAMBDA_URL}/admin/auth/login`, {
       method: 'POST',
       headers: {
