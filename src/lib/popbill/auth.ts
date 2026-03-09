@@ -42,8 +42,8 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
   sha256.update(tokenRequest);
   const bodyDigest = sha256.digest('base64');
 
-  // Signature target
-  const digestTarget = `POST\n${bodyDigest}\n${xDate}\n${LINKHUB_API_VERSION}\n${uri}`;
+  // Signature target (X-LH-Forwarded 값 '*' 포함 - 서버리스 환경 필수)
+  const digestTarget = `POST\n${bodyDigest}\n${xDate}\n*\n${LINKHUB_API_VERSION}\n${uri}`;
 
   // HMAC-SHA256 signature
   const hmac = crypto.createHmac('sha256', Buffer.from(SECRET_KEY, 'base64'));
@@ -67,6 +67,7 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
       'Content-Type': 'Application/json',
       'x-lh-date': xDate,
       'x-lh-version': LINKHUB_API_VERSION,
+      'x-lh-forwarded': '*',
       'Authorization': `LINKHUB ${LINK_ID} ${signature}`,
     },
     body: tokenRequest,
@@ -97,8 +98,8 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
  */
 // 서비스별 scope 매핑
 const SERVICE_SCOPES = {
-  CLOSEDOWN: ['170'],           // 휴폐업조회
-  ACCOUNTCHECK: ['182', '183'], // 예금주조회
+  CLOSEDOWN: ['member', '170'],           // 휴폐업조회
+  ACCOUNTCHECK: ['member', '182', '183'], // 예금주조회
 } as const;
 
 export async function getToken(serviceType: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {

@@ -38,8 +38,8 @@ async function apiCall<T>(
   body?: Record<string, unknown> | string[]
 ): Promise<T> {
   const baseUrl = getPopbillUrl();
-  // 팝빌 REST API는 /{CorpNum}/... 경로 구조 사용
-  const url = `${baseUrl}/${CORP_NUM}${endpoint}`;
+  // 팝빌 REST API: CorpNum은 토큰에만 사용, URL 경로에 포함하지 않음
+  const url = `${baseUrl}${endpoint}`;
 
   console.log('[Popbill API] Request:', { baseUrl, endpoint, url, method, body, tokenLength: token?.length });
 
