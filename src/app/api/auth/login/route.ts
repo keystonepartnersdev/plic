@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       if (backendResponse.status === 401) {
         throw Errors.authInvalidToken();
       }
-      throw Errors.serverError(data.message || '로그인에 실패했습니다.');
+      throw Errors.serverError(data.error || data.message || '로그인에 실패했습니다.');
     }
 
     // 성공 응답 생성
