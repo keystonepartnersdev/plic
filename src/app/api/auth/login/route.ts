@@ -4,7 +4,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/config';
-import { handleApiError, Errors, successResponse } from '@/lib/api-error';
 import { loginSchema, validateRequest } from '@/lib/validations';
 
 const TOKEN_CONFIG = {
@@ -35,17 +34,21 @@ export async function POST(request: NextRequest) {
     const data = await backendResponse.json();
 
     if (!backendResponse.ok) {
-      // 백엔드 에러를 그대로 전달
-      if (backendResponse.status === 401) {
-        throw Errors.authInvalidToken();
-      }
-      throw Errors.serverError(data.error || data.message || '로그인에 실패했습니다.');
+      // Lambda 에러 메시지를 문자열로 직접 전달 (객체 래핑 X)
+      const errorMsg = backendResponse.status === 401
+        ? '올바르지 않은 회원ID/PW입니다.'
+        : (typeof data.error === 'string' ? data.error : data.error?.message || data.message || '로그인에 실패했습니다.');
+
+      return NextResponse.json(
+        { success: false, error: errorMsg },
+        { status: backendResponse.status }
+      );
     }
 
-    // 성공 응답 생성
+    // 성공 응답 생성 (플랫 구조: result.user로 바로 접근 가능)
     const response = NextResponse.json({
       success: true,
-      data: { user: data.user },
+      user: data.user,
     });
 
     // httpOnly 쿠키로 토큰 설정
@@ -71,6 +74,11 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    return handleApiError(error);
+    // Zod 검증 에러 등 처리
+    const message = error instanceof Error ? error.message : '로그인 처리 중 오류가 발생했습니다.';
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 400 }
+    );
   }
 }

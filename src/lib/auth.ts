@@ -24,7 +24,11 @@ export const secureAuth = {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error?.message || data.message || '로그인에 실패했습니다.');
+      // error가 문자열이면 그대로, 객체면 .message 추출
+      const errorMsg = typeof data.error === 'string'
+        ? data.error
+        : (data.error?.message || data.message || '로그인에 실패했습니다.');
+      throw new Error(errorMsg);
     }
 
     return data;

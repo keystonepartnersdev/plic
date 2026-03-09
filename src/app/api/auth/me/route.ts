@@ -4,7 +4,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/lib/config';
-import { handleApiError, successResponse } from '@/lib/api-error';
 
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_NAME: 'plic_access_token',
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
     const accessToken = request.cookies.get(TOKEN_CONFIG.ACCESS_TOKEN_NAME)?.value;
 
     if (!accessToken) {
-      return successResponse({ isLoggedIn: false, user: null });
+      return NextResponse.json({ success: true, isLoggedIn: false, user: null });
     }
 
     // 백엔드 API로 사용자 정보 요청
@@ -31,18 +30,20 @@ export async function GET(request: NextRequest) {
 
     if (!backendResponse.ok) {
       // 토큰 만료 등의 이유로 인증 실패
-      return successResponse({ isLoggedIn: false, user: null });
+      return NextResponse.json({ success: true, isLoggedIn: false, user: null });
     }
 
     const data = await backendResponse.json();
 
-    return successResponse({
+    // 플랫 구조로 반환 (meResult.user로 바로 접근 가능)
+    return NextResponse.json({
+      success: true,
       isLoggedIn: true,
       user: data.user || data.data || data,
     });
   } catch (error) {
     // 네트워크 오류 시에도 로그인 상태 확인 실패로 처리 (500 반환 대신)
     console.error('[API] /api/auth/me error:', error);
-    return successResponse({ isLoggedIn: false, user: null });
+    return NextResponse.json({ success: true, isLoggedIn: false, user: null });
   }
 }

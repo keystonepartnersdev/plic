@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!backendResponse.ok) {
       // 리프레시 토큰도 만료된 경우 쿠키 삭제
       const response = NextResponse.json(
-        { error: data.message || '토큰 갱신에 실패했습니다.' },
+        { error: data.error || data.message || '토큰 갱신에 실패했습니다.' },
         { status: backendResponse.status }
       );
 
