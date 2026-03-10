@@ -298,6 +298,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 | AdminUsersList 전체 Scan | 페이지네이션 없음 | 사용자 증가 시 성능 저하 |
 | AdminDealsList 전체 Scan | 페이지네이션 없음 | 거래 증가 시 성능 저하 |
 | DynamoDB 테이블 일부 수동 생성 | SAM 템플릿에 8개 테이블 미정의 | IaC 불완전 |
+| 통계/한도 계산 | 실제 거래 데이터에서 프론트엔드 계산 (DB 저장값 미사용). Lambda recentDeals limit:20 우회를 위해 어드민 회원상세에서 전체 deals API 병렬 조회 | 거래 증가 시 최적화 필요 |
 
 ### 코드 품질
 
@@ -384,6 +385,7 @@ aws lambda update-function-code \
 | 카카오 인증 | `docs/KAKAO_AUTH_ARCHITECTURE.md` | 카카오 OAuth 플로우, 세션 관리, 트러블슈팅 |
 | 로드맵 | `docs/ROADMAP.md` | 개발 계획 |
 | 테스트 케이스 | `docs/testing/PLIC_QA_TESTCASE_v1.0.md` | 1,008개 QA 시나리오 |
+| DB 보정 스크립트 | `scripts/fix-user-stats.js` | 사용자 통계(usedAmount/totalDealCount/totalPaymentAmount) 재계산. `--dry-run` 지원 |
 
 ---
 
