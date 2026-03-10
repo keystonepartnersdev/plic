@@ -40,8 +40,10 @@ export default function AdminDealsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminAPI.getDeals(uidFilter ? { uid: uidFilter } : undefined);
-      setDeals(response.deals || []);
+      const response = await adminAPI.getDeals();
+      const allDeals = response.deals || [];
+      // uid 필터가 있으면 해당 회원의 거래만 표시
+      setDeals(uidFilter ? allDeals.filter(d => d.uid === uidFilter) : allDeals);
     } catch (err: unknown) {
       console.error('거래 목록 로드 실패:', err);
       setError(getErrorMessage(err) || '거래 목록을 불러오는데 실패했습니다.');
