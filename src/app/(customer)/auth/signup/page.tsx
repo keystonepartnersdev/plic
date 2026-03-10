@@ -464,7 +464,7 @@ function SignupContent() {
       }
       w.Kakao.Auth.authorize({
         redirectUri,
-        scope: 'profile_nickname,account_email,name,phone_number,birthday,birthyear,gender',
+        scope: 'profile_nickname,account_email',
         state,
         prompt: 'login',
       });

@@ -51,7 +51,7 @@ export function getKakaoAuthUrl(state?: string): string {
     client_id: restApiKey,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'profile_nickname account_email name phone_number birthday birthyear gender', // 본인인증용 확장 scope
+    scope: 'profile_nickname account_email', // 기본 scope (추가 항목은 카카오 개발자 콘솔 동의항목 설정 필요)
     prompt: 'login', // 매번 카카오 인증 강제 (기존 세션 무시)
   });
 
