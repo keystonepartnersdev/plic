@@ -237,7 +237,49 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 
 ---
 
-## 5. 알려진 제한사항 / 기술부채
+## 5. 주요 트러블슈팅 / 주의사항
+
+### 카카오 인증 (상세: `docs/KAKAO_AUTH_ARCHITECTURE.md`)
+
+| 주의사항 | 설명 |
+|----------|------|
+| **카카오 세션 3계층** | 액세스 토큰, 브라우저 세션 쿠키(kauth.kakao.com), 로그인 폼 캐시 — 3개 모두 처리해야 2차 인증이 매번 동작함 |
+| **auth/auth-start 분리 필수** | `/api/kakao/auth`(세션 로그아웃) → `/api/kakao/auth-start`(OAuth 시작). 합치면 2차 인증 자동 스킵됨 |
+| **로그아웃 리다이렉트 URI** | 카카오 개발자 콘솔 → 카카오 로그인 → 고급 → `https://www.plic.kr/api/kakao/auth-start` 등록 필수 (KOE007) |
+| **prompt=cert 사용 불가** | 카카오 인증서 서비스 별도 사업 제휴 필요. 미설정 시 KOE216 에러 |
+| **prompt=login** | 공식 지원 파라미터. 매번 로그인 폼 강제 표시 |
+
+### 결제 (Softpayment)
+
+| 주의사항 | 설명 |
+|----------|------|
+| **1회 결제 한도** | 소프트먼트 측 설정: 송금액+수수료 합산 50만원. S002/S003/S004 에러 시 한도 초과 모달 표시 |
+| **환경변수** | `SOFTPAYMENT_PAY_KEY`, `SOFTPAYMENT_API_URL` Vercel Production에 등록 필수 |
+| **에러 응답 형식** | `{ success: false, error: { code, message, details } }` — `error.message`를 추출해서 표시해야 함 ([object Object] 방지) |
+
+### Popbill
+
+| 주의사항 | 설명 |
+|----------|------|
+| **POPBILL_IS_TEST** | 환경변수 값에 공백/개행이 포함될 수 있음 → `trim()` 처리 필수 |
+| **운영/테스트 전환** | `POPBILL_IS_TEST=false`가 운영, `true`가 테스트. Vercel 환경변수에서 관리 |
+
+### Vercel 환경변수 (Production)
+
+| 변수명 | 용도 |
+|--------|------|
+| `NEXT_PUBLIC_BASE_URL` | `https://www.plic.kr` |
+| `KAKAO_REST_API_KEY` | 카카오 REST API 키 |
+| `KAKAO_CLIENT_SECRET` | 카카오 클라이언트 시크릿 |
+| `SOFTPAYMENT_PAY_KEY` | 소프트먼트 결제 키 |
+| `SOFTPAYMENT_API_URL` | `https://papi.softment.co.kr` |
+| `AWS_ACCESS_KEY_ID` | DynamoDB 접근용 |
+| `AWS_SECRET_ACCESS_KEY` | DynamoDB 접근용 |
+| `AWS_REGION` | `ap-northeast-2` |
+
+---
+
+## 6. 알려진 제한사항 / 기술부채
 
 ### 보안
 
@@ -269,7 +311,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 
 ---
 
-## 6. 프로젝트 구조
+## 7. 프로젝트 구조
 
 ```
 PLIC/
@@ -303,7 +345,7 @@ PLIC/
 
 ---
 
-## 7. 배포 방법
+## 8. 배포 방법
 
 ### 프론트엔드 (자동)
 ```
@@ -327,7 +369,7 @@ aws lambda update-function-code \
 
 ---
 
-## 8. 주요 참고 문서 (현행)
+## 9. 주요 참고 문서 (현행)
 
 | 문서 | 경로 | 용도 |
 |------|------|------|
@@ -339,12 +381,13 @@ aws lambda update-function-code \
 | 아키텍처 | `docs/core/ARCHITECTURE.md` | 시스템 구조 |
 | 거래 유형 | `docs/core/DEAL-TYPES.md` | 12가지 거래 유형 정의 |
 | 코드 레지스트리 | `docs/core/REGISTRY.md` | 네이밍 규칙, 코드 위치 |
+| 카카오 인증 | `docs/KAKAO_AUTH_ARCHITECTURE.md` | 카카오 OAuth 플로우, 세션 관리, 트러블슈팅 |
 | 로드맵 | `docs/ROADMAP.md` | 개발 계획 |
 | 테스트 케이스 | `docs/testing/PLIC_QA_TESTCASE_v1.0.md` | 1,008개 QA 시나리오 |
 
 ---
 
-## 9. 변경 이력
+## 10. 변경 이력
 
 ### 2026-03-09 ~ 2026-03-10
 
