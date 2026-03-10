@@ -1,6 +1,6 @@
 # PLIC 베타 현황 문서 v1.0
 
-> 최종 업데이트: 2026-03-03
+> 최종 업데이트: 2026-03-11
 > 상태: **Beta**
 > 서비스 URL: https://plic.kr (Vercel)
 > API Gateway: https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod
@@ -47,7 +47,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 |--------|------|------|
 | 홈 | `/` | ✅ 완료 (배너, 거래요약, FAQ) |
 | 로그인 | `/auth/login` | ✅ 완료 |
-| 회원가입 | `/auth/signup` | ✅ 완료 (5단계: 약관→정보→사업자→카카오→완료) |
+| 회원가입 | `/auth/signup` | ✅ 완료 (5단계: 약관→**카카오인증**→정보→사업자→완료) |
 | 거래 목록 | `/deals` | ✅ 완료 |
 | 거래 상세 | `/deals/[did]` | ✅ 완료 |
 | 새 송금 | `/deals/new` | ✅ 완료 (5단계 위저드) |
@@ -115,7 +115,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 #### Next.js API Routes (BFF 프록시, 50개)
 
 프론트엔드 → Lambda 중간 프록시 역할. httpOnly 쿠키 기반 JWT 인증 처리.
-주요 그룹: auth(7), users(6), deals(3), payments(7), content(6), discounts(2), kakao(3), popbill(2), uploads(2), tracking(2), webhooks(1), health(1), admin(22)
+주요 그룹: auth(7), users(6), deals(3), payments(7), content(6), discounts(2), kakao(4), popbill(2), uploads(2), tracking(2), webhooks(1), health(1), admin(22)
 
 ---
 
@@ -180,7 +180,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 | Softpayment | 신용카드 결제 | Next.js API Route → 외부 API | ✅ 완료 |
 | Popbill | 계좌 실명 확인 | Next.js API Route → 외부 API | ✅ 완료 |
 | Popbill | 사업자 등록 확인 | Next.js API Route → 외부 API | ✅ 완료 |
-| Kakao | 소셜 로그인 / 본인인증 | Next.js API Route → Kakao OAuth | ✅ 완료 |
+| Kakao | 소셜 로그인 / 본인인증 / 2차 인증 | Next.js API Route → Kakao OAuth (세션 초기화 + prompt=login) | ✅ 완료 |
 | AWS Cognito | 사용자 인증 (JWT) | Lambda → Cognito | ✅ 완료 |
 | AWS S3 | 파일 업로드 | Presigned URL | ✅ 완료 |
 
@@ -341,3 +341,19 @@ aws lambda update-function-code \
 | 코드 레지스트리 | `docs/core/REGISTRY.md` | 네이밍 규칙, 코드 위치 |
 | 로드맵 | `docs/ROADMAP.md` | 개발 계획 |
 | 테스트 케이스 | `docs/testing/PLIC_QA_TESTCASE_v1.0.md` | 1,008개 QA 시나리오 |
+
+---
+
+## 9. 변경 이력
+
+### 2026-03-11
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **카카오 2차 인증 복원** | 카카오 인증 전 계정 로그아웃(세션 초기화) → prompt=login → 카카오톡 앱 2차 인증 정상 동작. `/api/kakao/auth` 2단계 분리 (`auth` → `auth-start`) |
+| **직접 회원가입 카카오 인증 스텝 복원** | `kakaoVerify` 스텝 추가 (약관→카카오인증→회원정보→사업자→완료). KakaoVerifyStep 컴포넌트 연결 |
+| **카카오 콜백 세션 무효화** | 콜백에서 `kakaoLogout()` 호출하여 액세스 토큰 즉시 무효화, `kakao_had_session` 쿠키로 재인증 시 세션 초기화 |
+| **결제 한도 초과 모달** | S002/S003/S004 에러 시 "1회당 결제 가능 금액 초과" 전용 모달 + 카카오톡 상담 버튼 |
+| **결제/거래 버튼 키컬러** | 결제하기, 거래 신청하기 버튼 primary-400 → primary-600 변경 |
+| **EditDealModal 월 한도 검증** | 거래 수정 시 월 사용한도 초과 검증 + 프로그레스 바 UI |
+| **탈퇴 회원 감지** | DynamoDB 없음 + Cognito 존재 시 "탈퇴한 회원입니다" 반환 (signup, kakao-login Lambda) |
