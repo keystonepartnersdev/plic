@@ -26,6 +26,14 @@ export async function POST(request: NextRequest) {
       userId,        // 내부 userId (shopValueInfo에 저장)
     } = body;
 
+    console.log('[Billing] Request body:', JSON.stringify({ amount, goodsName, device, dealId, userId }));
+    console.log('[Billing] ENV check:', {
+      hasPayKey: !!process.env.SOFTPAYMENT_PAY_KEY,
+      payKeyPrefix: process.env.SOFTPAYMENT_PAY_KEY?.substring(0, 8),
+      apiUrl: process.env.SOFTPAYMENT_API_URL,
+      baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+    });
+
     // 필수값 검증
     if (!amount) {
       throw Errors.inputMissingField('amount');
@@ -52,6 +60,8 @@ export async function POST(request: NextRequest) {
         value3: '',
       },
     });
+
+    console.log('[Billing] Softpayment response:', JSON.stringify(response));
 
     if (!softpayment.isSuccess(response.resCode)) {
       throw Errors.paymentFailed({
