@@ -73,7 +73,8 @@ export default function EditProfilePage() {
   const isKakaoUser = currentUser?.socialProvider === 'kakao';
 
   // 변경사항 있는지 확인 (개인정보 또는 비밀번호)
-  const hasProfileChanges = formData.name !== originalData.name || formData.phone !== originalData.phone;
+  const isPhoneLocked = isKakaoUser || !!currentUser?.kakaoNickname;
+  const hasProfileChanges = formData.name !== originalData.name || (!isPhoneLocked && formData.phone !== originalData.phone);
   const hasPasswordInput = currentPassword.length > 0 || newPassword.length > 0 || confirmPassword.length > 0;
   const hasChanges = hasProfileChanges || (hasPasswordInput && isPasswordFormValid);
 
@@ -228,12 +229,26 @@ export default function EditProfilePage() {
       <div className="p-5 space-y-4">
         {/* 기본 정보 */}
         <div className="bg-white rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-4">
+          {/* 카카오 이름 (수정 불가) */}
+          {currentUser.kakaoNickname && (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                <Shield className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">카카오 이름</p>
+                <p className="font-medium text-gray-900">{currentUser.kakaoNickname}</p>
+                <p className="text-xs text-gray-400">카카오 인증 정보로 변경할 수 없습니다</p>
+              </div>
+            </div>
+          )}
+
+          <div className={cn("flex items-center gap-3 mb-4", currentUser.kakaoNickname && "pt-4 border-t border-gray-100")}>
             <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
               <User className="w-5 h-5 text-primary-400" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-500">이름</p>
+              <p className="text-sm text-gray-500">실명</p>
               <input
                 type="text"
                 value={formData.name}
@@ -258,15 +273,23 @@ export default function EditProfilePage() {
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <Phone className="w-5 h-5 text-green-500" />
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-500">전화번호</p>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="font-medium text-gray-900 bg-transparent border-none outline-none w-full"
-              />
-            </div>
+            {isKakaoUser || currentUser.kakaoNickname ? (
+              <div>
+                <p className="text-sm text-gray-500">전화번호</p>
+                <p className="font-medium text-gray-900">{formData.phone}</p>
+                <p className="text-xs text-gray-400">카카오 인증 정보로 변경할 수 없습니다</p>
+              </div>
+            ) : (
+              <div className="flex-1">
+                <p className="text-sm text-gray-500">전화번호</p>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="font-medium text-gray-900 bg-transparent border-none outline-none w-full"
+                />
+              </div>
+            )}
           </div>
         </div>
 

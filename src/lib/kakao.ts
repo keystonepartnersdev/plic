@@ -51,8 +51,8 @@ export function getKakaoAuthUrl(state?: string): string {
     client_id: restApiKey,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
-    prompt: 'login', // 매번 카카오 인증 강제 (기존 세션 무시, QR코드/카카오톡 인증 옵션 포함)
+    scope: 'profile_nickname account_email name phone_number birthday birthyear gender', // 본인인증용 확장 scope
+    prompt: 'login', // 매번 카카오 인증 강제 (기존 세션 무시)
   });
 
   if (state) {
@@ -217,6 +217,11 @@ interface VerificationResult {
   kakaoId: number;
   nickname?: string;
   email?: string;
+  name?: string;
+  phone?: string;
+  birthday?: string; // MMdd
+  birthyear?: string; // yyyy
+  gender?: string;
   verifiedAt: string;
 }
 
@@ -260,6 +265,11 @@ export async function getVerificationResult(key: string): Promise<VerificationRe
     kakaoId: response.Item.kakaoId,
     nickname: response.Item.nickname,
     email: response.Item.email,
+    name: response.Item.name,
+    phone: response.Item.phone,
+    birthday: response.Item.birthday,
+    birthyear: response.Item.birthyear,
+    gender: response.Item.gender,
     verifiedAt: response.Item.verifiedAt,
   };
 }
@@ -285,6 +295,11 @@ export function extractVerificationResult(userInfo: KakaoUserInfo): Verification
     kakaoId: userInfo.id,
     nickname: account?.profile?.nickname,
     email: account?.email,
+    name: account?.name,
+    phone: account?.phone_number ? formatKakaoPhoneNumber(account.phone_number) : undefined,
+    birthday: account?.birthday,
+    birthyear: account?.birthyear,
+    gender: account?.gender,
     verifiedAt: new Date().toISOString(),
   };
 }
