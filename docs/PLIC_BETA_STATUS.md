@@ -346,6 +346,20 @@ aws lambda update-function-code \
 
 ## 9. 변경 이력
 
+### 2026-03-09 ~ 2026-03-10
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **Popbill 계좌 검증 수정** | SDK 기반 3가지 근본 원인 해결, 계좌조회 응답에서 API 반환값 사용, `POPBILL_IS_TEST` 환경변수 trim 처리 |
+| **비밀번호 변경 기능** | Lambda + BFF + 프론트엔드 전체 구현 (마이페이지 → 설정 → 비밀번호 변경) |
+| **카카오 5개 커밋 롤백** | KOE101/KOE205 에러 유발 커밋 5개 일괄 revert (1f5c2f2 버전 복원) |
+| **탈퇴 회원 감지** | signup/kakao-login Lambda에서 DynamoDB 없음 + Cognito 존재 시 "탈퇴한 회원입니다" 반환 |
+| **결제 에러 수정** | Softpayment 환경변수 Vercel 등록, `[object Object]` 에러 메시지 표시 수정 |
+| **결제 한도 초과 모달** | S002/S003/S004 에러 시 전용 모달 + 카카오톡 상담 버튼 (http://pf.kakao.com/_xnQKhX) |
+| **EditDealModal 월 한도 검증** | 거래 수정 시 월 사용한도 초과 검증 + 프로그레스 바 UI |
+| **버튼 키컬러 변경** | 결제하기, 거래 신청하기 버튼 primary-400 → primary-600 |
+| **Vercel 빌드 캐시** | generateBuildId 추가, vercel.json 설정으로 빌드 캐시 강제 무효화 |
+
 ### 2026-03-11
 
 | 항목 | 변경 내용 |
