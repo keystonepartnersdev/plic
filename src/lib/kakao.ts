@@ -52,6 +52,7 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
+    prompt: 'login', // 매번 로그인 강제 (세션 재사용 방지, 2차 인증 트리거)
   });
 
   if (state) {

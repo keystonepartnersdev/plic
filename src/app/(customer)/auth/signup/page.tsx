@@ -9,8 +9,9 @@ import { authAPI } from '@/lib/api';
 import { uploadFile, validateFile } from '@/lib/upload';
 import { TUserType } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
+import { KakaoVerifyStep } from '@/components/auth/signup/KakaoVerifyStep';
 
-type Step = 'agreement' | 'info' | 'businessInfo' | 'complete';
+type Step = 'agreement' | 'kakaoVerify' | 'info' | 'businessInfo' | 'complete';
 
 interface Agreement {
   id: string;
@@ -35,7 +36,7 @@ function getInitialStep(): Step {
 
   // 일반 접근 → 저장된 step 복원 또는 agreement
   const savedStep = sessionStorage.getItem('signup_step');
-  if (savedStep && ['agreement', 'info', 'businessInfo'].includes(savedStep)) {
+  if (savedStep && ['agreement', 'kakaoVerify', 'info', 'businessInfo'].includes(savedStep)) {
     return savedStep as Step;
   }
 
@@ -104,6 +105,9 @@ function SignupContent() {
   const [isKakaoUser, setIsKakaoUser] = useState(false);
   const [kakaoId, setKakaoId] = useState<number | null>(null);
   const [kakaoVerificationKey, setKakaoVerificationKey] = useState<string>('');
+  const [kakaoVerified, setKakaoVerified] = useState(false);
+  const [kakaoVerification, setKakaoVerification] = useState<{ kakaoId: number; nickname?: string; email?: string; verifiedAt: string } | null>(null);
+  const [kakaoError, setKakaoError] = useState('');
 
   // 회원 정보
   const [name, setName] = useState('');
@@ -167,10 +171,21 @@ function SignupContent() {
             const autoPassword = `Kk${kId}Px1!`;
             setPassword(autoPassword);
             setPasswordConfirm(autoPassword);
+            // 카카오 인증 완료 상태 설정
+            setKakaoVerified(true);
+            setKakaoVerification({ kakaoId: kId, nickname, email: kakaoEmail, verifiedAt: new Date().toISOString() });
+            // 인증 완료 후 info 스텝으로 이동
+            setStep('info');
+          } else {
+            // 인증 실패 시 kakaoVerify 스텝으로
+            setKakaoError('카카오 인증에 실패했습니다. 다시 시도해주세요.');
+            setStep('kakaoVerify');
           }
         })
         .catch(err => {
           console.error('[Signup] Failed to fetch kakao data:', err);
+          setKakaoError('카카오 인증 결과를 불러오는데 실패했습니다.');
+          setStep('kakaoVerify');
         });
     }
 
@@ -422,7 +437,8 @@ function SignupContent() {
   };
 
   const handleBack = () => {
-    if (step === 'info') setStep('agreement');
+    if (step === 'kakaoVerify') setStep('agreement');
+    else if (step === 'info') setStep(kakaoVerified ? 'kakaoVerify' : 'agreement');
     else if (step === 'businessInfo') setStep('info');
     else router.back();
   };
@@ -502,7 +518,7 @@ function SignupContent() {
             </div>
 
             <button
-              onClick={() => setStep('info')}
+              onClick={() => setStep('kakaoVerify')}
               disabled={!allRequiredChecked}
               className="w-full h-14 mt-8 bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg rounded-xl transition-colors"
             >
@@ -511,7 +527,21 @@ function SignupContent() {
           </div>
         )}
 
-        {/* Step 2: 회원 정보 입력 */}
+        {/* Step 2: 카카오 인증 */}
+        {step === 'kakaoVerify' && (
+          <KakaoVerifyStep
+            isVerified={kakaoVerified}
+            verification={kakaoVerification}
+            error={kakaoError}
+            onVerify={() => {
+              // 카카오 인증 페이지로 이동 (returnTo를 signup으로 설정)
+              window.location.href = '/api/kakao/auth?returnTo=/auth/signup';
+            }}
+            onNext={() => setStep('info')}
+          />
+        )}
+
+        {/* Step 3: 회원 정보 입력 */}
         {step === 'info' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">회원 정보 입력</h2>
