@@ -69,7 +69,6 @@ export interface IUser {
   name: string;
   phone: string;
   email?: string;
-  kakaoNickname?: string;       // 카카오 인증 시 받은 이름 (수정 불가)
 
   // 회원 유형 (개인/사업자)
   userType: TUserType;

@@ -377,7 +377,6 @@ export const authAPI = {
     // 카카오 인증 정보
     kakaoVerified?: boolean;
     kakaoId?: number;
-    kakaoNickname?: string;
     // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
     kakaoVerificationKey?: string;
   }) => {
