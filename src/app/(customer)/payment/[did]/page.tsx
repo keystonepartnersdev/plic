@@ -447,7 +447,7 @@ export default function PaymentPage() {
             disabled={isLoading}
             className="
               w-full h-14
-              bg-primary-400 hover:bg-primary-500
+              bg-primary-600 hover:bg-primary-700
               disabled:bg-gray-300 disabled:text-gray-500
               text-white font-semibold text-lg
               rounded-xl transition-colors
