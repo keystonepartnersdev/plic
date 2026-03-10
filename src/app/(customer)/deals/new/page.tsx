@@ -1355,7 +1355,7 @@ function NewDealContent() {
               disabled={isLoading}
               className="
                 w-full h-14 mt-6
-                bg-primary-400 hover:bg-primary-500
+                bg-primary-600 hover:bg-primary-700
                 disabled:bg-gray-200 disabled:text-gray-400
                 text-white font-semibold text-lg
                 rounded-xl transition-colors
