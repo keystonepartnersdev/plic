@@ -8,6 +8,7 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
+const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -138,6 +139,32 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
     }));
+
+    // 취소 시 사용자 통계 차감 (결제 완료된 거래만)
+    const deal = getResult.Item;
+    if (body.status === 'cancelled' && deal.isPaid && deal.uid) {
+      const dealAmount = deal.amount || 0;
+      const dealFinalAmount = deal.finalAmount || deal.totalAmount || 0;
+      try {
+        await docClient.send(new UpdateCommand({
+          TableName: USERS_TABLE,
+          Key: { uid: deal.uid },
+          UpdateExpression: 'SET totalDealCount = if_not_exists(totalDealCount, :zero) - :one, totalPaymentAmount = if_not_exists(totalPaymentAmount, :zero) - :finalAmount, usedAmount = if_not_exists(usedAmount, :zero) - :amount, updatedAt = :now',
+          ExpressionAttributeValues: {
+            ':one': 1,
+            ':zero': 0,
+            ':amount': dealAmount,
+            ':finalAmount': dealFinalAmount,
+            ':now': now,
+          },
+          ConditionExpression: 'attribute_exists(uid)',
+        }));
+        console.log(`사용자 ${deal.uid} 통계 차감 완료: amount=${dealAmount}, finalAmount=${dealFinalAmount}`);
+      } catch (userUpdateError: any) {
+        // 사용자 통계 업데이트 실패해도 거래 상태 변경은 유지
+        console.error('사용자 통계 차감 실패 (거래 취소는 완료):', userUpdateError.message);
+      }
+    }
 
     return response(200, {
       success: true,

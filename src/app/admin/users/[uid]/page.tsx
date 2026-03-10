@@ -153,14 +153,17 @@ export default function AdminUserDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // 거래 통계 계산
+  // 거래 통계 계산 (취소 건 제외)
   const dealStats = useMemo(() => {
+    const activeDeals = userDeals.filter(d => d.status !== 'cancelled');
     const completed = userDeals.filter(d => d.status && d.status === 'completed');
     const pending = userDeals.filter(d => d.status && ['pending', 'reviewing', 'awaiting_payment'].includes(d.status));
+    const cancelled = userDeals.filter(d => d.status === 'cancelled');
     return {
-      total: userDeals.length,
+      total: activeDeals.length,
       completed: completed.length,
       pending: pending.length,
+      cancelled: cancelled.length,
       totalAmount: completed.reduce((sum, d) => sum + (d.amount || 0), 0),
     };
   }, [userDeals]);
@@ -599,7 +602,7 @@ export default function AdminUserDetailPage() {
             </div>
 
             {/* 거래 통계 미니 */}
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-5 gap-3 mb-4">
               <div className="p-3 bg-gray-50 rounded-lg text-center">
                 <p className="text-lg font-bold text-gray-900">{dealStats.total}</p>
                 <p className="text-xs text-gray-500">전체</p>
@@ -611,6 +614,10 @@ export default function AdminUserDetailPage() {
               <div className="p-3 bg-yellow-50 rounded-lg text-center">
                 <p className="text-lg font-bold text-yellow-600">{dealStats.pending}</p>
                 <p className="text-xs text-gray-500">진행중</p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg text-center">
+                <p className="text-lg font-bold text-red-600">{dealStats.cancelled}</p>
+                <p className="text-xs text-gray-500">취소</p>
               </div>
               <div className="p-3 bg-primary-50 rounded-lg text-center">
                 <p className="text-lg font-bold text-primary-400">{(dealStats.totalAmount / 10000).toFixed(0)}만</p>

@@ -2,7 +2,7 @@
 import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
-import { Users, FileText, CreditCard, CheckCircle, RefreshCw } from 'lucide-react';
+import { Users, FileText, CreditCard, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
 import { IUser, IDeal } from '@/types';
@@ -36,11 +36,13 @@ export default function AdminDashboardPage() {
     fetchData();
   }, []);
 
-  // 통계 계산
+  // 통계 계산 (취소 건은 총 거래에서 제외)
   const totalUsers = users.length;
-  const totalDeals = deals.length;
+  const cancelledDeals = deals.filter((d) => d.status === 'cancelled');
+  const activeDealCount = deals.length - cancelledDeals.length;
   const completedDeals = deals.filter((d) => d.status && d.status === 'completed');
   const completedDealsCount = completedDeals.length;
+  const pendingDealsCount = deals.filter((d) => d.status && ['pending', 'reviewing', 'awaiting_payment', 'hold', 'need_revision'].includes(d.status)).length;
   const totalPaymentAmount = completedDeals.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
 
   const stats = [
@@ -52,7 +54,7 @@ export default function AdminDashboardPage() {
     },
     {
       label: '총 거래 건수',
-      value: totalDeals.toLocaleString(),
+      value: activeDealCount.toLocaleString(),
       icon: FileText,
       color: 'bg-green-50 text-green-600',
     },
@@ -61,6 +63,18 @@ export default function AdminDashboardPage() {
       value: completedDealsCount.toLocaleString(),
       icon: CheckCircle,
       color: 'bg-yellow-50 text-yellow-600',
+    },
+    {
+      label: '총 대기 거래 건수',
+      value: pendingDealsCount.toLocaleString(),
+      icon: Clock,
+      color: 'bg-orange-50 text-orange-600',
+    },
+    {
+      label: '총 취소 건수',
+      value: cancelledDeals.length.toLocaleString(),
+      icon: XCircle,
+      color: 'bg-red-50 text-red-600',
     },
     {
       label: '총 결제 금액',
@@ -96,9 +110,9 @@ export default function AdminDashboardPage() {
       )}
 
       {/* 통계 카드 - PLIC 디자인 시스템 적용 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
         {loading ? (
-          Array(4).fill(0).map((_, i) => (
+          Array(6).fill(0).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl p-6 shadow-sm animate-pulse border border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-gray-200 rounded-2xl" />

@@ -87,12 +87,12 @@ export default function AdminDealsPage() {
   };
 
   // 통계 계산
+  const cancelledCount = deals.filter(d => d.status === 'cancelled').length;
   const stats = {
-    total: deals.length,
-    pending: deals.filter(d => d.status && d.status === 'pending').length,
-    reviewing: deals.filter(d => d.status && d.status === 'reviewing').length,
+    total: deals.length - cancelledCount,
+    pending: deals.filter(d => d.status && ['pending', 'reviewing', 'awaiting_payment', 'hold', 'need_revision'].includes(d.status)).length,
     completed: deals.filter(d => d.status && d.status === 'completed').length,
-    totalAmount: deals.filter(d => d.status && d.status === 'completed').reduce((sum, d) => sum + (d.totalAmount || 0), 0),
+    cancelled: cancelledCount,
   };
 
   return (
@@ -127,16 +127,16 @@ export default function AdminDealsPage() {
           <p className="text-2xl font-bold text-gray-900">{stats.total}건</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-gray-500">대기중</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.pending + stats.reviewing}건</p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-gray-500">완료</p>
+          <p className="text-sm text-gray-500">완료된 거래</p>
           <p className="text-2xl font-bold text-green-600">{stats.completed}건</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-gray-500">총 결제액</p>
-          <p className="text-2xl font-bold text-primary-400">{(stats.totalAmount / 10000).toFixed(0)}만원</p>
+          <p className="text-sm text-gray-500">대기중 거래</p>
+          <p className="text-2xl font-bold text-yellow-600">{stats.pending}건</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">취소 거래</p>
+          <p className="text-2xl font-bold text-red-600">{stats.cancelled}건</p>
         </div>
       </div>
 

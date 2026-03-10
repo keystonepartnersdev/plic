@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Header } from '@/components/common';
+import { useDealStore } from '@/stores';
 import {
   useDealDetail,
   StatusCard,
@@ -304,7 +305,7 @@ export default function DealDetailPage() {
           onUpdate={handleDealUpdate}
           editType={editModalType}
           monthlyLimit={currentUser?.monthlyLimit || 20000000}
-          usedAmount={currentUser?.usedAmount || 0}
+          usedAmount={Math.max((currentUser?.usedAmount || 0) - (useDealStore.getState().deals.filter(d => d.uid === currentUser?.uid && d.status === 'cancelled').reduce((sum, d) => sum + (d.amount || 0), 0)), 0)}
         />
       )}
     </div>

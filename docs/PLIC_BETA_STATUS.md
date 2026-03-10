@@ -151,7 +151,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 | 26 | `AdminUsersGradeFunction` | PUT /admin/users/{uid}/grade | 등급 변경 |
 | 27 | `AdminDealsListFunction` | GET /admin/deals | 거래 목록 |
 | 28 | `AdminDealsGetFunction` | GET /admin/deals/{did} | 거래 상세 |
-| 29 | `AdminDealsStatusFunction` | PUT /admin/deals/{did}/status | 거래 상태 변경 |
+| 29 | `AdminDealsStatusFunction` | PUT /admin/deals/{did}/status | 거래 상태 변경 (취소 시 사용자 통계 자동 차감) |
 
 ### 2-3. DynamoDB 테이블 (14개)
 
@@ -414,3 +414,7 @@ aws lambda update-function-code \
 | **결제/거래 버튼 키컬러** | 결제하기, 거래 신청하기 버튼 primary-400 → primary-600 변경 |
 | **EditDealModal 월 한도 검증** | 거래 수정 시 월 사용한도 초과 검증 + 프로그레스 바 UI |
 | **탈퇴 회원 감지** | DynamoDB 없음 + Cognito 존재 시 "탈퇴한 회원입니다" 반환 (signup, kakao-login Lambda) |
+| **어드민 대시보드 통계 개선** | 총 대기 거래 건수, 총 취소 건수 카드 추가. 총 거래 건수에서 취소 건 제외 |
+| **어드민 거래정보 탭 재배치** | 전체 거래 → 완료된 거래 → 대기중 거래 → 취소 거래 순서로 변경 |
+| **거래 취소 시 사용자 통계 차감** | `AdminDealsStatusFunction` Lambda 수정: 결제 완료 거래 취소 시 `totalDealCount`, `totalPaymentAmount`, `usedAmount` 자동 차감 (SAM 배포 완료) |
+| **취소 건 통계 제외 (프론트)** | 어드민 회원 상세/회원 목록, 고객 마이페이지 거래 통계·월 한도, 송금 신청·거래 수정 한도에서 취소 건 금액 차감 |

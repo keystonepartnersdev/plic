@@ -92,18 +92,24 @@ export default function MyPage() {
   }, [mounted, isLoggedIn, setUser, logout, router]);
 
   // useMemo로 필터링 및 계산 최적화 - hooks는 반드시 조건부 return 전에 호출
-  const { userDeals, completedDeals, totalAmount } = useMemo(() => {
-    if (!currentUser) return { userDeals: [], completedDeals: [], totalAmount: 0 };
+  // 취소 건은 거래 통계에서 제외
+  const { userDeals, completedDeals, totalAmount, activeDealCount, cancelledAmount } = useMemo(() => {
+    if (!currentUser) return { userDeals: [], completedDeals: [], totalAmount: 0, activeDealCount: 0, cancelledAmount: 0 };
     const userDeals = deals.filter((d) => d.uid === currentUser.uid);
     const completedDeals = userDeals.filter((d) => d.status && d.status === 'completed');
-    const totalAmount = gradeInfo?.stats?.totalPaymentAmount || completedDeals.reduce((sum, d) => sum + d.amount, 0);
-    return { userDeals, completedDeals, totalAmount };
-  }, [deals, currentUser?.uid, gradeInfo?.stats?.totalPaymentAmount]);
+    const cancelledDeals = userDeals.filter((d) => d.status === 'cancelled');
+    const cancelledAmount = cancelledDeals.reduce((sum, d) => sum + (d.amount || 0), 0);
+    const totalAmount = completedDeals.reduce((sum, d) => sum + d.amount, 0);
+    const activeDealCount = completedDeals.length;
+    return { userDeals, completedDeals, totalAmount, activeDealCount, cancelledAmount };
+  }, [deals, currentUser?.uid]);
 
   // DB값을 Single Source of Truth로 사용 (fallback: 4.5%, 2000만원)
+  // 취소 건 금액을 한도 사용에서 제외
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const feeRate = currentUser?.feeRate || 4.5;
-  const usedAmount = gradeInfo?.limit?.used || currentUser?.usedAmount || 0;
+  const rawUsedAmount = gradeInfo?.limit?.used || currentUser?.usedAmount || 0;
+  const usedAmount = Math.max(rawUsedAmount - cancelledAmount, 0);
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const usageRate = Math.round((usedAmount / monthlyLimit) * 100);
 
@@ -220,7 +226,7 @@ export default function MyPage() {
         <div className="flex justify-between">
           <div className="text-center flex-1">
             <p className="text-2xl font-black text-gradient">
-              {gradeInfo?.stats?.totalDealCount || completedDeals.length}
+              {activeDealCount}
             </p>
             <p className="text-sm text-gray-500 font-medium">총 거래</p>
           </div>

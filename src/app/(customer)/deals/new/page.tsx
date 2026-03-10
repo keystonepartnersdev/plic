@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Download, Eye, History } from 'lucide-react';
 import { Header, Modal } from '@/components/common';
@@ -315,8 +315,15 @@ function NewDealContent() {
     0
   );
 
-  // 한도 검증을 위한 사용자 데이터 조회 - DB값을 Single Source of Truth로 사용
-  const usedAmount = currentUser.usedAmount || 0;
+  // 한도 검증을 위한 사용자 데이터 조회 - 취소 건 금액은 한도에서 제외
+  const rawUsedAmount = currentUser.usedAmount || 0;
+  const cancelledAmount = useMemo(() => {
+    const { deals } = useDealStore.getState();
+    return deals
+      .filter((d) => d.uid === currentUser.uid && d.status === 'cancelled')
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  }, [currentUser.uid]);
+  const usedAmount = Math.max(rawUsedAmount - cancelledAmount, 0);
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const isOverLimit = numericAmount > remainingLimit;
