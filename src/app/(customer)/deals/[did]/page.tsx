@@ -303,6 +303,8 @@ export default function DealDetailPage() {
           deal={displayDeal}
           onUpdate={handleDealUpdate}
           editType={editModalType}
+          monthlyLimit={currentUser?.monthlyLimit || 20000000}
+          usedAmount={currentUser?.usedAmount || 0}
         />
       )}
     </div>

@@ -34,6 +34,8 @@ interface EditDealModalProps {
   deal: IDeal;
   onUpdate: (updatedDeal: IDeal) => void;
   editType: 'amount' | 'recipient' | 'attachments';
+  monthlyLimit?: number;
+  usedAmount?: number;
 }
 
 const BANKS = [
@@ -43,7 +45,7 @@ const BANKS = [
   '경남은행', '광주은행', '전북은행', '제주은행',
 ];
 
-export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType }: EditDealModalProps) {
+export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0 }: EditDealModalProps) {
   // 금액 수정
   const [amount, setAmount] = useState(deal.amount);
 
@@ -131,6 +133,12 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType }: Edi
           setIsSaving(false);
           return;
         }
+        const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
+        if (amount > remainingLimit) {
+          setError('월 사용한도를 초과하여 금액을 수정할 수 없습니다.');
+          setIsSaving(false);
+          return;
+        }
         updateData.amount = amount;
       }
 
@@ -204,28 +212,86 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType }: Edi
           )}
 
           {/* 금액 수정 */}
-          {editType === 'amount' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                송금 금액
-              </label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full h-12 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-                placeholder="송금 금액을 입력하세요"
-                min={100}
-                step={100}
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                수수료 ({deal.feeRate}%): {Math.ceil(amount * deal.feeRate / 100).toLocaleString()}원
-              </p>
-              <p className="text-sm font-medium text-primary-400">
-                총 결제금액: {(amount + Math.ceil(amount * deal.feeRate / 100)).toLocaleString()}원
-              </p>
-            </div>
-          )}
+          {editType === 'amount' && (() => {
+            const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
+            const isOverLimit = amount > remainingLimit;
+            const wouldExceedLimit = usedAmount + amount > monthlyLimit;
+
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  송금 금액
+                </label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  className={cn(
+                    "w-full h-12 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                    isOverLimit ? "border-red-400" : "border-gray-200"
+                  )}
+                  placeholder="송금 금액을 입력하세요"
+                  min={100}
+                  step={100}
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  수수료 ({deal.feeRate}%): {Math.ceil(amount * deal.feeRate / 100).toLocaleString()}원
+                </p>
+                <p className="text-sm font-medium text-primary-400">
+                  총 결제금액: {(amount + Math.ceil(amount * deal.feeRate / 100)).toLocaleString()}원
+                </p>
+
+                {/* 월 한도 현황 */}
+                <div className={cn(
+                  "rounded-xl p-4 mt-4",
+                  isOverLimit ? "bg-red-50" : "bg-blue-50"
+                )}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={cn(
+                      "text-sm font-medium",
+                      isOverLimit ? "text-red-700" : "text-blue-700"
+                    )}>
+                      이번 달 한도
+                    </span>
+                    <span className={cn(
+                      "text-sm",
+                      isOverLimit ? "text-red-600" : "text-blue-600"
+                    )}>
+                      {usedAmount.toLocaleString()}원 / {monthlyLimit.toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="w-full bg-white/50 rounded-full h-2 mb-2">
+                    <div
+                      className={cn(
+                        "h-2 rounded-full transition-all",
+                        isOverLimit ? "bg-red-400" : "bg-blue-400"
+                      )}
+                      style={{ width: `${Math.min((usedAmount / monthlyLimit) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className={isOverLimit ? "text-red-600" : "text-blue-600"}>
+                      잔여 한도: {remainingLimit.toLocaleString()}원
+                    </span>
+                    {wouldExceedLimit && amount > 0 && (
+                      <span className="text-red-600 font-medium">
+                        {(amount - remainingLimit).toLocaleString()}원 초과
+                      </span>
+                    )}
+                  </div>
+                  {isOverLimit && (
+                    <div className="mt-3 flex items-start gap-2 text-red-700">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs">
+                        월 한도를 초과하여 거래를 진행할 수 없습니다.
+                        한도 상향이 필요하시면 고객센터로 문의해 주세요.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 수취인 정보 수정 */}
           {editType === 'recipient' && (
@@ -385,7 +451,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType }: Edi
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isUploading}
+            disabled={isSaving || isUploading || (editType === 'amount' && amount > Math.max(monthlyLimit - usedAmount, 0))}
             className="flex-1 h-12 bg-primary-400 text-white rounded-xl font-medium hover:bg-primary-500 transition-colors disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2"
           >
             {(isSaving || isUploading) ? (
