@@ -113,6 +113,21 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }));
 
     if (!queryResult.Items || queryResult.Items.length === 0) {
+      // DynamoDB에 없지만 Cognito에 있으면 탈퇴한 계정
+      try {
+        await cognitoClient.send(new AdminGetUserCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: email,
+        }));
+        // Cognito에 존재 = 탈퇴한 계정 (DynamoDB만 삭제됨)
+        return response(409, {
+          success: false,
+          error: '탈퇴한 회원입니다.',
+        }, origin);
+      } catch (cognitoError: any) {
+        // UserNotFoundException = Cognito에도 없음 = 신규 사용자
+      }
+
       return response(200, {
         success: true,
         exists: false,

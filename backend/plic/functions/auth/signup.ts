@@ -243,7 +243,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                 ExpressionAttributeValues: { ':email': email },
               }));
 
-              if (queryResult.Items && queryResult.Items.length > 0 && queryResult.Items[0].status === 'withdrawn') {
+              // DynamoDB에 없음 = 탈퇴한 계정 (Cognito만 남아있음)
+              // DynamoDB에 withdrawn = 탈퇴한 계정
+              if (!queryResult.Items || queryResult.Items.length === 0 || queryResult.Items[0].status === 'withdrawn') {
                 return response(409, {
                   success: false,
                   error: '탈퇴한 회원입니다.',
