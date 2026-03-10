@@ -97,6 +97,15 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(successUrl);
 
+    // 다음 인증 시 세션 초기화를 위한 마커 쿠키 설정 (30일)
+    response.cookies.set('kakao_had_session', '1', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60,
+      path: '/',
+    });
+
     // 인증 쿠키 삭제
     response.cookies.delete('kakao_auth_state');
     response.cookies.delete('kakao_return_to');
