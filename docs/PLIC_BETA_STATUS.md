@@ -420,3 +420,4 @@ aws lambda update-function-code \
 | **거래 취소 시 사용자 통계 차감** | `AdminDealsStatusFunction` Lambda 수정: 결제 완료 거래 취소 시 `totalDealCount`, `totalPaymentAmount`, `usedAmount` 자동 차감 (SAM 배포 완료) |
 | **기존 취소 건 DB 보정** | 이태규 계정 `totalDealCount`, `totalPaymentAmount`, `usedAmount` 0으로 초기화 (취소된 결제건 반영) |
 | **고객 마이페이지/송금/거래수정** | 거래 통계 completed만 집계, 월 한도는 DB값 그대로 사용 (Lambda가 취소 시 자동 차감) |
+| **통계/한도 DB 의존 제거** | 어드민 회원상세: `user.usedAmount`/`totalPaymentAmount`/`totalDealCount` DB값 대신 실제 거래 데이터에서 계산. 고객 마이페이지/송금/거래수정도 동일하게 deals에서 이번 달 completed 거래 합산으로 usedAmount 계산. Lambda `recentDeals` limit:20 문제 우회(전체 deals API 병렬 조회) |

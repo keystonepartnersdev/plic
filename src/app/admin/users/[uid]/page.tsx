@@ -125,20 +125,25 @@ export default function AdminUserDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminAPI.getUser(uid);
-      setUser(response.user);
-      setUserDeals(response.recentDeals || []);
+      // 회원 정보 + 전체 거래 목록을 병렬 조회
+      const [userResponse, dealsResponse] = await Promise.all([
+        adminAPI.getUser(uid),
+        adminAPI.getDeals({ uid }),
+      ]);
+      setUser(userResponse.user);
+      // recentDeals(20건 제한) 대신 전체 거래 목록 사용
+      setUserDeals(dealsResponse.deals || userResponse.recentDeals || []);
       // 편집 데이터 초기화
       setEditData({
-        grade: response.user.grade || 'basic',
-        status: response.user.status || 'active',
-        feeRate: response.user.feeRate ?? 4.5,
-        monthlyLimit: response.user.monthlyLimit ?? 20000000,
+        grade: userResponse.user.grade || 'basic',
+        status: userResponse.user.status || 'active',
+        feeRate: userResponse.user.feeRate ?? 4.5,
+        monthlyLimit: userResponse.user.monthlyLimit ?? 20000000,
       });
       setEditInfoData({
-        name: response.user.name || '',
-        email: response.user.email || '',
-        phone: response.user.phone || '',
+        name: userResponse.user.name || '',
+        email: userResponse.user.email || '',
+        phone: userResponse.user.phone || '',
       });
     } catch (err: unknown) {
       console.error('회원 정보 로드 실패:', err);
@@ -153,17 +158,27 @@ export default function AdminUserDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // 거래 통계 계산 (금액은 completed만 집계)
+  // 거래 통계 계산 (실제 거래 데이터에서 계산, DB 저장값 미사용)
   const dealStats = useMemo(() => {
     const completed = userDeals.filter(d => d.status === 'completed');
     const pending = userDeals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status));
     const cancelled = userDeals.filter(d => d.status === 'cancelled');
+    const totalPaymentAmount = completed.reduce((sum, d) => sum + (d.totalAmount || d.finalAmount || 0), 0);
+    const totalAmount = completed.reduce((sum, d) => sum + (d.amount || 0), 0);
+    // 이번 달 사용 금액: completed 거래 중 이번 달 것만
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const usedAmount = completed
+      .filter(d => d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
     return {
       total: userDeals.length,
       completed: completed.length,
       pending: pending.length,
       cancelled: cancelled.length,
-      totalAmount: completed.reduce((sum, d) => sum + (d.amount || 0), 0),
+      totalAmount,
+      totalPaymentAmount,
+      usedAmount,
     };
   }, [userDeals]);
 
@@ -559,17 +574,17 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
 
-          {/* 거래 통계 */}
+          {/* 거래 통계 - 실제 거래 데이터에서 계산 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">거래 통계</h2>
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">{user.totalDealCount}</p>
-                <p className="text-sm text-gray-500">총 거래 건수</p>
+                <p className="text-2xl font-bold text-gray-900">{dealStats.completed}</p>
+                <p className="text-sm text-gray-500">완료 거래 건수</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-primary-400">
-                  {(user.totalPaymentAmount / 10000).toLocaleString()}만
+                  {(dealStats.totalPaymentAmount / 10000).toLocaleString()}만
                 </p>
                 <p className="text-sm text-gray-500">누적 결제금액</p>
               </div>
@@ -581,7 +596,7 @@ export default function AdminUserDetailPage() {
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-gray-900">
-                  {(user.usedAmount / 10000).toLocaleString()}만
+                  {(dealStats.usedAmount / 10000).toLocaleString()}만
                 </p>
                 <p className="text-sm text-gray-500">이번 달 사용</p>
               </div>
@@ -1037,7 +1052,7 @@ export default function AdminUserDetailPage() {
                   <>
                     <p className="font-medium text-gray-900">{user.monthlyLimit.toLocaleString()}원</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      사용: {user.usedAmount.toLocaleString()}원 ({Math.round(user.usedAmount / user.monthlyLimit * 100)}%)
+                      사용: {dealStats.usedAmount.toLocaleString()}원 ({Math.round(dealStats.usedAmount / user.monthlyLimit * 100)}%)
                     </p>
                     <p className="text-xs text-gray-500">
                       {GRADE_LABELS[user.grade]} 등급 기준: {(getGradeSettings(user.grade)?.monthlyLimit || 0).toLocaleString()}원
@@ -1073,31 +1088,31 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
 
-          {/* 한도 현황 */}
+          {/* 한도 현황 - 실제 거래 데이터에서 계산 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">이번 달 한도 현황</h2>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">사용</span>
-                <span className="font-medium text-gray-900">{user.usedAmount.toLocaleString()}원</span>
+                <span className="font-medium text-gray-900">{dealStats.usedAmount.toLocaleString()}원</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-3">
                 <div
                   className={cn(
                     'h-3 rounded-full transition-all',
-                    user.usedAmount / user.monthlyLimit >= 0.9 ? 'bg-red-400' :
-                    user.usedAmount / user.monthlyLimit >= 0.7 ? 'bg-yellow-400' : 'bg-primary-400'
+                    dealStats.usedAmount / user.monthlyLimit >= 0.9 ? 'bg-red-400' :
+                    dealStats.usedAmount / user.monthlyLimit >= 0.7 ? 'bg-yellow-400' : 'bg-primary-400'
                   )}
-                  style={{ width: `${Math.min(user.usedAmount / user.monthlyLimit * 100, 100)}%` }}
+                  style={{ width: `${Math.min(dealStats.usedAmount / user.monthlyLimit * 100, 100)}%` }}
                 />
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">잔여</span>
                 <span className="font-medium text-gray-900">
-                  {Math.max(user.monthlyLimit - user.usedAmount, 0).toLocaleString()}원
+                  {Math.max(user.monthlyLimit - dealStats.usedAmount, 0).toLocaleString()}원
                 </span>
               </div>
-              {user.usedAmount >= user.monthlyLimit && (
+              {dealStats.usedAmount >= user.monthlyLimit && (
                 <div className="mt-2 p-2 bg-red-50 rounded-lg">
                   <p className="text-xs text-red-600 font-medium">월 한도를 초과하여 새로운 거래가 제한됩니다.</p>
                 </div>

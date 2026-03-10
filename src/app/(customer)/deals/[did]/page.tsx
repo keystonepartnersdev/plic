@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import { useDealStore } from '@/stores';
 import { Header } from '@/components/common';
 import {
   useDealDetail,
@@ -92,6 +93,18 @@ export default function DealDetailPage() {
     handlePreviewNavigate,
     handleOpenPreview,
   } = useDealDetail(did);
+
+  const { deals: allDeals } = useDealStore();
+
+  // 이번 달 사용 금액: 실제 완료 거래에서 계산 (DB 값은 취소 건 미반영 가능)
+  const computedUsedAmount = useMemo(() => {
+    if (!currentUser) return 0;
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return allDeals
+      .filter(d => d.uid === currentUser.uid && d.status === 'completed' && d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  }, [allDeals, currentUser]);
 
   // 수정 모달 상태
   const [editModalType, setEditModalType] = useState<'amount' | 'recipient' | 'attachments' | null>(null);
@@ -304,7 +317,7 @@ export default function DealDetailPage() {
           onUpdate={handleDealUpdate}
           editType={editModalType}
           monthlyLimit={currentUser?.monthlyLimit || 20000000}
-          usedAmount={currentUser?.usedAmount || 0}
+          usedAmount={computedUsedAmount}
         />
       )}
     </div>

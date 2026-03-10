@@ -93,19 +93,24 @@ export default function MyPage() {
 
   // useMemo로 필터링 및 계산 최적화 - hooks는 반드시 조건부 return 전에 호출
   // 거래 통계: completed만 집계 (cancelled 제외)
-  const { userDeals, completedDeals, totalAmount } = useMemo(() => {
-    if (!currentUser) return { userDeals: [], completedDeals: [], totalAmount: 0 };
+  const { completedDeals, totalAmount, computedUsedAmount } = useMemo(() => {
+    if (!currentUser) return { completedDeals: [], totalAmount: 0, computedUsedAmount: 0 };
     const userDeals = deals.filter((d) => d.uid === currentUser.uid);
     const completedDeals = userDeals.filter((d) => d.status && d.status === 'completed');
     const totalAmount = completedDeals.reduce((sum, d) => sum + d.amount, 0);
-    return { userDeals, completedDeals, totalAmount };
+    // 이번 달 사용 금액: completed 거래 중 이번 달 것만
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const computedUsedAmount = completedDeals
+      .filter(d => d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+    return { completedDeals, totalAmount, computedUsedAmount };
   }, [deals, currentUser?.uid]);
 
-  // DB값을 Single Source of Truth로 사용 (fallback: 4.5%, 2000만원)
-  // DB에서 취소 시 자동 차감되므로 추가 보정 불필요
+  // 실제 거래 데이터에서 계산 (DB 값은 취소 건 미반영 가능성)
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const feeRate = currentUser?.feeRate || 4.5;
-  const usedAmount = gradeInfo?.limit?.used || currentUser?.usedAmount || 0;
+  const usedAmount = computedUsedAmount;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const usageRate = Math.round((usedAmount / monthlyLimit) * 100);
 

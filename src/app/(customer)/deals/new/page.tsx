@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Download, Eye, History } from 'lucide-react';
 import { Header, Modal } from '@/components/common';
@@ -49,7 +49,7 @@ function NewDealContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
-  const { addDeal } = useDealStore();
+  const { addDeal, deals } = useDealStore();
   const { currentDraft, startNewDraft, updateDraft, setCurrentStep, submitDraft, loadDraft, clearCurrentDraft } = useDealDraftStore();
   // useAdminUserStore 제거 - currentUser에서 직접 한도 정보 사용
 
@@ -315,8 +315,14 @@ function NewDealContent() {
     0
   );
 
-  // 한도 검증을 위한 사용자 데이터 조회 - DB에서 취소 시 자동 차감되므로 추가 보정 불필요
-  const usedAmount = currentUser.usedAmount || 0;
+  // 한도 검증: 실제 거래 데이터에서 이번 달 사용량 계산 (DB 값은 취소 건 미반영 가능)
+  const usedAmount = useMemo(() => {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return deals
+      .filter(d => d.uid === currentUser.uid && d.status === 'completed' && d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  }, [deals, currentUser.uid]);
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const isOverLimit = numericAmount > remainingLimit;
