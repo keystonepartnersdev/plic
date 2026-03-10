@@ -423,4 +423,4 @@ aws lambda update-function-code \
 | **기존 취소 건 DB 보정** | `scripts/fix-user-stats.js` 보정 스크립트로 전체 사용자 통계 재계산 (실제 completed 거래 기준). 이태규 계정 등 보정 완료 |
 | **통계/한도 실제 거래 데이터 계산** | 어드민 회원상세: 전체 deals API 병렬 조회 (Lambda recentDeals limit:20 우회), `dealStats`로 거래 통계/한도 현황 계산. 고객 마이페이지/송금/거래상세: deals store에서 이번 달 completed 거래 합산으로 usedAmount 계산. DB 값 의존 제거로 취소 건 누락 방지 |
 | **거래취소/결제취소 상태 구분** | `DealHelper.getStatusConfig(status, isPaid)` 수정: `cancelled` + `isPaid=true` → "결제취소"(빨강), `cancelled` + `isPaid=false` → "거래취소"(회색). 어드민 거래정보, 어드민 회원상세, 어드민 대시보드, 고객 거래목록/상세 등 전체 7개 호출부 반영 |
-| **어드민 거래정보 uid 필터** | 회원상세 "전체보기" 링크(`/admin/deals?uid=xxx`)가 작동하도록 거래정보 페이지에 `uid` 쿼리 파라미터 필터링 추가. 필터 시 제목에 "(회원 필터)" 표시 + "전체 보기" 해제 링크 |
+| **어드민 거래정보 uid 필터** | 회원상세 "전체보기" 링크(`/admin/deals?uid=xxx`) 작동. Lambda `AdminDealsListFunction`이 uid 파라미터 미지원하므로 전체 조회 후 프론트에서 필터링. 필터 시 "(회원 필터)" 표시 + "전체 보기" 해제 링크. 거래 상세 링크 동일 작동 |
