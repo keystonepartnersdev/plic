@@ -52,7 +52,6 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
-    prompt: 'login', // 항상 카카오 로그인 화면 표시 (자동 완료 방지)
   });
 
   if (state) {
