@@ -109,7 +109,7 @@ export default function AdminDealDetailPage() {
     );
   }
 
-  const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+  const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
   const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
 
   // 수정 가능 여부: 결제 전 & draft/awaiting_payment 상태일 때만

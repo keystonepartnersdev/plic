@@ -174,8 +174,11 @@ export class DealHelper {
     return this.DEAL_TYPE_CONFIG[dealType] || { name: '알 수 없음', icon: 'HelpCircle', requiredDocs: [], optionalDocs: [], description: '' };
   }
 
-  // 거래 상태 설정 반환
-  static getStatusConfig(status: TDealStatus): IStatusConfig {
+  // 거래 상태 설정 반환 (cancelled 상태에서 isPaid 여부에 따라 거래취소/결제취소 구분)
+  static getStatusConfig(status: TDealStatus, isPaid?: boolean): IStatusConfig {
+    if (status === 'cancelled' && isPaid) {
+      return { name: '결제취소', color: 'red', tab: 'completed' };
+    }
     return this.STATUS_CONFIG[status] || { name: '알 수 없음', color: 'gray', tab: 'progress' };
   }
 }

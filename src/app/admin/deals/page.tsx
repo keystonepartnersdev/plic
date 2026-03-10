@@ -201,7 +201,7 @@ export default function AdminDealsPage() {
               <tbody>
                 {filteredDeals.length > 0 ? (
                   filteredDeals.map((deal) => {
-                    const statusConfig = DealHelper.getStatusConfig(deal.status);
+                    const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid);
                     const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
                     return (
                       <tr key={deal.did} className="border-b border-gray-50 hover:bg-gray-50">

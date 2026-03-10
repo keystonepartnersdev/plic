@@ -17,7 +17,7 @@ interface StatusCardProps {
 
 export function StatusCard({ deal }: StatusCardProps) {
   const { currentUser } = useUserStore();
-  const statusConfig = DealHelper.getStatusConfig(deal.status);
+  const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid);
   const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
 
   // 사업자 인증 상태 확인 (businessInfo.verificationStatus 기준)

@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
                     </td>
                     <td className="py-4">
                       {(() => {
-                        const statusConfig = DealHelper.getStatusConfig(deal.status);
+                        const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid);
                         const colorMap: Record<string, string> = {
                           blue: 'bg-blue-100 text-blue-700',
                           yellow: 'bg-yellow-100 text-yellow-700',
