@@ -64,7 +64,7 @@ const DEAL_TYPE_CONFIG = {
 | `reviewing` | 심사중 | 관리자 검토 중 | completed, revision_requested, cancelled |
 | `revision_requested` | 수정요청 | 서류 보완 필요 | pending (재제출 후), cancelled |
 | `completed` | 완료 | 송금 완료 | - (최종) |
-| `cancelled` | 취소 | 취소됨 | - (최종) |
+| `cancelled` | 거래취소 / 결제취소 | `isPaid=false` → "거래취소"(회색), `isPaid=true` → "결제취소"(빨강) | - (최종) |
 | `payment_failed` | 결제실패 | 결제 오류 | awaiting_payment (재시도) |
 
 ### 2.2 상태 전이 다이어그램
@@ -134,8 +134,8 @@ const STATUS_CONFIG = {
     actions: ['receipt']
   },
   cancelled: {
-    label: '취소',
-    badge: 'red',
+    label: '거래취소' | '결제취소',  // isPaid 여부로 구분
+    badge: 'gray' | 'red',           // 거래취소=gray, 결제취소=red
     actions: []
   },
   payment_failed: {
