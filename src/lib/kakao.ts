@@ -52,6 +52,7 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
+    prompt: 'login', // 매번 카카오 인증 강제 (기존 세션 무시, QR코드/카카오톡 인증 옵션 포함)
   });
 
   if (state) {
