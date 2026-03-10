@@ -27,6 +27,7 @@ export default function PaymentPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('new');
   const [selectedCard, setSelectedCard] = useState<IRegisteredCard | null>(null);
   const [showCardSelector, setShowCardSelector] = useState(false);
+  const [showLimitError, setShowLimitError] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -236,8 +237,13 @@ export default function PaymentPage() {
       console.log('[Payment] API response:', data);
 
       if (!response.ok || !data.success) {
-        const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
-        alert(errorMsg || '결제 생성에 실패했습니다.');
+        const resCode = typeof data.error === 'object' ? data.error?.details?.resCode : null;
+        if (resCode === 'S002' || resCode === 'S003' || resCode === 'S004') {
+          setShowLimitError(true);
+        } else {
+          const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
+          alert(errorMsg || '결제 생성에 실패했습니다.');
+        }
         setIsLoading(false);
         return;
       }
@@ -301,8 +307,13 @@ export default function PaymentPage() {
       console.log('[BillingKey Payment] API response:', data);
 
       if (!response.ok || !data.success) {
-        const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
-        alert(errorMsg || '결제에 실패했습니다.');
+        const resCode = typeof data.error === 'object' ? data.error?.details?.resCode : null;
+        if (resCode === 'S002' || resCode === 'S003' || resCode === 'S004') {
+          setShowLimitError(true);
+        } else {
+          const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
+          alert(errorMsg || '결제에 실패했습니다.');
+        }
         setIsLoading(false);
         return;
       }
@@ -450,6 +461,35 @@ export default function PaymentPage() {
           </button>
         </div>,
         portalTarget
+      )}
+      {/* 결제 한도 초과 모달 */}
+      {showLimitError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-sm mx-4 p-6 text-center">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-7 h-7 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">결제 한도 초과</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              1회당 결제 가능 금액을 초과하였습니다.<br />
+              운영팀에 문의해주세요.
+            </p>
+            <a
+              href="http://pf.kakao.com/_xnQKhX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full h-12 bg-[#FEE500] text-[#3C1E1E] font-semibold rounded-xl flex items-center justify-center gap-2 mb-3"
+            >
+              카카오톡 상담하기
+            </a>
+            <button
+              onClick={() => setShowLimitError(false)}
+              className="w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
