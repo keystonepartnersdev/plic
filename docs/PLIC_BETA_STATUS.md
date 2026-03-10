@@ -418,6 +418,5 @@ aws lambda update-function-code \
 | **어드민 거래정보 탭 재배치** | 전체 거래 → 완료된 거래 → 대기중 거래(결제대기) → 취소 거래 순서로 변경 |
 | **어드민 회원 목록 거래 통계** | deals API에서 실제 completed 거래만 집계하여 표시 (DB 저장값 의존 제거) |
 | **거래 취소 시 사용자 통계 차감** | `AdminDealsStatusFunction` Lambda 수정: 결제 완료 거래 취소 시 `totalDealCount`, `totalPaymentAmount`, `usedAmount` 자동 차감 (SAM 배포 완료) |
-| **기존 취소 건 DB 보정** | 이태규 계정 `totalDealCount`, `totalPaymentAmount`, `usedAmount` 0으로 초기화 (취소된 결제건 반영) |
-| **고객 마이페이지/송금/거래수정** | 거래 통계 completed만 집계, 월 한도는 DB값 그대로 사용 (Lambda가 취소 시 자동 차감) |
-| **통계/한도 DB 의존 제거** | 어드민 회원상세: `user.usedAmount`/`totalPaymentAmount`/`totalDealCount` DB값 대신 실제 거래 데이터에서 계산. 고객 마이페이지/송금/거래수정도 동일하게 deals에서 이번 달 completed 거래 합산으로 usedAmount 계산. Lambda `recentDeals` limit:20 문제 우회(전체 deals API 병렬 조회) |
+| **기존 취소 건 DB 보정** | `scripts/fix-user-stats.js` 보정 스크립트로 전체 사용자 통계 재계산 (실제 completed 거래 기준). 이태규 계정 등 보정 완료 |
+| **통계/한도 실제 거래 데이터 계산** | 어드민 회원상세: 전체 deals API 병렬 조회 (Lambda recentDeals limit:20 우회), `dealStats`로 거래 통계/한도 현황 계산. 고객 마이페이지/송금/거래상세: deals store에서 이번 달 completed 거래 합산으로 usedAmount 계산. DB 값 의존 제거로 취소 건 누락 방지 |

@@ -158,14 +158,14 @@ export default function AdminUserDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // 거래 통계 계산 (실제 거래 데이터에서 계산, DB 저장값 미사용)
+  // 거래 통계: 실제 거래 데이터에서 계산 (DB 값은 보정 스크립트로 동기화)
   const dealStats = useMemo(() => {
     const completed = userDeals.filter(d => d.status === 'completed');
     const pending = userDeals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status));
     const cancelled = userDeals.filter(d => d.status === 'cancelled');
     const totalPaymentAmount = completed.reduce((sum, d) => sum + (d.totalAmount || d.finalAmount || 0), 0);
     const totalAmount = completed.reduce((sum, d) => sum + (d.amount || 0), 0);
-    // 이번 달 사용 금액: completed 거래 중 이번 달 것만
+    // 이번 달 사용 금액
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const usedAmount = completed
