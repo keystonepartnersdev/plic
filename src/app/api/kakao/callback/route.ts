@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getKakaoAccessToken,
   getKakaoUserInfo,
+  kakaoLogout,
   extractVerificationResult,
   saveVerificationResult,
   generateVerificationKey,
@@ -78,6 +79,9 @@ export async function GET(request: NextRequest) {
 
     // 사용자 정보 조회
     const userInfo = await getKakaoUserInfo(tokenResponse.access_token);
+
+    // 카카오 세션 즉시 무효화 (다음 인증 시 2차 인증 강제를 위해)
+    await kakaoLogout(tokenResponse.access_token).catch(() => {});
 
     // 인증 결과 추출
     const verificationResult = extractVerificationResult(userInfo);
