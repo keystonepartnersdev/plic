@@ -236,7 +236,8 @@ export default function PaymentPage() {
       console.log('[Payment] API response:', data);
 
       if (!response.ok || !data.success) {
-        alert(data.error || '결제 생성에 실패했습니다.');
+        const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
+        alert(errorMsg || '결제 생성에 실패했습니다.');
         setIsLoading(false);
         return;
       }
@@ -300,8 +301,8 @@ export default function PaymentPage() {
       console.log('[BillingKey Payment] API response:', data);
 
       if (!response.ok || !data.success) {
-        const errorMsg = data.error || '결제에 실패했습니다.';
-        alert(errorMsg);
+        const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
+        alert(errorMsg || '결제에 실패했습니다.');
         setIsLoading(false);
         return;
       }
