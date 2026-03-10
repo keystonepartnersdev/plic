@@ -234,7 +234,25 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             await cognitoClient.send(retrySignUpCommand);
             // 성공 - 아래 DynamoDB 저장으로 계속 진행
           } else {
-            // CONFIRMED 상태면 실제로 이미 가입된 계정
+            // CONFIRMED 상태면 DynamoDB에서 탈퇴 여부 확인
+            try {
+              const queryResult = await docClient.send(new QueryCommand({
+                TableName: USERS_TABLE,
+                IndexName: 'email-index',
+                KeyConditionExpression: 'email = :email',
+                ExpressionAttributeValues: { ':email': email },
+              }));
+
+              if (queryResult.Items && queryResult.Items.length > 0 && queryResult.Items[0].status === 'withdrawn') {
+                return response(409, {
+                  success: false,
+                  error: '탈퇴한 회원입니다.',
+                });
+              }
+            } catch (dbQueryError) {
+              console.error('[Signup] DynamoDB 조회 실패:', dbQueryError);
+            }
+
             return response(409, {
               success: false,
               error: '이미 등록된 이메일입니다.',

@@ -133,6 +133,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       user.agreements?.thirdParty === true &&
       user.status !== 'withdrawn';
 
+    // 탈퇴한 회원은 별도 처리
+    if (user.status === 'withdrawn') {
+      return response(409, {
+        success: false,
+        error: '탈퇴한 회원입니다.',
+      }, origin);
+    }
+
     if (!isFullyRegistered) {
       return response(200, {
         success: true,
