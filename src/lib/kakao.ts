@@ -52,7 +52,7 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
-    prompt: 'login', // 매번 로그인 강제 (세션 재사용 방지, 2차 인증 트리거)
+    prompt: 'login,cert', // 매번 로그인 강제 + 카카오 인증서(카카오톡 앱 푸시) 본인 인증
   });
 
   if (state) {
