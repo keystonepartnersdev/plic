@@ -1,36 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getKakaoAuthUrl, generateVerificationKey } from '@/lib/kakao';
+import { getKakaoConfig } from '@/lib/kakao';
 import { handleApiError } from '@/lib/api-error';
 
 /**
- * 카카오 인증 시작 - 인가 URL로 리다이렉트
+ * 카카오 인증 시작 - 카카오 계정 로그아웃 후 인증 진행
  * GET /api/kakao/auth?returnTo=/auth/login
  *
- * state 파라미터에 CSRF 토큰 + returnTo를 인코딩하여
- * 콜백에서 쿠키 없이도 returnTo를 복원할 수 있도록 합니다.
+ * 1단계: 카카오 계정 브라우저 세션 로그아웃 (kauth.kakao.com 쿠키 제거)
+ * 2단계: 로그아웃 후 /api/kakao/auth-start로 리다이렉트 → OAuth 인증 시작
+ *
+ * 이렇게 하면 매번 완전히 새로운 세션으로 로그인하게 되어
+ * 카카오톡 앱 인증(2차 인증)이 자동 스킵되지 않습니다.
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const returnTo = searchParams.get('returnTo') || '/auth/login';
+    const { restApiKey, baseUrl } = getKakaoConfig();
 
-    // 상태값 생성 (CSRF 방지 + 리턴 URL 포함)
-    const csrfKey = generateVerificationKey();
+    // 카카오 계정 로그아웃 URL (브라우저 세션 초기화)
+    const logoutRedirectUri = `${baseUrl}/api/kakao/auth-start`;
+    const kakaoLogoutUrl = `https://kauth.kakao.com/oauth/logout?client_id=${restApiKey}&logout_redirect_uri=${encodeURIComponent(logoutRedirectUri)}`;
 
-    // state에 returnTo를 포함시켜 쿠키 의존성 제거
-    const statePayload = JSON.stringify({ key: csrfKey, returnTo });
-    const state = Buffer.from(statePayload).toString('base64url');
-
-    // 쿠키에도 저장 (가능한 경우 이중 검증)
-    const response = NextResponse.redirect(getKakaoAuthUrl(state));
-
-    response.cookies.set('kakao_auth_state', csrfKey, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 5 * 60,
-      path: '/',
-    });
+    // returnTo를 쿠키에 저장 (로그아웃 후 auth-start에서 읽을 수 있도록)
+    const response = NextResponse.redirect(kakaoLogoutUrl);
 
     response.cookies.set('kakao_return_to', returnTo, {
       httpOnly: true,
