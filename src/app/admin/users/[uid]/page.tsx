@@ -153,14 +153,13 @@ export default function AdminUserDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // 거래 통계 계산 (취소 건 제외)
+  // 거래 통계 계산 (금액은 completed만 집계)
   const dealStats = useMemo(() => {
-    const activeDeals = userDeals.filter(d => d.status !== 'cancelled');
-    const completed = userDeals.filter(d => d.status && d.status === 'completed');
-    const pending = userDeals.filter(d => d.status && ['pending', 'reviewing', 'awaiting_payment'].includes(d.status));
+    const completed = userDeals.filter(d => d.status === 'completed');
+    const pending = userDeals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status));
     const cancelled = userDeals.filter(d => d.status === 'cancelled');
     return {
-      total: activeDeals.length,
+      total: userDeals.length,
       completed: completed.length,
       pending: pending.length,
       cancelled: cancelled.length,

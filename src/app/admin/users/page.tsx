@@ -1,16 +1,17 @@
 'use client';
 import { getErrorMessage } from '@/lib/utils';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Search, ChevronRight, User, RefreshCw } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { UserHelper } from '@/classes';
-import { IUser } from '@/types';
+import { IUser, IDeal } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<IUser[]>([]);
+  const [deals, setDeals] = useState<IDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,12 +22,16 @@ export default function AdminUsersPage() {
     label: config.name,
   }));
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminAPI.getUsers();
-      setUsers(response.users || []);
+      const [usersResponse, dealsResponse] = await Promise.all([
+        adminAPI.getUsers(),
+        adminAPI.getDeals(),
+      ]);
+      setUsers(usersResponse.users || []);
+      setDeals(dealsResponse.deals || []);
     } catch (err: unknown) {
       console.error('회원 목록 로드 실패:', err);
       setError(getErrorMessage(err) || '회원 목록을 불러오는데 실패했습니다.');
@@ -36,8 +41,23 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchData();
   }, []);
+
+  // 사용자별 거래 통계 (completed만 집계, cancelled 제외)
+  const userDealStats = useMemo(() => {
+    const statsMap = new Map<string, { count: number; amount: number }>();
+    for (const deal of deals) {
+      if (deal.status === 'completed') {
+        const prev = statsMap.get(deal.uid) || { count: 0, amount: 0 };
+        statsMap.set(deal.uid, {
+          count: prev.count + 1,
+          amount: prev.amount + (deal.totalAmount || 0),
+        });
+      }
+    }
+    return statsMap;
+  }, [deals]);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch = (user.name && user.name.includes(searchQuery)) ||
@@ -71,7 +91,7 @@ export default function AdminUsersPage() {
           <p className="text-gray-500 mt-1">전체 회원 목록을 관리합니다.</p>
         </div>
         <button
-          onClick={fetchUsers}
+          onClick={fetchData}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
         >
@@ -169,8 +189,8 @@ export default function AdminUsersPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-gray-900">{user.totalDealCount || 0}건</p>
-                          <p className="text-xs text-gray-500">{(user.totalPaymentAmount || 0).toLocaleString()}원</p>
+                          <p className="text-sm text-gray-900">{(userDealStats.get(user.uid)?.count || 0)}건</p>
+                          <p className="text-xs text-gray-500">{(userDealStats.get(user.uid)?.amount || 0).toLocaleString()}원</p>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {user.createdAt ? new Date(user.createdAt).toLocaleDateString('ko-KR') : '-'}

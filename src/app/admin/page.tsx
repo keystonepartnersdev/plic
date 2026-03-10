@@ -36,13 +36,13 @@ export default function AdminDashboardPage() {
     fetchData();
   }, []);
 
-  // 통계 계산 (취소 건은 총 거래에서 제외)
+  // 통계 계산
   const totalUsers = users.length;
-  const cancelledDeals = deals.filter((d) => d.status === 'cancelled');
-  const activeDealCount = deals.length - cancelledDeals.length;
-  const completedDeals = deals.filter((d) => d.status && d.status === 'completed');
+  const totalDeals = deals.length;
+  const completedDeals = deals.filter((d) => d.status === 'completed');
   const completedDealsCount = completedDeals.length;
-  const pendingDealsCount = deals.filter((d) => d.status && ['pending', 'reviewing', 'awaiting_payment', 'hold', 'need_revision'].includes(d.status)).length;
+  const pendingDealsCount = deals.filter((d) => d.status && ['draft', 'awaiting_payment'].includes(d.status)).length;
+  const cancelledDealsCount = deals.filter((d) => d.status === 'cancelled').length;
   const totalPaymentAmount = completedDeals.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
 
   const stats = [
@@ -54,7 +54,7 @@ export default function AdminDashboardPage() {
     },
     {
       label: '총 거래 건수',
-      value: activeDealCount.toLocaleString(),
+      value: totalDeals.toLocaleString(),
       icon: FileText,
       color: 'bg-green-50 text-green-600',
     },
@@ -65,14 +65,14 @@ export default function AdminDashboardPage() {
       color: 'bg-yellow-50 text-yellow-600',
     },
     {
-      label: '총 대기 거래 건수',
+      label: '총 대기 건수',
       value: pendingDealsCount.toLocaleString(),
       icon: Clock,
       color: 'bg-orange-50 text-orange-600',
     },
     {
       label: '총 취소 건수',
-      value: cancelledDeals.length.toLocaleString(),
+      value: cancelledDealsCount.toLocaleString(),
       icon: XCircle,
       color: 'bg-red-50 text-red-600',
     },

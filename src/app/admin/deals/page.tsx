@@ -87,12 +87,11 @@ export default function AdminDealsPage() {
   };
 
   // 통계 계산
-  const cancelledCount = deals.filter(d => d.status === 'cancelled').length;
   const stats = {
-    total: deals.length - cancelledCount,
-    pending: deals.filter(d => d.status && ['pending', 'reviewing', 'awaiting_payment', 'hold', 'need_revision'].includes(d.status)).length,
-    completed: deals.filter(d => d.status && d.status === 'completed').length,
-    cancelled: cancelledCount,
+    total: deals.length,
+    pending: deals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status)).length,
+    completed: deals.filter(d => d.status === 'completed').length,
+    cancelled: deals.filter(d => d.status === 'cancelled').length,
   };
 
   return (
