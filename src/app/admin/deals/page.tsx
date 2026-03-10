@@ -3,6 +3,7 @@ import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search, ChevronRight, FileText, Clock, Check, AlertCircle, X, RefreshCw } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
@@ -10,6 +11,8 @@ import { IDeal, TDealStatus } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminDealsPage() {
+  const searchParams = useSearchParams();
+  const uidFilter = searchParams.get('uid');
   const [deals, setDeals] = useState<IDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +40,7 @@ export default function AdminDealsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminAPI.getDeals();
+      const response = await adminAPI.getDeals(uidFilter ? { uid: uidFilter } : undefined);
       setDeals(response.deals || []);
     } catch (err: unknown) {
       console.error('거래 목록 로드 실패:', err);
@@ -49,7 +52,8 @@ export default function AdminDealsPage() {
 
   useEffect(() => {
     fetchDeals();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uidFilter]);
 
   const filteredDeals = deals.filter((deal) => {
     const matchesSearch = (deal.dealName && deal.dealName.includes(searchQuery)) ||
@@ -99,8 +103,18 @@ export default function AdminDealsPage() {
       {/* 페이지 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">거래정보</h1>
-          <p className="text-gray-500 mt-1">전체 거래 목록을 관리합니다.</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            거래정보
+            {uidFilter && <span className="text-base font-normal text-gray-500 ml-2">(회원 필터)</span>}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            {uidFilter ? (
+              <>
+                선택한 회원의 거래 목록입니다.{' '}
+                <Link href="/admin/deals" className="text-primary-400 hover:text-primary-500 underline">전체 보기</Link>
+              </>
+            ) : '전체 거래 목록을 관리합니다.'}
+          </p>
         </div>
         <button
           onClick={fetchDeals}
