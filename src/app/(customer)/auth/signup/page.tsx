@@ -3,14 +3,14 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Upload, X, AlertCircle, FileText } from 'lucide-react';
+import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Upload, X, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
 import { Header } from '@/components/common';
 import { authAPI } from '@/lib/api';
 import { uploadFile, validateFile } from '@/lib/upload';
 import { TUserType } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
 
-type Step = 'agreement' | 'info' | 'businessInfo' | 'complete';
+type Step = 'agreement' | 'kakaoVerify' | 'info' | 'businessInfo' | 'complete';
 
 interface Agreement {
   id: string;
@@ -35,7 +35,7 @@ function getInitialStep(): Step {
 
   // 일반 접근 → 저장된 step 복원 또는 agreement
   const savedStep = sessionStorage.getItem('signup_step');
-  if (savedStep && ['agreement', 'info', 'businessInfo'].includes(savedStep)) {
+  if (savedStep && ['agreement', 'kakaoVerify', 'info', 'businessInfo'].includes(savedStep)) {
     return savedStep as Step;
   }
 
@@ -101,7 +101,9 @@ function SignupContent() {
   const userType: TUserType = 'business';
 
   // 카카오 인증 정보
-  const [isKakaoUser, setIsKakaoUser] = useState(false);
+  const [isKakaoUser, setIsKakaoUser] = useState(false); // 소셜 로그인에서 온 유저
+  const [isKakaoVerified, setIsKakaoVerified] = useState(false); // 직접 가입 시 카카오 인증 완료 여부
+  const [kakaoVerification, setKakaoVerification] = useState<{ nickname?: string; email?: string } | null>(null);
   const [kakaoId, setKakaoId] = useState<number | null>(null);
   const [kakaoVerificationKey, setKakaoVerificationKey] = useState<string>('');
 
@@ -159,14 +161,24 @@ function SignupContent() {
           if (result.success && result.data) {
             const { email: kakaoEmail, nickname, kakaoId: kId } = result.data;
             console.log('[Signup] Kakao data loaded:', { kakaoEmail, nickname, kId });
-            setIsKakaoUser(true);
             setKakaoId(kId);
-            if (kakaoEmail) setEmail(kakaoEmail);
-            if (nickname) setName(nickname);
-            // 카카오 유저는 비밀번호 자동 생성
-            const autoPassword = `Kk${kId}Px1!`;
-            setPassword(autoPassword);
-            setPasswordConfirm(autoPassword);
+
+            if (fromLogin === 'true') {
+              // 소셜 로그인에서 온 신규 회원 → 이메일/비밀번호 자동 입력, kakaoVerify 스킵
+              setIsKakaoUser(true);
+              setIsKakaoVerified(true);
+              if (kakaoEmail) setEmail(kakaoEmail);
+              if (nickname) setName(nickname);
+              const autoPassword = `Kk${kId}Px1!`;
+              setPassword(autoPassword);
+              setPasswordConfirm(autoPassword);
+            } else {
+              // 직접 가입 시 카카오 인증 → 인증만 완료, 이메일/비밀번호는 직접 입력
+              setIsKakaoVerified(true);
+              setKakaoVerification({ nickname, email: kakaoEmail });
+              // kakaoVerify 스텝에서 인증 완료 상태로 표시
+              setStep('kakaoVerify');
+            }
           }
         })
         .catch(err => {
@@ -391,7 +403,7 @@ function SignupContent() {
         phone: cleanPhone,
         userType,
         agreements: agreementsData,
-        ...(isKakaoUser && kakaoId ? {
+        ...((isKakaoUser || isKakaoVerified) && kakaoId ? {
           kakaoVerified: true,
           kakaoId,
           kakaoVerificationKey: kakaoVerificationKey || undefined,
@@ -422,7 +434,8 @@ function SignupContent() {
   };
 
   const handleBack = () => {
-    if (step === 'info') setStep('agreement');
+    if (step === 'kakaoVerify') setStep('agreement');
+    else if (step === 'info') setStep(isKakaoUser ? 'agreement' : 'kakaoVerify');
     else if (step === 'businessInfo') setStep('info');
     else router.back();
   };
@@ -502,7 +515,7 @@ function SignupContent() {
             </div>
 
             <button
-              onClick={() => setStep('info')}
+              onClick={() => setStep(isKakaoUser ? 'info' : 'kakaoVerify')}
               disabled={!allRequiredChecked}
               className="w-full h-14 mt-8 bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg rounded-xl transition-colors"
             >
@@ -511,7 +524,69 @@ function SignupContent() {
           </div>
         )}
 
-        {/* Step 2: 회원 정보 입력 */}
+        {/* Step 2: 카카오 인증 (직접 가입 시에만) */}
+        {step === 'kakaoVerify' && (
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">카카오 인증</h2>
+            <p className="text-gray-500 mb-6">서비스 이용을 위해 카카오 계정 인증이 필요합니다.</p>
+
+            {isKakaoVerified ? (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-green-800">카카오 인증 완료</p>
+                    <p className="text-sm text-green-600">
+                      {kakaoVerification?.nickname && `${kakaoVerification.nickname} / `}{kakaoVerification?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.setItem('signup_step', 'kakaoVerify');
+                    window.location.href = '/api/kakao/auth?returnTo=/auth/signup';
+                  }}
+                  className="w-full h-14 bg-[#FEE500] hover:bg-[#FDD835] text-gray-900 font-semibold rounded-xl flex items-center justify-center gap-3 transition-colors"
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.47 1.607 4.647 4.035 5.906l-.857 3.179c-.058.215.189.39.379.27l3.746-2.357c.883.142 1.79.218 2.697.218 5.523 0 10-3.477 10-7.716S17.523 3 12 3z"/>
+                  </svg>
+                  카카오로 인증하기
+                </button>
+
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <p className="text-sm text-gray-600">
+                    카카오 계정으로 간편하게 본인 인증을 진행할 수 있습니다.
+                    인증 후 회원 정보를 입력하실 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 bg-red-50 rounded-xl mt-4">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {isKakaoVerified && (
+              <button
+                onClick={() => setStep('info')}
+                className="w-full h-14 mt-6 bg-primary-400 hover:bg-primary-500 text-white font-semibold text-lg rounded-xl transition-colors"
+              >
+                다음
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: 회원 정보 입력 */}
         {step === 'info' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">회원 정보 입력</h2>
