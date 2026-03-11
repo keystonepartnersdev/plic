@@ -300,6 +300,16 @@ function NewDealContent() {
     }
   }, [mounted, _hasHydrated, isLoggedIn, router]);
 
+  // 한도 검증: 실제 거래 데이터에서 이번 달 사용량 계산 (DB 값은 취소 건 미반영 가능)
+  const usedAmount = useMemo(() => {
+    if (!currentUser) return 0;
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return deals
+      .filter(d => d.uid === currentUser.uid && d.status === 'completed' && d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  }, [deals, currentUser]);
+
   if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -315,14 +325,6 @@ function NewDealContent() {
     0
   );
 
-  // 한도 검증: 실제 거래 데이터에서 이번 달 사용량 계산 (DB 값은 취소 건 미반영 가능)
-  const usedAmount = useMemo(() => {
-    const now = new Date();
-    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return deals
-      .filter(d => d.uid === currentUser.uid && d.status === 'completed' && d.createdAt?.startsWith(thisMonth))
-      .reduce((sum, d) => sum + (d.amount || 0), 0);
-  }, [deals, currentUser.uid]);
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const isOverLimit = numericAmount > remainingLimit;
