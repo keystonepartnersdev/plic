@@ -73,8 +73,8 @@ export async function PUT(
     const body = await request.json();
     console.log(`[API] PUT /deals/${did} body:`, JSON.stringify(body));
 
-    // Lambda 백엔드의 /admin/deals/{did}/update 호출
-    const updateResponse = await fetch(`${API_BASE_URL}/admin/deals/${did}/update`, {
+    // Lambda 백엔드의 고객용 거래 수정 엔드포인트 호출
+    const updateResponse = await fetch(`${API_BASE_URL}/deals/${did}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
