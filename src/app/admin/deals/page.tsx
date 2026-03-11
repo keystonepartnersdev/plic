@@ -1,7 +1,7 @@
 'use client';
 import { getErrorMessage } from '@/lib/utils';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, ChevronRight, FileText, Clock, Check, AlertCircle, X, RefreshCw } from 'lucide-react';
@@ -11,6 +11,18 @@ import { IDeal, TDealStatus } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminDealsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    }>
+      <AdminDealsContent />
+    </Suspense>
+  );
+}
+
+function AdminDealsContent() {
   const searchParams = useSearchParams();
   const uidFilter = searchParams.get('uid');
   const [deals, setDeals] = useState<IDeal[]>([]);
