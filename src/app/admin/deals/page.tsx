@@ -107,6 +107,7 @@ function AdminDealsContent() {
   // 통계 계산
   const stats = {
     total: deals.length,
+    reviewing: deals.filter(d => d.isPaid && d.status && ['pending', 'reviewing', 'hold', 'need_revision'].includes(d.status)).length,
     pending: deals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status)).length,
     completed: deals.filter(d => d.status === 'completed').length,
     cancelled: deals.filter(d => d.status === 'cancelled').length,
@@ -148,7 +149,7 @@ function AdminDealsContent() {
       )}
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-4">
           <p className="text-sm text-gray-500">전체 거래</p>
           <p className="text-2xl font-bold text-gray-900">{stats.total}건</p>
@@ -156,6 +157,10 @@ function AdminDealsContent() {
         <div className="bg-white rounded-xl shadow-sm p-4">
           <p className="text-sm text-gray-500">완료된 거래</p>
           <p className="text-2xl font-bold text-green-600">{stats.completed}건</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">검수중</p>
+          <p className="text-2xl font-bold text-blue-600">{stats.reviewing}건</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
           <p className="text-sm text-gray-500">대기중 거래</p>
