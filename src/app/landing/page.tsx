@@ -506,7 +506,7 @@ function Reviews() {
       category: "물품대금",
       icon: ShoppingBag,
       content: "매달 나가는 원두값과 부자재 비용이 만만치 않았는데, 카드로 결제하고 현금 유동성을 확보할 수 있어서 매장 운영에 큰 도움이 됩니다.",
-      amount: "월 평균 1,500만원 이용",
+      amount: "월 평균 700만원 이용",
     },
     {
       name: "이ㅇㅇ 실장",
@@ -514,7 +514,7 @@ function Reviews() {
       category: "인건비/자재비",
       icon: Users,
       content: "현장 일용직 인건비는 당일 지급이 원칙이라 현금이 항상 부족했는데, PLIC 덕분에 카드 결제로 여유 있게 지급하고 있습니다.",
-      amount: "건당 500만원 이용",
+      amount: "건당 150만원 이용",
     },
     {
       name: "박ㅇㅇ 대표",
@@ -522,7 +522,7 @@ function Reviews() {
       category: "재고 매입",
       icon: TrendingUp,
       content: "시즌 상품 사입할 때 목돈이 필요한데, 카드 한도를 이용해서 물건을 먼저 받고 결제는 나중에 하니 매출 회전이 훨씬 빨라졌어요.",
-      amount: "월 평균 3,000만원 이용",
+      amount: "월 평균 950만원 이용",
     },
     {
       name: "최ㅇㅇ 원장",
@@ -546,7 +546,7 @@ function Reviews() {
       category: "장비 대여료",
       icon: Building2,
       content: "고가의 장비 대여료를 현금으로만 달라는 곳이 많은데, PLIC으로 카드 결제하고 송금해주니 거래처도 좋아하고 저도 편합니다.",
-      amount: "건당 2,000만원 이용",
+      amount: "건당 180만원 이용",
     },
   ];
 
