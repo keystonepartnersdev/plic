@@ -43,6 +43,14 @@ export default function LeftPanel() {
         앱 다운로드 (준비중)
       </button>
 
+      {/* 서비스 소개 버튼 */}
+      <a
+        href="https://plic.kr/landing"
+        className="mt-3 px-8 py-3 bg-gray-900 text-white rounded-full font-semibold hover:bg-gray-800 transition-colors mx-auto block w-fit"
+      >
+        PLIC 서비스소개
+      </a>
+
       {/* 하단 링크 */}
       <div className="mt-12 flex flex-col items-center gap-3">
         <a
@@ -55,7 +63,7 @@ export default function LeftPanel() {
           href="http://pf.kakao.com/_xnQKhX"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-full text-sm font-semibold hover:brightness-95 transition-all"
+          className="text-sm text-gray-500 hover:text-[#2563EB] transition-colors"
         >
           카카오톡 상담하기
         </a>
