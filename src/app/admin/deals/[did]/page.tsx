@@ -501,10 +501,23 @@ export default function AdminDealDetailPage() {
                   </button>
                 </>
               )}
-              {(deal.status === 'completed' || deal.status === 'cancelled') && (
-                <p className="text-center text-gray-500 py-4">
-                  {deal.status === 'completed' ? '완료된 거래입니다.' : '취소된 거래입니다.'}
-                </p>
+              {deal.status === 'completed' && (
+                <div className="space-y-2">
+                  <p className="text-center text-gray-500 py-2">완료된 거래입니다.</p>
+                  {deal.isPaid && (
+                    <button
+                      onClick={() => handleStatusChange('cancelled')}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 h-10 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      결제 취소
+                    </button>
+                  )}
+                </div>
+              )}
+              {deal.status === 'cancelled' && (
+                <p className="text-center text-gray-500 py-4">취소된 거래입니다.</p>
               )}
             </div>
           </div>

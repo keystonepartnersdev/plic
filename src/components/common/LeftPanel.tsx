@@ -1,6 +1,6 @@
 'use client';
 
-import { Zap, ShieldCheck, CreditCard, ArrowRight } from 'lucide-react';
+import { Zap, ShieldCheck, CreditCard } from 'lucide-react';
 
 export default function LeftPanel() {
   return (
@@ -35,22 +35,30 @@ export default function LeftPanel() {
         </div>
       </div>
 
-      {/* QR 코드 영역 */}
-      <div className="w-36 h-36 bg-white rounded-2xl mb-4 mx-auto flex items-center justify-center shadow-lg border border-gray-100">
-        <span className="text-gray-400 text-sm font-medium">앱 다운로드</span>
-      </div>
-
-      {/* CTA 버튼 */}
-      <button className="mt-6 px-8 py-3 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white rounded-full font-semibold hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 flex items-center gap-2 mx-auto group">
-        앱 다운로드
-        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={2} />
+      {/* 앱 다운로드 버튼 (비활성화) */}
+      <button
+        disabled
+        className="px-8 py-3 bg-gray-200 text-gray-400 rounded-full font-semibold cursor-not-allowed mx-auto block"
+      >
+        앱 다운로드 (준비중)
       </button>
 
       {/* 하단 링크 */}
-      <div className="mt-12 text-sm text-gray-500 space-x-4">
-        <a href="mailto:ads@plic.co.kr" className="hover:text-[#2563EB] transition-colors">광고 문의</a>
-        <span>|</span>
-        <a href="mailto:biz@plic.co.kr" className="hover:text-[#2563EB] transition-colors">제휴 문의</a>
+      <div className="mt-12 flex flex-col items-center gap-3">
+        <a
+          href="mailto:support@plic.kr"
+          className="text-sm text-gray-500 hover:text-[#2563EB] transition-colors"
+        >
+          광고 및 제휴문의
+        </a>
+        <a
+          href="http://pf.kakao.com/_xnQKhX"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-full text-sm font-semibold hover:brightness-95 transition-all"
+        >
+          카카오톡 상담하기
+        </a>
       </div>
 
       {/* 저작권 */}
