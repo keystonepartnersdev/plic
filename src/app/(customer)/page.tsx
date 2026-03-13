@@ -71,7 +71,7 @@ export default function HomePage() {
   };
 
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
-  const feeRate = currentUser?.feeRate || 4.0;
+  const feeRate = currentUser?.feeRate || 4.5;
   const { feeAmount, totalAmount } = DealHelper.calculateTotal(numericAmount, feeRate);
 
   // useCallback으로 핸들러 최적화
