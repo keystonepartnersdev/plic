@@ -265,6 +265,7 @@ var handler = async (event) => {
       feeRate: 4.5,
       isGradeManual: false,
       monthlyLimit: 2e7,
+      perTransactionLimit: 1e6,
       usedAmount: 0,
       agreements: {
         service: agreements.service,
