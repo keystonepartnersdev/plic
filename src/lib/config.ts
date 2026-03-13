@@ -28,8 +28,8 @@ export const APP_CONFIG = {
  * 운영 API URL: https://papi.softment.co.kr
  */
 export const PAYMENT_CONFIG = {
-  PAY_KEY: process.env.SOFTPAYMENT_PAY_KEY || '',
-  API_URL: process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr',
+  PAY_KEY: (process.env.SOFTPAYMENT_PAY_KEY || '').trim(),
+  API_URL: (process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr').trim(),
 } as const;
 
 /**
