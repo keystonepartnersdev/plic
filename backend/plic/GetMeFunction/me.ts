@@ -96,6 +96,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       status: user.status,
       feeRate: user.feeRate,
       monthlyLimit: user.monthlyLimit,
+      perTransactionLimit: user.perTransactionLimit,
       usedAmount: user.usedAmount,
       remainingLimit: user.monthlyLimit - user.usedAmount,
       isVerified: user.isVerified,
