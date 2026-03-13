@@ -23,6 +23,7 @@ const response = (statusCode: number, body: Record<string, unknown>) => ({
 interface UserSettingsRequest {
   feeRate?: number;
   monthlyLimit?: number;
+  perTransactionLimit?: number;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -48,7 +49,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     const body: UserSettingsRequest = JSON.parse(event.body);
-    const { feeRate, monthlyLimit } = body;
+    const { feeRate, monthlyLimit, perTransactionLimit } = body;
 
     // 유효성 검증
     if (feeRate !== undefined) {
@@ -69,10 +70,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }
     }
 
-    if (feeRate === undefined && monthlyLimit === undefined) {
+    if (perTransactionLimit !== undefined) {
+      if (typeof perTransactionLimit !== 'number' || perTransactionLimit < 0) {
+        return response(400, {
+          success: false,
+          error: '1회 결제 한도는 0 이상의 숫자여야 합니다.',
+        });
+      }
+    }
+
+    if (feeRate === undefined && monthlyLimit === undefined && perTransactionLimit === undefined) {
       return response(400, {
         success: false,
-        error: '변경할 값(feeRate 또는 monthlyLimit)이 필요합니다.',
+        error: '변경할 값(feeRate, monthlyLimit 또는 perTransactionLimit)이 필요합니다.',
       });
     }
 
@@ -132,6 +142,23 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       });
     }
 
+    if (perTransactionLimit !== undefined && perTransactionLimit !== user.perTransactionLimit) {
+      updateExpressions.push('perTransactionLimit = :perTransactionLimit');
+      expressionAttributeValues[':perTransactionLimit'] = perTransactionLimit;
+      const prevLimit = user.perTransactionLimit || 1000000;
+      historyEntries.push({
+        id: `${historyId}-pertx`,
+        field: 'perTransactionLimit',
+        fieldLabel: '1회 결제 한도',
+        prevValue: `${(prevLimit / 10000).toLocaleString()}만원`,
+        newValue: `${(perTransactionLimit / 10000).toLocaleString()}만원`,
+        actor: 'admin',
+        actorLabel: '운영팀',
+        timestamp: now,
+        memo: `1회 결제 한도 변경: ${(prevLimit / 10000).toLocaleString()}만원 → ${(perTransactionLimit / 10000).toLocaleString()}만원`,
+      });
+    }
+
     // 히스토리 추가
     if (historyEntries.length > 0) {
       const existingHistory = user.history || [];
@@ -163,6 +190,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         uid,
         feeRate: feeRate ?? user.feeRate,
         monthlyLimit: monthlyLimit ?? user.monthlyLimit,
+        perTransactionLimit: perTransactionLimit ?? user.perTransactionLimit ?? 1000000,
       },
     });
   } catch (error: any) {
