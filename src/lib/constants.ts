@@ -94,6 +94,7 @@ export const USER_STATUS_LABELS: Record<TUserStatus, string> = {
 export const PLIC_SETTINGS = {
   FEE_RATE: 4.5,              // 수수료율 4.5%
   MONTHLY_LIMIT: 20000000,    // 월 한도 2천만원
+  PER_TRANSACTION_LIMIT: 1000000, // 1회 결제 한도 100만원
 } as const;
 
 /**

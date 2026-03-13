@@ -318,6 +318,7 @@ export default function DealDetailPage() {
           editType={editModalType}
           monthlyLimit={currentUser?.monthlyLimit || 20000000}
           usedAmount={computedUsedAmount}
+          perTransactionLimit={currentUser?.perTransactionLimit || 1000000}
         />
       )}
     </div>

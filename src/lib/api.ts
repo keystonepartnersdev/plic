@@ -781,8 +781,8 @@ export const adminAPI = {
     }),
 
   // 개별 사용자 수수료/한도 설정
-  updateUserSettings: (uid: string, settings: { feeRate?: number; monthlyLimit?: number }) =>
-    requestWithAdminToken<{ message: string; uid: string; feeRate: number; monthlyLimit: number }>(`/admin/users/${uid}/settings`, {
+  updateUserSettings: (uid: string, settings: { feeRate?: number; monthlyLimit?: number; perTransactionLimit?: number }) =>
+    requestWithAdminToken<{ message: string; uid: string; feeRate: number; monthlyLimit: number; perTransactionLimit: number }>(`/admin/users/${uid}/settings`, {
       method: 'PUT',
       body: JSON.stringify(settings),
     }),

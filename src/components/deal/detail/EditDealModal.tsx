@@ -36,6 +36,7 @@ interface EditDealModalProps {
   editType: 'amount' | 'recipient' | 'attachments';
   monthlyLimit?: number;
   usedAmount?: number;
+  perTransactionLimit?: number;
 }
 
 const BANKS = [
@@ -45,7 +46,7 @@ const BANKS = [
   '경남은행', '광주은행', '전북은행', '제주은행',
 ];
 
-export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0 }: EditDealModalProps) {
+export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0, perTransactionLimit = 1000000 }: EditDealModalProps) {
   // 금액 수정
   const [amount, setAmount] = useState(deal.amount);
 
@@ -133,6 +134,11 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           setIsSaving(false);
           return;
         }
+        if (amount > perTransactionLimit) {
+          setError(`1회 결제 한도(${perTransactionLimit.toLocaleString()}원)를 초과하여 금액을 수정할 수 없습니다.`);
+          setIsSaving(false);
+          return;
+        }
         const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
         if (amount > remainingLimit) {
           setError('월 사용한도를 초과하여 금액을 수정할 수 없습니다.');
@@ -213,6 +219,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
 
           {/* 금액 수정 */}
           {editType === 'amount' && (() => {
+            const isOverPerTransaction = amount > perTransactionLimit;
             const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
             const isOverLimit = amount > remainingLimit;
             const wouldExceedLimit = usedAmount + amount > monthlyLimit;
@@ -228,7 +235,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                   onChange={(e) => setAmount(Number(e.target.value))}
                   className={cn(
                     "w-full h-12 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-                    isOverLimit ? "border-red-400" : "border-gray-200"
+                    isOverPerTransaction || isOverLimit ? "border-red-400" : "border-gray-200"
                   )}
                   placeholder="송금 금액을 입력하세요"
                   min={100}
@@ -241,9 +248,38 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                   총 결제금액: {(amount + Math.ceil(amount * deal.feeRate / 100)).toLocaleString()}원
                 </p>
 
-                {/* 월 한도 현황 */}
+                {/* 1회 결제 한도 */}
                 <div className={cn(
                   "rounded-xl p-4 mt-4",
+                  isOverPerTransaction ? "bg-red-50" : "bg-gray-50"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      "text-sm font-medium",
+                      isOverPerTransaction ? "text-red-700" : "text-gray-700"
+                    )}>
+                      1회 결제 한도
+                    </span>
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      isOverPerTransaction ? "text-red-600" : "text-gray-900"
+                    )}>
+                      {perTransactionLimit.toLocaleString()}원
+                    </span>
+                  </div>
+                  {isOverPerTransaction && (
+                    <div className="mt-2 flex items-start gap-2 text-red-700">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs">
+                        1회 결제 한도를 초과하였습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 월 한도 현황 */}
+                <div className={cn(
+                  "rounded-xl p-4 mt-3",
                   isOverLimit ? "bg-red-50" : "bg-blue-50"
                 )}>
                   <div className="flex items-center justify-between mb-2">
@@ -451,7 +487,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isUploading || (editType === 'amount' && amount > Math.max(monthlyLimit - usedAmount, 0))}
+            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0)))}
             className="flex-1 h-12 bg-primary-400 text-white rounded-xl font-medium hover:bg-primary-500 transition-colors disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2"
           >
             {(isSaving || isUploading) ? (

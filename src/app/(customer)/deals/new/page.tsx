@@ -325,6 +325,8 @@ function NewDealContent() {
     0
   );
 
+  const perTransactionLimit = currentUser?.perTransactionLimit || 1000000;
+  const isOverPerTransaction = numericAmount > perTransactionLimit;
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const isOverLimit = numericAmount > remainingLimit;
@@ -655,7 +657,7 @@ function NewDealContent() {
   };
 
   const isBelowMinimum = numericAmount > 0 && numericAmount < MIN_AMOUNT;
-  const canProceedAmount = numericAmount >= MIN_AMOUNT && !isOverLimit;
+  const canProceedAmount = numericAmount >= MIN_AMOUNT && !isOverPerTransaction && !isOverLimit;
   const canProceedRecipient =
     recipient.bank &&
     recipient.accountNumber.length >= 10 &&
@@ -760,7 +762,7 @@ function NewDealContent() {
                   placeholder="0"
                   className={cn(
                     "w-full text-3xl font-bold bg-transparent border-none outline-none",
-                    isOverLimit ? "text-red-500" : isBelowMinimum ? "text-yellow-600" : "text-gray-900"
+                    isOverPerTransaction || isOverLimit ? "text-red-500" : isBelowMinimum ? "text-yellow-600" : "text-gray-900"
                   )}
                 />
                 <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400">원</span>
@@ -776,6 +778,36 @@ function NewDealContent() {
                     <span>총 결제금액</span>
                     <span className="text-primary-400">{totalAmount.toLocaleString()}원</span>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* 1회 결제 한도 */}
+            <div className={cn(
+              "rounded-xl p-4 mb-3",
+              isOverPerTransaction ? "bg-red-50" : "bg-gray-50"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className={cn(
+                  "text-sm font-medium",
+                  isOverPerTransaction ? "text-red-700" : "text-gray-700"
+                )}>
+                  1회 결제 한도
+                </span>
+                <span className={cn(
+                  "text-sm font-semibold",
+                  isOverPerTransaction ? "text-red-600" : "text-gray-900"
+                )}>
+                  {perTransactionLimit.toLocaleString()}원
+                </span>
+              </div>
+              {isOverPerTransaction && (
+                <div className="mt-2 flex items-start gap-2 text-red-700">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs">
+                    1회 결제 한도를 초과하였습니다.
+                    한도 상향이 필요하시면 고객센터로 문의해 주세요.
+                  </p>
                 </div>
               )}
             </div>

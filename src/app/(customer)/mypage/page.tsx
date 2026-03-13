@@ -196,6 +196,10 @@ export default function MyPage() {
               <span className="text-sm text-gray-500 font-medium">
                 수수료 {feeRate}%
               </span>
+              <span className="text-sm text-gray-400 mx-1">|</span>
+              <span className="text-sm text-gray-500 font-medium">
+                1회 한도 {((currentUser?.perTransactionLimit ?? 1000000) / 10000).toLocaleString()}만원
+              </span>
             </div>
           </div>
 

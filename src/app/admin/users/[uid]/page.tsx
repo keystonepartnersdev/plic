@@ -71,6 +71,7 @@ const FIELD_LABELS: Record<string, string> = {
   grade: '회원 등급',
   feeRate: '수수료율',
   monthlyLimit: '월 한도',
+  perTransactionLimit: '1회 결제 한도',
   name: '이름',
   email: '이메일',
   phone: '연락처',
@@ -105,6 +106,7 @@ export default function AdminUserDetailPage() {
     status: 'active' as TUserStatus,
     feeRate: 4.5,
     monthlyLimit: 20000000,
+    perTransactionLimit: 1000000,
   });
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -139,6 +141,7 @@ export default function AdminUserDetailPage() {
         status: userResponse.user.status || 'active',
         feeRate: userResponse.user.feeRate ?? 4.5,
         monthlyLimit: userResponse.user.monthlyLimit ?? 20000000,
+        perTransactionLimit: userResponse.user.perTransactionLimit ?? 1000000,
       });
       setEditInfoData({
         name: userResponse.user.name || '',
@@ -224,13 +227,16 @@ export default function AdminUserDetailPage() {
         await adminAPI.updateUserStatus(user.uid, editData.status);
       }
 
-      // 수수료율/월한도 변경
-      const settingsUpdate: { feeRate?: number; monthlyLimit?: number } = {};
+      // 수수료율/월한도/1회한도 변경
+      const settingsUpdate: { feeRate?: number; monthlyLimit?: number; perTransactionLimit?: number } = {};
       if (editData.feeRate !== user.feeRate) {
         settingsUpdate.feeRate = editData.feeRate;
       }
       if (editData.monthlyLimit !== user.monthlyLimit) {
         settingsUpdate.monthlyLimit = editData.monthlyLimit;
+      }
+      if (editData.perTransactionLimit !== (user.perTransactionLimit ?? 1000000)) {
+        settingsUpdate.perTransactionLimit = editData.perTransactionLimit;
       }
       if (Object.keys(settingsUpdate).length > 0) {
         await adminAPI.updateUserSettings(user.uid, settingsUpdate);
@@ -253,6 +259,7 @@ export default function AdminUserDetailPage() {
       status: user.status,
       feeRate: user.feeRate ?? 4.5,
       monthlyLimit: user.monthlyLimit ?? 20000000,
+      perTransactionLimit: user.perTransactionLimit ?? 1000000,
     });
     setIsEditing(false);
   };
@@ -1058,6 +1065,36 @@ export default function AdminUserDetailPage() {
                       {GRADE_LABELS[user.grade]} 등급 기준: {(getGradeSettings(user.grade)?.monthlyLimit || 0).toLocaleString()}원
                     </p>
                   </>
+                )}
+              </div>
+
+              {/* 1회 결제 한도 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1회 결제 한도</label>
+                {isEditing ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editData.perTransactionLimit}
+                        onChange={(e) => setEditData({ ...editData, perTransactionLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full h-10 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+                        step="100000"
+                        min="0"
+                      />
+                      <span className="text-gray-500 font-medium text-sm whitespace-nowrap">원</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      = {(editData.perTransactionLimit / 10000).toLocaleString()}만원
+                    </p>
+                    {editData.perTransactionLimit !== (user.perTransactionLimit ?? 1000000) && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {((user.perTransactionLimit ?? 1000000) / 10000).toLocaleString()}만원 → {(editData.perTransactionLimit / 10000).toLocaleString()}만원
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="font-medium text-gray-900">{(user.perTransactionLimit ?? 1000000).toLocaleString()}원</p>
                 )}
               </div>
 

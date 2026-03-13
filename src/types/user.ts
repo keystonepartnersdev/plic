@@ -45,6 +45,7 @@ export type THistoryField =
   | 'grade'            // 회원 등급
   | 'feeRate'          // 수수료율
   | 'monthlyLimit'     // 월 한도
+  | 'perTransactionLimit' // 1회 결제 한도
   | 'name'             // 이름
   | 'email'            // 이메일
   | 'phone'            // 연락처
@@ -89,6 +90,7 @@ export interface IUser {
 
   // 한도
   monthlyLimit: number;
+  perTransactionLimit?: number; // 1회 결제 한도 (송금액 기준, 기본값 100만원)
   usedAmount: number;
 
   // 동의 항목
