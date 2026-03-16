@@ -70,6 +70,7 @@ export default function AdminUsersPage() {
 
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-700',
+    pending_verification: 'bg-orange-100 text-orange-700',
     suspended: 'bg-red-100 text-red-700',
     pending: 'bg-yellow-100 text-yellow-700',
     withdrawn: 'bg-gray-100 text-gray-700',
@@ -77,6 +78,7 @@ export default function AdminUsersPage() {
 
   const statusLabels: Record<string, string> = {
     active: '활성',
+    pending_verification: '사업자 인증 대기',
     suspended: '정지',
     pending: '대기',
     withdrawn: '탈퇴',

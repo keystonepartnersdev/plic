@@ -1,3 +1,4 @@
+"use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -16,7 +17,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// signup.ts
+// functions/auth/signup.ts
 var signup_exports = {};
 __export(signup_exports, {
   handler: () => handler
@@ -26,7 +27,7 @@ var import_client_cognito_identity_provider = require("@aws-sdk/client-cognito-i
 var import_client_dynamodb = require("@aws-sdk/client-dynamodb");
 var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
 
-// node_modules/uuid/dist-node/stringify.js
+// functions/auth/node_modules/uuid/dist-node/stringify.js
 var byteToHex = [];
 for (let i = 0; i < 256; ++i) {
   byteToHex.push((i + 256).toString(16).slice(1));
@@ -35,7 +36,7 @@ function unsafeStringify(arr, offset = 0) {
   return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
 }
 
-// node_modules/uuid/dist-node/rng.js
+// functions/auth/node_modules/uuid/dist-node/rng.js
 var import_node_crypto = require("node:crypto");
 var rnds8Pool = new Uint8Array(256);
 var poolPtr = rnds8Pool.length;
@@ -47,11 +48,11 @@ function rng() {
   return rnds8Pool.slice(poolPtr, poolPtr += 16);
 }
 
-// node_modules/uuid/dist-node/native.js
+// functions/auth/node_modules/uuid/dist-node/native.js
 var import_node_crypto2 = require("node:crypto");
 var native_default = { randomUUID: import_node_crypto2.randomUUID };
 
-// node_modules/uuid/dist-node/v4.js
+// functions/auth/node_modules/uuid/dist-node/v4.js
 function _v4(options, buf, offset) {
   options = options || {};
   const rnds = options.random ?? options.rng?.() ?? rng();
@@ -80,7 +81,7 @@ function v4(options, buf, offset) {
 }
 var v4_default = v4;
 
-// signup.ts
+// functions/auth/signup.ts
 var cognitoClient = new import_client_cognito_identity_provider.CognitoIdentityProviderClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var dynamoClient = new import_client_dynamodb.DynamoDBClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(dynamoClient);
@@ -88,19 +89,31 @@ var USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 var USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || process.env.COGNITO_CLIENT_ID || "";
 var USERS_TABLE = process.env.USERS_TABLE || "plic-users";
 var KAKAO_VERIFICATIONS_TABLE = "plic-kakao-verifications";
-var corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type,Authorization",
-  "Access-Control-Allow-Methods": "POST,OPTIONS"
-};
-var response = (statusCode, body) => ({
+var ALLOWED_ORIGINS = [
+  "https://plic.kr",
+  "https://www.plic.kr",
+  "https://plic.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001"
+];
+function getCorsHeaders(origin) {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,Cookie",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Credentials": "true"
+  };
+}
+var response = (statusCode, body, origin) => ({
   statusCode,
-  headers: corsHeaders,
+  headers: getCorsHeaders(origin),
   body: JSON.stringify(body)
 });
 var handler = async (event) => {
+  const origin = event.headers?.origin || event.headers?.Origin;
   if (event.httpMethod === "OPTIONS") {
-    return response(200, {});
+    return response(200, {}, origin);
   }
   try {
     if (!event.body) {
@@ -179,6 +192,7 @@ var handler = async (event) => {
           { Name: "email", Value: email },
           { Name: "name", Value: name },
           { Name: "phone_number", Value: `+82${phone.slice(1)}` }
+          // 국제 형식으로 변환
         ]
       });
       await cognitoClient.send(signUpCommand);
@@ -223,6 +237,22 @@ var handler = async (event) => {
             });
             await cognitoClient.send(retrySignUpCommand);
           } else {
+            try {
+              const queryResult = await docClient.send(new import_lib_dynamodb.QueryCommand({
+                TableName: USERS_TABLE,
+                IndexName: "email-index",
+                KeyConditionExpression: "email = :email",
+                ExpressionAttributeValues: { ":email": email }
+              }));
+              if (!queryResult.Items || queryResult.Items.length === 0 || queryResult.Items[0].status === "withdrawn") {
+                return response(409, {
+                  success: false,
+                  error: "\uD0C8\uD1F4\uD55C \uD68C\uC6D0\uC785\uB2C8\uB2E4."
+                });
+              }
+            } catch (dbQueryError) {
+              console.error("[Signup] DynamoDB \uC870\uD68C \uC2E4\uD328:", dbQueryError);
+            }
             return response(409, {
               success: false,
               error: "\uC774\uBBF8 \uB4F1\uB85D\uB41C \uC774\uBA54\uC77C\uC785\uB2C8\uB2E4."
@@ -260,7 +290,7 @@ var handler = async (event) => {
       socialProvider: kakaoVerified ? "kakao" : "none",
       kakaoId: kakaoId || null,
       isVerified: false,
-      status: "pending",
+      status: "pending_verification",
       grade: "basic",
       feeRate: 4.5,
       isGradeManual: false,
@@ -298,7 +328,7 @@ var handler = async (event) => {
         }));
         console.log(`[Signup] \uCE74\uCE74\uC624 \uC0AC\uC6A9\uC790 \uC790\uB3D9 \uD655\uC778 \uC644\uB8CC: ${email}`);
         userItem.isVerified = true;
-        userItem.status = "active";
+        userItem.status = "pending_verification";
       } catch (confirmError) {
         console.error("[Signup] \uCE74\uCE74\uC624 \uC0AC\uC6A9\uC790 \uC790\uB3D9 \uD655\uC778 \uC2E4\uD328:", confirmError);
       }
@@ -307,7 +337,7 @@ var handler = async (event) => {
       TableName: USERS_TABLE,
       Item: userItem
     }));
-    var successMessage = kakaoVerified ? "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBC14\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4." : "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uBA54\uC77C\uB85C \uC804\uC1A1\uB41C \uC778\uC99D\uCF54\uB4DC\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.";
+    const successMessage = kakaoVerified ? "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBC14\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4." : "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uBA54\uC77C\uB85C \uC804\uC1A1\uB41C \uC778\uC99D\uCF54\uB4DC\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.";
     return response(200, {
       success: true,
       data: {
@@ -328,3 +358,4 @@ var handler = async (event) => {
 0 && (module.exports = {
   handler
 });
+//# sourceMappingURL=signup.js.map

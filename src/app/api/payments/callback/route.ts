@@ -79,10 +79,13 @@ export async function POST(request: NextRequest) {
       try {
         console.log('[Payment Callback] Updating deal in DB:', { dealId, trxId: approvedTrxId });
 
+        const payInfo = approveResponse.data?.payInfo;
+        const cardInfo = payInfo?.cardInfo;
+
         await docClient.send(new UpdateCommand({
           TableName: DEALS_TABLE,
           Key: { did: dealId },
-          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, updatedAt = :updatedAt',
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, updatedAt = :updatedAt',
           ExpressionAttributeNames: {
             '#status': 'status',
           },
@@ -92,6 +95,11 @@ export async function POST(request: NextRequest) {
             ':status': 'reviewing',
             ':pgTrxId': approvedTrxId,
             ':pgTrackId': trackId,
+            ':goodsName': approveResponse.data?.goodsName || '',
+            ':cardIssuer': cardInfo?.issuer || '',
+            ':cardNo': cardInfo?.cardNo || '',
+            ':authCd': payInfo?.authCd || '',
+            ':cardType': cardInfo?.cardType || '',
             ':updatedAt': new Date().toISOString(),
           },
         }));

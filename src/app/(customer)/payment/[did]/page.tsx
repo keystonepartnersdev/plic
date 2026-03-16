@@ -214,7 +214,7 @@ export default function PaymentPage() {
       // Softpayment API를 통해 결제창 URL 받기
       const requestBody = {
         amount: deal.finalAmount,
-        goodsName: `송금 ${(deal.amount || 0).toLocaleString()}원 + 수수료`,
+        goodsName: `[후납] 임직원 전용 모바일 식권 ${Math.ceil(deal.finalAmount / 10000)}매 (기업복지)`,
         payerName: currentUser.name || '',
         payerEmail: currentUser.email || '',
         payerTel: currentUser.phone || '',
@@ -285,7 +285,7 @@ export default function PaymentPage() {
       const requestBody = {
         billingKey: selectedCard.billingKey,
         amount: deal.finalAmount,
-        goodsName: `송금 ${(deal.amount || 0).toLocaleString()}원 + 수수료`,
+        goodsName: `[후납] 임직원 전용 모바일 식권 ${Math.ceil(deal.finalAmount / 10000)}매 (기업복지)`,
         payerName: currentUser.name || '',
         payerEmail: currentUser.email || '',
         payerTel: currentUser.phone || '',

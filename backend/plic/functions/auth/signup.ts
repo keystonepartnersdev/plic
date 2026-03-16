@@ -295,7 +295,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       socialProvider: kakaoVerified ? 'kakao' : 'none',
       kakaoId: kakaoId || null,
       isVerified: false,
-      status: 'pending',
+      status: 'pending_verification',
       grade: 'basic',
       feeRate: 4.5,
       isGradeManual: false,
@@ -337,7 +337,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         }));
         console.log(`[Signup] 카카오 사용자 자동 확인 완료: ${email}`);
         userItem.isVerified = true;
-        userItem.status = 'active';
+        userItem.status = 'pending_verification';
       } catch (confirmError: any) {
         console.error('[Signup] 카카오 사용자 자동 확인 실패:', confirmError);
         // 실패해도 계속 진행 (나중에 수동 인증 가능)
