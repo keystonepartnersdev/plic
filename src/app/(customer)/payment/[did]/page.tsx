@@ -96,10 +96,11 @@ export default function PaymentPage() {
     );
   }
 
-  // 사업자 인증 대기/거절 상태 체크 (businessInfo.verificationStatus 기준)
+  // 사업자 인증 대기/거절 상태 체크 (user.status 또는 businessInfo.verificationStatus 기준)
   const isBusinessUser = currentUser.userType === 'business';
   const verificationStatus = currentUser.businessInfo?.verificationStatus;
-  if (isBusinessUser && verificationStatus !== 'verified') {
+  const isPendingVerification = currentUser.status === 'pending_verification';
+  if (isPendingVerification || (isBusinessUser && verificationStatus !== 'verified')) {
     const isRejected = verificationStatus === 'rejected';
 
     if (isRejected) {
