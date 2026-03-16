@@ -165,7 +165,7 @@ export const adminLoginSchema = z.object({
 });
 
 export const updateUserStatusSchema = z.object({
-  status: z.enum(['active', 'suspended', 'pending', 'withdrawn']),
+  status: z.enum(['active', 'suspended', 'pending', 'pending_verification', 'withdrawn']),
   reason: z.string().optional(),
 });
 
