@@ -297,7 +297,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       isVerified: false,
       status: 'pending_verification',
       grade: 'basic',
-      feeRate: 4.5,
+      feeRate: 4.0,
       isGradeManual: false,
       monthlyLimit: 20000000,
       usedAmount: 0,

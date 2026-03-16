@@ -292,7 +292,7 @@ var handler = async (event) => {
       isVerified: false,
       status: "pending_verification",
       grade: "basic",
-      feeRate: 4.5,
+      feeRate: 4,
       isGradeManual: false,
       monthlyLimit: 2e7,
       usedAmount: 0,
