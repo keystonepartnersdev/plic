@@ -10,7 +10,7 @@ import {
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, DeleteCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 
-const SETTINGS_TABLE = process.env.SETTINGS_TABLE || 'plic-settings';
+const CONTENTS_TABLE = process.env.CONTENTS_TABLE || 'plic-contents';
 import { v4 as uuidv4 } from 'uuid';
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
@@ -359,10 +359,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // Slack 알림 전송 (비동기, 실패해도 무시)
     try {
       const settingsResult = await docClient.send(new GetCommand({
-        TableName: SETTINGS_TABLE,
-        Key: { settingId: 'SYSTEM_SETTINGS' },
+        TableName: CONTENTS_TABLE,
+        Key: { pk: 'SETTINGS', sk: 'system' },
       }));
-      const slackWebhookUrl = settingsResult.Item?.slackWebhookUrl;
+      const slackWebhookUrl = settingsResult.Item?.settings?.slackWebhookUrl;
       if (slackWebhookUrl) {
         const signupDate = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
         const lines = [
