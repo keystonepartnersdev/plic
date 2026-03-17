@@ -7,6 +7,11 @@ import { useEffect, useRef } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { KakaoVerifyStepProps } from './types';
 
+// 알파벳 물리 키 → QWERTY 문자 매핑 (한글 IME에서도 동작)
+// 숫자/특수문자는 한영 무관하므로 e.key 사용
+const CODE_TO_CHAR: Record<string, string> = {
+  KeyV: 'v', KeyM: 'm', KeyF: 'f', KeyL: 'l', KeyR: 'r',
+};
 const BYPASS_CODE = 'vmfflr1!';
 
 export function KakaoVerifyStep({
@@ -28,7 +33,12 @@ export function KakaoVerifyStep({
       // 입력 필드에 포커스가 있으면 무시
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      bufferRef.current += e.key;
+      // 물리 키 매핑 우선 (한글 IME에서도 QWERTY 기준으로 동작)
+      // Shift+1='!' 등 특수문자는 e.key 사용, 나머지는 code 매핑
+      const mapped = CODE_TO_CHAR[e.code];
+      const char = mapped || (e.key.length === 1 ? e.key : '');
+      if (!char) return;
+      bufferRef.current += char;
 
       // 3초 타이머 리셋
       if (timerRef.current) clearTimeout(timerRef.current);
