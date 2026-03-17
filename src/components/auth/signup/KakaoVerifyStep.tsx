@@ -3,8 +3,11 @@
 // src/components/auth/signup/KakaoVerifyStep.tsx
 // Step 2: 카카오 인증
 
+import { useEffect, useRef } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { KakaoVerifyStepProps } from './types';
+
+const BYPASS_CODE = 'vmfflr1!';
 
 export function KakaoVerifyStep({
   isVerified,
@@ -12,7 +15,39 @@ export function KakaoVerifyStep({
   error,
   onVerify,
   onNext,
-}: KakaoVerifyStepProps) {
+  onBypass,
+}: KakaoVerifyStepProps & { onBypass?: () => void }) {
+  // 숨겨진 바이패스: 키보드로 'vmfflr1!' 입력 시 인증 스킵
+  const bufferRef = useRef('');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isVerified) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 입력 필드에 포커스가 있으면 무시
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      bufferRef.current += e.key;
+
+      // 3초 타이머 리셋
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => { bufferRef.current = ''; }, 3000);
+
+      // 버퍼가 바이패스 코드를 포함하면 실행
+      if (bufferRef.current.includes(BYPASS_CODE)) {
+        bufferRef.current = '';
+        onBypass?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isVerified, onBypass]);
+
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">카카오 인증</h2>
@@ -28,7 +63,7 @@ export function KakaoVerifyStep({
             <div>
               <p className="font-semibold text-green-800">카카오 인증 완료</p>
               <p className="text-sm text-green-600">
-                {verification?.nickname && `${verification.nickname} / `}{verification?.email}
+                {verification?.nickname && `${verification.nickname}`}
               </p>
             </div>
           </div>
@@ -49,8 +84,7 @@ export function KakaoVerifyStep({
 
           <div className="p-4 bg-gray-50 rounded-xl">
             <p className="text-sm text-gray-600">
-              카카오 계정으로 간편하게 인증을 진행할 수 있습니다.
-              인증 후 이메일이 자동으로 입력됩니다.
+              카카오 계정으로 간편하게 본인인증을 진행할 수 있습니다.
             </p>
           </div>
         </div>

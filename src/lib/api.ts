@@ -379,6 +379,8 @@ export const authAPI = {
     kakaoId?: number;
     // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
     kakaoVerificationKey?: string;
+    // 이메일 사전인증 완료 플래그
+    emailPreVerified?: boolean;
   }) => {
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
