@@ -174,8 +174,10 @@ function SignupContent() {
             // 카카오 인증 완료 상태 설정
             setKakaoVerified(true);
             setKakaoVerification({ kakaoId: kId, nickname, email: kakaoEmail, verifiedAt: new Date().toISOString() });
-            // 인증 완료 후 info 스텝으로 이동
-            setStep('info');
+            // fromLogin인 경우 약관동의부터 시작해야 하므로 step 변경하지 않음
+            if (fromLogin !== 'true') {
+              setStep('info');
+            }
           } else {
             // 인증 실패 시 kakaoVerify 스텝으로
             setKakaoError('카카오 인증에 실패했습니다. 다시 시도해주세요.');
@@ -518,7 +520,7 @@ function SignupContent() {
             </div>
 
             <button
-              onClick={() => setStep('kakaoVerify')}
+              onClick={() => setStep(kakaoVerified ? 'info' : 'kakaoVerify')}
               disabled={!allRequiredChecked}
               className="w-full h-14 mt-8 bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg rounded-xl transition-colors"
             >
