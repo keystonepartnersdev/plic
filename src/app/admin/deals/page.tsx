@@ -242,6 +242,13 @@ function AdminDealsContent() {
                           <div>
                             <p className="font-medium text-gray-900">{deal.dealName || '-'}</p>
                             <p className="text-xs text-gray-400 font-mono">{deal.did}</p>
+                            {deal.pgTransactionId && (
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-xs text-blue-500 font-mono">PG: {deal.pgTransactionId}</p>
+                                {deal.pgTrackId && <p className="text-xs text-blue-400 font-mono">주문: {deal.pgTrackId}</p>}
+                                {deal.pgAuthCd && <p className="text-xs text-blue-400 font-mono">승인: {deal.pgAuthCd}</p>}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">

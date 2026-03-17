@@ -78,6 +78,18 @@ export interface IDeal {
   // 결제 정보
   paymentId?: string;
   pgTransactionId?: string; // PG 거래번호 (Softpayment trxId)
+  pgTrackId?: string;       // 가맹점 주문번호
+  pgGoodsName?: string;     // 상품명
+  pgAuthCd?: string;        // 승인번호
+  pgTransactionDate?: string; // 거래일시
+  pgCardNo?: string;        // 카드번호 (마스킹)
+  pgCardIssuer?: string;    // 발급사
+  pgCardIssuerCode?: string; // 발급사 코드
+  pgCardType?: string;      // 카드타입 (신용/체크)
+  pgCardAcquirer?: string;  // 매입사
+  pgCardAcquirerCode?: string; // 매입사 코드
+  pgInstallment?: string;   // 할부개월 (00: 일시불)
+  pgPayMethodTypeCode?: string; // 결제수단 코드
   isPaid: boolean;
   paidAt?: string;
 

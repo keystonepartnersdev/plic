@@ -348,6 +348,84 @@ export default function AdminDealDetailPage() {
             </div>
           </div>
 
+          {/* PG 결제 정보 */}
+          {deal.isPaid && deal.pgTransactionId && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">PG 결제 정보 (소프트먼트)</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">소프트먼트 거래번호</span>
+                  <span className="font-mono text-sm text-gray-900">{deal.pgTransactionId}</span>
+                </div>
+                {deal.pgTrackId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">가맹점 주문번호</span>
+                    <span className="font-mono text-sm text-gray-900">{deal.pgTrackId}</span>
+                  </div>
+                )}
+                {deal.pgAuthCd && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">승인번호</span>
+                    <span className="font-mono text-sm text-gray-900">{deal.pgAuthCd}</span>
+                  </div>
+                )}
+                {deal.pgTransactionDate && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">거래일시</span>
+                    <span className="text-sm text-gray-900">{deal.pgTransactionDate}</span>
+                  </div>
+                )}
+                {deal.pgGoodsName && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">상품명</span>
+                    <span className="text-sm text-gray-900">{deal.pgGoodsName}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-100 pt-3 mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">카드 정보</p>
+                  <div className="space-y-2">
+                    {deal.pgCardNo && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">카드번호</span>
+                        <span className="font-mono text-sm text-gray-900">{deal.pgCardNo}</span>
+                      </div>
+                    )}
+                    {deal.pgCardIssuer && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">발급사</span>
+                        <span className="text-sm text-gray-900">{deal.pgCardIssuer}{deal.pgCardIssuerCode ? ` (${deal.pgCardIssuerCode})` : ''}</span>
+                      </div>
+                    )}
+                    {deal.pgCardAcquirer && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">매입사</span>
+                        <span className="text-sm text-gray-900">{deal.pgCardAcquirer}{deal.pgCardAcquirerCode ? ` (${deal.pgCardAcquirerCode})` : ''}</span>
+                      </div>
+                    )}
+                    {deal.pgCardType && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">카드타입</span>
+                        <span className="text-sm text-gray-900">{deal.pgCardType}</span>
+                      </div>
+                    )}
+                    {deal.pgInstallment && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">할부</span>
+                        <span className="text-sm text-gray-900">{deal.pgInstallment === '00' ? '일시불' : `${deal.pgInstallment}개월`}</span>
+                      </div>
+                    )}
+                    {deal.pgPayMethodTypeCode && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">결제수단 코드</span>
+                        <span className="font-mono text-sm text-gray-900">{deal.pgPayMethodTypeCode}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 수취인 정보 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">

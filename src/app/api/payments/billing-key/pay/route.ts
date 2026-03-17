@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         await docClient.send(new UpdateCommand({
           TableName: DEALS_TABLE,
           Key: { did: dealId },
-          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, updatedAt = :updatedAt',
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, pgCardIssuerCode = :issuerCode, pgCardAcquirer = :acquirer, pgCardAcquirerCode = :acquirerCode, pgInstallment = :installment, pgPayMethodTypeCode = :payMethod, pgTransactionDate = :trxDate, updatedAt = :updatedAt',
           ExpressionAttributeNames: {
             '#status': 'status',
           },
@@ -95,6 +95,12 @@ export async function POST(request: NextRequest) {
             ':cardNo': cardInfo?.cardNo || '',
             ':authCd': payInfo?.authCd || '',
             ':cardType': cardInfo?.cardType || '',
+            ':issuerCode': cardInfo?.issuerCode || '',
+            ':acquirer': cardInfo?.acquirer || '',
+            ':acquirerCode': cardInfo?.acquirerCode || '',
+            ':installment': cardInfo?.installment || '',
+            ':payMethod': payInfo?.payMethodTypeCode || '',
+            ':trxDate': response.data?.transactionDate || '',
             ':updatedAt': new Date().toISOString(),
           },
         }));
