@@ -34,7 +34,7 @@ export function DeleteConfirmModal({
   return (
     <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+      <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100">
         {showIcon && (
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Trash2 className="w-6 h-6 text-red-500" />

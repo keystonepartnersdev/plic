@@ -43,7 +43,7 @@ export function RevisionRecipientModal({
   return (
     <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-6 mx-4 max-w-md w-full">
+      <div className="bg-white rounded-3xl p-6 mx-4 max-w-md w-full shadow-2xl border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900">수취인 정보 수정</h3>
           <button onClick={onClose}>

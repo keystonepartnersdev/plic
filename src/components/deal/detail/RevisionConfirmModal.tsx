@@ -24,7 +24,7 @@ export function RevisionConfirmModal({
   return (
     <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+      <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100">
         <h3 className="text-lg font-bold text-gray-900 mb-3">거래신청 확인</h3>
         <p className="text-gray-600 mb-6">
           {revisionType === 'documents'

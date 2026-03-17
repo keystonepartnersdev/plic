@@ -389,7 +389,7 @@ export default function PaymentPage() {
       {showLimitError && (
         <ModalPortal>
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl w-full max-w-sm mx-4 p-6 text-center">
+          <div className="bg-white rounded-3xl w-full max-w-sm mx-4 p-6 text-center shadow-2xl border border-gray-100">
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-7 h-7 text-red-600" />
             </div>

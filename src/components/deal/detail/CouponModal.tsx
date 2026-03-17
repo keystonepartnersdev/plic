@@ -30,11 +30,11 @@ export function CouponModal({
   return (
     <ModalPortal>
     <div
-      className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col"
+        className="bg-white rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
