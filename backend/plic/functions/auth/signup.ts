@@ -364,15 +364,22 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }));
       const slackWebhookUrl = settingsResult.Item?.slackWebhookUrl;
       if (slackWebhookUrl) {
-        const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-        const typeLabel = userType === 'business' ? '사업자' : '개인';
-        const authLabel = kakaoVerified ? '카카오' : '이메일';
+        const signupDate = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+        const lines = [
+          `🎉 신규회원가입!`,
+          ``,
+          `가입일: ${signupDate}`,
+          `이름: ${name}`,
+          `연락처: ${phone}`,
+          `이메일: ${email}`,
+          `사업자상호: ${businessInfo?.businessName || '-'}`,
+          `사업자등록번호: ${businessInfo?.businessNumber || '-'}`,
+          `대표자명: ${businessInfo?.representativeName || '-'}`,
+        ];
         await fetch(slackWebhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: `🎉 신규 회원가입\n이름: ${name}\n이메일: ${email}\n연락처: ${phone}\n유형: ${typeLabel} | 가입방식: ${authLabel}\n시간: ${now}`,
-          }),
+          body: JSON.stringify({ text: lines.join('\n') }),
         });
         console.log('[Signup] Slack notification sent');
       }

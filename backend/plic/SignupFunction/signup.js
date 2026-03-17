@@ -82,6 +82,7 @@ function v4(options, buf, offset) {
 var v4_default = v4;
 
 // functions/auth/signup.ts
+var SETTINGS_TABLE = process.env.SETTINGS_TABLE || "plic-settings";
 var cognitoClient = new import_client_cognito_identity_provider.CognitoIdentityProviderClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var dynamoClient = new import_client_dynamodb.DynamoDBClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(dynamoClient);
@@ -339,6 +340,35 @@ var handler = async (event) => {
       Item: userItem
     }));
     const successMessage = kakaoVerified ? "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBC14\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4." : "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uBA54\uC77C\uB85C \uC804\uC1A1\uB41C \uC778\uC99D\uCF54\uB4DC\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.";
+    try {
+      const settingsResult = await docClient.send(new import_lib_dynamodb.GetCommand({
+        TableName: SETTINGS_TABLE,
+        Key: { settingId: "SYSTEM_SETTINGS" }
+      }));
+      const slackWebhookUrl = settingsResult.Item?.slackWebhookUrl;
+      if (slackWebhookUrl) {
+        const signupDate = (/* @__PURE__ */ new Date()).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+        const lines = [
+          `\u{1F389} \uC2E0\uADDC\uD68C\uC6D0\uAC00\uC785!`,
+          ``,
+          `\uAC00\uC785\uC77C: ${signupDate}`,
+          `\uC774\uB984: ${name}`,
+          `\uC5F0\uB77D\uCC98: ${phone}`,
+          `\uC774\uBA54\uC77C: ${email}`,
+          `\uC0AC\uC5C5\uC790\uC0C1\uD638: ${businessInfo?.businessName || "-"}`,
+          `\uC0AC\uC5C5\uC790\uB4F1\uB85D\uBC88\uD638: ${businessInfo?.businessNumber || "-"}`,
+          `\uB300\uD45C\uC790\uBA85: ${businessInfo?.representativeName || "-"}`
+        ];
+        await fetch(slackWebhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: lines.join("\n") })
+        });
+        console.log("[Signup] Slack notification sent");
+      }
+    } catch (slackError) {
+      console.error("[Signup] Slack notification failed:", slackError);
+    }
     return response(200, {
       success: true,
       data: {
@@ -359,3 +389,4 @@ var handler = async (event) => {
 0 && (module.exports = {
   handler
 });
+//# sourceMappingURL=signup.js.map

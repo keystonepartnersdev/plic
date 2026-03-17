@@ -34,7 +34,7 @@ async function getSlackWebhookUrl(): Promise<string | null> {
   }
 }
 
-async function sendSlackMessage(text: string, blocks?: unknown[]): Promise<boolean> {
+async function sendSlackMessage(text: string): Promise<boolean> {
   const webhookUrl = await getSlackWebhookUrl();
   if (!webhookUrl) {
     console.log('[Slack] Webhook URL not configured, skipping notification');
@@ -42,13 +42,10 @@ async function sendSlackMessage(text: string, blocks?: unknown[]): Promise<boole
   }
 
   try {
-    const payload: Record<string, unknown> = { text };
-    if (blocks) payload.blocks = blocks;
-
     const res = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ text }),
     });
 
     if (!res.ok) {
@@ -64,38 +61,50 @@ async function sendSlackMessage(text: string, blocks?: unknown[]): Promise<boole
   }
 }
 
-// 신규 회원가입 알림
-export async function notifyNewSignup(params: {
-  name: string;
-  email: string;
-  phone: string;
-  userType: string;
-  authType: string;
-}): Promise<boolean> {
-  const { name, email, phone, userType, authType } = params;
-  const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-  const typeLabel = userType === 'business' ? '사업자' : '개인';
-  const authLabel = authType === 'kakao' ? '카카오' : '이메일';
-
-  return sendSlackMessage(
-    `🎉 신규 회원가입\n이름: ${name}\n이메일: ${email}\n연락처: ${phone}\n유형: ${typeLabel} | 가입방식: ${authLabel}\n시간: ${now}`
-  );
-}
-
 // 결제 완료 알림
 export async function notifyPaymentComplete(params: {
   dealId: string;
-  dealName: string;
+  dealType: string;
   amount: number;
+  feeRate: number;
+  feeAmount: number;
   finalAmount: number;
-  recipientName: string;
   recipientBank: string;
-  userName?: string;
+  recipientHolder: string;
+  recipientAccount: string;
+  senderName: string;
+  userName: string;
+  userPhone: string;
+  pgTransactionId: string;
+  pgAuthCd: string;
 }): Promise<boolean> {
-  const { dealId, dealName, amount, finalAmount, recipientName, recipientBank, userName } = params;
+  const {
+    dealId, dealType, amount, feeRate, feeAmount, finalAmount,
+    recipientBank, recipientHolder, recipientAccount,
+    senderName, userName, userPhone,
+    pgTransactionId, pgAuthCd,
+  } = params;
   const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 
-  return sendSlackMessage(
-    `💰 결제 완료\n거래: ${dealName} (${dealId})\n송금액: ${amount.toLocaleString()}원\n결제액: ${finalAmount.toLocaleString()}원\n수취인: ${recipientName} (${recipientBank})\n${userName ? `신청자: ${userName}\n` : ''}시간: ${now}`
-  );
+  const lines = [
+    `🔔 결제완료!!`,
+    ``,
+    `PLIC거래번호: ${dealId}`,
+    `소프트먼트거래번호: ${pgTransactionId || '-'}`,
+    `승인번호: ${pgAuthCd || '-'}`,
+    `거래유형: ${dealType}`,
+    ``,
+    `총 결제액: ${finalAmount.toLocaleString()}원`,
+    `송금액: ${amount.toLocaleString()}원`,
+    `수수료(${feeRate}%): ${feeAmount.toLocaleString()}원`,
+    ``,
+    `수취인: ${recipientHolder} | ${recipientBank} ${recipientAccount}`,
+    `발송인: ${senderName || '-'}`,
+    ``,
+    `회원이름: ${userName}`,
+    `연락처: ${userPhone}`,
+    `시간: ${now}`,
+  ];
+
+  return sendSlackMessage(lines.join('\n'));
 }

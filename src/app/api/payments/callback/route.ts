@@ -136,13 +136,23 @@ export async function POST(request: NextRequest) {
             console.log('[Payment Callback] User usedAmount updated:', dealData.uid);
 
             // Slack 알림 전송 (비동기, 실패해도 무시)
+            const userResult = await docClient.send(new GetCommand({ TableName: USERS_TABLE, Key: { uid: dealData.uid } }));
+            const userData = userResult.Item;
             notifyPaymentComplete({
               dealId,
-              dealName: dealData.dealName || '',
+              dealType: dealData.dealName || '',
               amount: dealData.amount || 0,
+              feeRate: dealData.feeRate || 0,
+              feeAmount: dealData.feeAmount || 0,
               finalAmount: dealData.finalAmount || dealData.amount || 0,
-              recipientName: dealData.recipient?.accountHolder || '',
               recipientBank: dealData.recipient?.bank || '',
+              recipientHolder: dealData.recipient?.accountHolder || '',
+              recipientAccount: dealData.recipient?.accountNumber || '',
+              senderName: dealData.senderName || '',
+              userName: userData?.name || '',
+              userPhone: userData?.phone || '',
+              pgTransactionId: approvedTrxId || '',
+              pgAuthCd: approveResponse.data?.payInfo?.authCd || '',
             }).catch(err => console.error('[Payment Callback] Slack notification failed:', err));
           }
         } catch (userError) {
