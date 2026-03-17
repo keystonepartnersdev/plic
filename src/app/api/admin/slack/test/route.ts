@@ -1,11 +1,35 @@
 // src/app/api/admin/slack/test/route.ts - 슬랙 알림 테스트
 import { NextRequest, NextResponse } from 'next/server';
-import { sendTestNotification, notifyNewUser, notifyNewDeal } from '@/lib/slack';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { notifyNewUser, notifyNewDeal, sendTestNotification } from '@/lib/slack';
+
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const CONTENTS_TABLE = process.env.CONTENTS_TABLE || 'plic-contents';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const type = body.type || 'test';
+
+    // 디버그: DB에서 직접 webhook URL 조회
+    let debugInfo: any = {};
+    try {
+      const result = await docClient.send(new GetCommand({
+        TableName: CONTENTS_TABLE,
+        Key: { pk: 'SETTINGS', sk: 'system' },
+      }));
+      debugInfo = {
+        hasItem: !!result.Item,
+        hasSettings: !!result.Item?.settings,
+        hasWebhookUrl: !!result.Item?.settings?.slackWebhookUrl,
+        webhookUrlPrefix: result.Item?.settings?.slackWebhookUrl?.substring(0, 30) + '...',
+        table: CONTENTS_TABLE,
+      };
+    } catch (dbErr: any) {
+      debugInfo = { dbError: dbErr.message };
+    }
 
     let result = false;
 
@@ -37,10 +61,10 @@ export async function POST(request: NextRequest) {
     if (result) {
       return NextResponse.json({ success: true, data: { message: '슬랙 알림이 전송되었습니다.' } });
     } else {
-      return NextResponse.json({ success: false, error: '슬랙 알림 전송에 실패했습니다. Webhook URL을 확인해주세요.' }, { status: 500 });
+      return NextResponse.json({ success: false, error: '슬랙 알림 전송에 실패했습니다.', debug: debugInfo }, { status: 500 });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Slack Test] Error:', error);
-    return NextResponse.json({ success: false, error: '슬랙 테스트 중 오류가 발생했습니다.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
