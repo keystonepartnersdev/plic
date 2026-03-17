@@ -82,7 +82,7 @@ function v4(options, buf, offset) {
 var v4_default = v4;
 
 // functions/auth/signup.ts
-var SETTINGS_TABLE = process.env.SETTINGS_TABLE || "plic-settings";
+var CONTENTS_TABLE = process.env.CONTENTS_TABLE || "plic-contents";
 var cognitoClient = new import_client_cognito_identity_provider.CognitoIdentityProviderClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var dynamoClient = new import_client_dynamodb.DynamoDBClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(dynamoClient);
@@ -342,10 +342,10 @@ var handler = async (event) => {
     const successMessage = kakaoVerified ? "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uBC14\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4." : "\uD68C\uC6D0\uAC00\uC785\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uBA54\uC77C\uB85C \uC804\uC1A1\uB41C \uC778\uC99D\uCF54\uB4DC\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.";
     try {
       const settingsResult = await docClient.send(new import_lib_dynamodb.GetCommand({
-        TableName: SETTINGS_TABLE,
-        Key: { settingId: "SYSTEM_SETTINGS" }
+        TableName: CONTENTS_TABLE,
+        Key: { pk: "SETTINGS", sk: "system" }
       }));
-      const slackWebhookUrl = settingsResult.Item?.slackWebhookUrl;
+      const slackWebhookUrl = settingsResult.Item?.settings?.slackWebhookUrl;
       if (slackWebhookUrl) {
         const signupDate = (/* @__PURE__ */ new Date()).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
         const lines = [

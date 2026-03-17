@@ -197,6 +197,7 @@ Resources:
             Ref: CognitoUserPoolClient
           USER_POOL_CLIENT_ID:
             Ref: CognitoUserPoolClient
+          CONTENTS_TABLE: plic-contents
           NODE_OPTIONS: ' --enable-source-maps'
       Policies:
       - DynamoDBCrudPolicy:
@@ -204,6 +205,9 @@ Resources:
             Ref: UsersTable
       - DynamoDBCrudPolicy:
           TableName: plic-kakao-verifications
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: ContentsTable
       - Version: '2012-10-17'
         Statement:
         - Effect: Allow
