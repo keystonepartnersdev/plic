@@ -373,7 +373,8 @@ function GradeSettings({
 
   return (
     <div className="space-y-8">
-      {/* 등급별 수수료/한도 */}
+      {/* 등급별 수수료/한도 - 미구현 */}
+      <LockedSection>
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">등급별 수수료 및 한도</h3>
         <div className="overflow-x-auto">
@@ -465,8 +466,10 @@ function GradeSettings({
           </div>
         </div>
       </div>
+      </LockedSection>
 
-      {/* 자동 등급 기준 */}
+      {/* 자동 등급 기준 - 미구현 */}
+      <LockedSection>
       <div className="border-t border-gray-100 pt-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">자동 등급 기준 (베이직 ↔ 플래티넘)</h3>
         <p className="text-sm text-gray-500 mb-4">
@@ -532,6 +535,7 @@ function GradeSettings({
           </div>
         </div>
       </div>
+      </LockedSection>
 
       {/* 수동 실행 - 미구현 */}
       <div className="border-t border-gray-100 pt-8">
