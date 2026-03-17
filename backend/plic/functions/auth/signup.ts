@@ -9,6 +9,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, DeleteCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+
+const SETTINGS_TABLE = process.env.SETTINGS_TABLE || 'plic-settings';
 import { v4 as uuidv4 } from 'uuid';
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
@@ -353,6 +355,30 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const successMessage = kakaoVerified
       ? '회원가입이 완료되었습니다. 바로 로그인할 수 있습니다.'
       : '회원가입이 완료되었습니다. 이메일로 전송된 인증코드를 확인해주세요.';
+
+    // Slack 알림 전송 (비동기, 실패해도 무시)
+    try {
+      const settingsResult = await docClient.send(new GetCommand({
+        TableName: SETTINGS_TABLE,
+        Key: { settingId: 'SYSTEM_SETTINGS' },
+      }));
+      const slackWebhookUrl = settingsResult.Item?.slackWebhookUrl;
+      if (slackWebhookUrl) {
+        const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+        const typeLabel = userType === 'business' ? '사업자' : '개인';
+        const authLabel = kakaoVerified ? '카카오' : '이메일';
+        await fetch(slackWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: `🎉 신규 회원가입\n이름: ${name}\n이메일: ${email}\n연락처: ${phone}\n유형: ${typeLabel} | 가입방식: ${authLabel}\n시간: ${now}`,
+          }),
+        });
+        console.log('[Signup] Slack notification sent');
+      }
+    } catch (slackError) {
+      console.error('[Signup] Slack notification failed:', slackError);
+    }
 
     return response(200, {
       success: true,

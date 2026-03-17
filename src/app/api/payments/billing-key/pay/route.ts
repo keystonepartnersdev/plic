@@ -10,6 +10,7 @@ import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { handleApiError, successResponse, Errors } from '@/lib/api-error';
+import { notifyPaymentComplete } from '@/lib/slack';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -128,6 +129,16 @@ export async function POST(request: NextRequest) {
               },
             }));
             console.log('[BillingKey Pay] User usedAmount updated:', dealData.uid);
+
+            // Slack 알림 전송 (비동기, 실패해도 무시)
+            notifyPaymentComplete({
+              dealId,
+              dealName: dealData.dealName || '',
+              amount: dealData.amount || 0,
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              recipientName: dealData.recipient?.accountHolder || '',
+              recipientBank: dealData.recipient?.bank || '',
+            }).catch(err => console.error('[BillingKey Pay] Slack notification failed:', err));
           }
         } catch (userError) {
           console.error('[BillingKey Pay] Failed to update user usedAmount:', userError);

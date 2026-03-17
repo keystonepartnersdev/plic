@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { notifyPaymentComplete } from '@/lib/slack';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -133,6 +134,16 @@ export async function POST(request: NextRequest) {
               },
             }));
             console.log('[Payment Callback] User usedAmount updated:', dealData.uid);
+
+            // Slack 알림 전송 (비동기, 실패해도 무시)
+            notifyPaymentComplete({
+              dealId,
+              dealName: dealData.dealName || '',
+              amount: dealData.amount || 0,
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              recipientName: dealData.recipient?.accountHolder || '',
+              recipientBank: dealData.recipient?.bank || '',
+            }).catch(err => console.error('[Payment Callback] Slack notification failed:', err));
           }
         } catch (userError) {
           console.error('[Payment Callback] Failed to update user usedAmount:', userError);
