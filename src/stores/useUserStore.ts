@@ -176,6 +176,13 @@ export const useUserStore = create(
             updatedAt: userData.updatedAt || new Date().toISOString(),
           };
 
+          // 탈퇴 회원이면 강제 로그아웃
+          if (user.status === 'withdrawn') {
+            set({ currentUser: null, isLoggedIn: false, isLoading: false });
+            try { await secureAuth.logout(); } catch {}
+            return;
+          }
+
           // users 배열에도 추가/업데이트
           const existingIndex = get().users.findIndex(u => u.uid === user.uid);
           let updatedUsers = get().users;

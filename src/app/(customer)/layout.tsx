@@ -1,13 +1,23 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { MobileLayout, BottomNav, ErrorBoundary, RevisionBanner } from '@/components/common';
+import { useUserStore } from '@/stores';
 
 interface CustomerLayoutProps {
   children: ReactNode;
 }
 
 export default function CustomerLayout({ children }: CustomerLayoutProps) {
+  const { isLoggedIn, fetchCurrentUser } = useUserStore();
+
+  // 로그인 상태면 서버에서 최신 사용자 정보 동기화 (탈퇴/정지 감지)
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchCurrentUser();
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <MobileLayout>
       {/* 스크롤 가능한 메인 콘텐츠 영역 */}
