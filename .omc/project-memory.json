@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1772684856718,
-  "projectRoot": "/Users/taegyulee/Desktop/PLIC",
+  "lastScanned": 1773755130607,
+  "projectRoot": "/Users/jh.cho/Documents/PLIC/.claude/worktrees/beautiful-blackburn",
   "techStack": {
     "languages": [
       {
@@ -93,8 +93,8 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 3,
-      "lastAccessed": 1772684856686,
+      "fileCount": 2,
+      "lastAccessed": 1773755130590,
       "keyFiles": [
         "samconfig.toml",
         "template.yaml"
@@ -103,21 +103,21 @@
     "docs": {
       "path": "docs",
       "purpose": "Documentation",
-      "fileCount": 31,
-      "lastAccessed": 1772684856686,
+      "fileCount": 18,
+      "lastAccessed": 1773755130594,
       "keyFiles": [
-        "0. Overview_PLIC_DB_SCHEMA_v2.2.md",
-        "0. Overview_PLIC_INFRA_ROADMAP_v1.2.md",
-        "0. Overview_PLIC_STRUCTURE_v1.md",
         "1.Design&Policy_PLIC_API_SPEC_v1.2.md",
-        "1.Design&Policy_PLIC_EXTERNAL_INTERFACE_v1.3.md"
+        "1.Design&Policy_PLIC_EXTERNAL_INTERFACE_v1.3.md",
+        "1.Design&Policy_PLIC_FUNDS_FLOW_v1.2.md",
+        "1.Design&Policy_PLIC_GLOSSARY_v1.1.md",
+        "1.Design&Policy_PLIC_PRD_v1.4.md"
       ]
     },
     "plic_design": {
       "path": "plic_design",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1772684856697,
+      "lastAccessed": 1773755130594,
       "keyFiles": [
         "README.md",
         "index.html",
@@ -125,24 +125,11 @@
         "vite.config.ts"
       ]
     },
-    "plic_landing": {
-      "path": "plic_landing",
-      "purpose": null,
-      "fileCount": 9,
-      "lastAccessed": 1772684856698,
-      "keyFiles": [
-        "README.md",
-        "index.html",
-        "package-lock.json",
-        "package.json",
-        "plic_fullpage.pdf"
-      ]
-    },
     "public": {
       "path": "public",
       "purpose": "Public files",
       "fileCount": 6,
-      "lastAccessed": 1772684856698,
+      "lastAccessed": 1773755130594,
       "keyFiles": [
         "favicon.svg",
         "file.svg",
@@ -154,9 +141,11 @@
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
-      "fileCount": 1,
-      "lastAccessed": 1772684856698,
+      "fileCount": 3,
+      "lastAccessed": 1773755130595,
       "keyFiles": [
+        "check-deals.js",
+        "fix-user-stats.js",
         "update_qa_doc.py"
       ]
     },
@@ -164,14 +153,14 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 0,
-      "lastAccessed": 1772684856698,
+      "lastAccessed": 1773755130596,
       "keyFiles": []
     },
     "tests": {
       "path": "tests",
       "purpose": "Test files",
       "fileCount": 2,
-      "lastAccessed": 1772684856699,
+      "lastAccessed": 1773755130596,
       "keyFiles": [
         "admin.setup.ts",
         "auth.setup.ts"
@@ -181,36 +170,18 @@
       "path": "plic_design/src",
       "purpose": "Source code",
       "fileCount": 4,
-      "lastAccessed": 1772684856700,
+      "lastAccessed": 1773755130597,
       "keyFiles": [
         "App.tsx",
         "Attributions.md",
         "index.css"
       ]
     },
-    "plic_landing/build": {
-      "path": "plic_landing/build",
-      "purpose": "Build output",
-      "fileCount": 3,
-      "lastAccessed": 1772684856702,
-      "keyFiles": [
-        "index.html",
-        "test.png",
-        "test2.png"
-      ]
-    },
-    "plic_landing/node_modules": {
-      "path": "plic_landing/node_modules",
-      "purpose": "Dependencies",
-      "fileCount": 1,
-      "lastAccessed": 1772684856703,
-      "keyFiles": []
-    },
     "src/app": {
       "path": "src/app",
       "purpose": "Application code",
       "fileCount": 3,
-      "lastAccessed": 1772684856703,
+      "lastAccessed": 1773755130598,
       "keyFiles": [
         "favicon.ico",
         "globals.css",
@@ -221,14 +192,14 @@
       "path": "src/components",
       "purpose": "UI components",
       "fileCount": 0,
-      "lastAccessed": 1772684856704,
+      "lastAccessed": 1773755130598,
       "keyFiles": []
     },
     "src/lib": {
       "path": "src/lib",
       "purpose": "Library code",
-      "fileCount": 13,
-      "lastAccessed": 1772684856705,
+      "fileCount": 14,
+      "lastAccessed": 1773755130598,
       "keyFiles": [
         "admin-proxy.ts",
         "api-error.ts",
@@ -239,7 +210,7 @@
       "path": "src/types",
       "purpose": "Type definitions",
       "fileCount": 7,
-      "lastAccessed": 1772684856706,
+      "lastAccessed": 1773755130599,
       "keyFiles": [
         "admin.ts",
         "content.ts",
@@ -250,7 +221,7 @@
       "path": "tests/fixtures",
       "purpose": "Test fixtures",
       "fileCount": 2,
-      "lastAccessed": 1772684856708,
+      "lastAccessed": 1773755130599,
       "keyFiles": [
         "auth.fixture.ts",
         "test-data.ts"
@@ -260,223 +231,12 @@
       "path": "tests/pages",
       "purpose": "Page components",
       "fileCount": 1,
-      "lastAccessed": 1772684856708,
+      "lastAccessed": 1773755130599,
       "keyFiles": [
         "BasePage.ts"
       ]
     }
   },
-  "hotPaths": [
-    {
-      "path": "",
-      "accessCount": 16,
-      "lastAccessed": 1772689327604,
-      "type": "directory"
-    },
-    {
-      "path": "src",
-      "accessCount": 14,
-      "lastAccessed": 1772689334238,
-      "type": "directory"
-    },
-    {
-      "path": "src/app/api/kakao/result/route.ts",
-      "accessCount": 7,
-      "lastAccessed": 1772696265715,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/softpayment/client.ts",
-      "accessCount": 6,
-      "lastAccessed": 1772686017196,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/config.ts",
-      "accessCount": 6,
-      "lastAccessed": 1772688513987,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/kakao.ts",
-      "accessCount": 6,
-      "lastAccessed": 1772695869905,
-      "type": "file"
-    },
-    {
-      "path": ".env.local",
-      "accessCount": 5,
-      "lastAccessed": 1772689302349,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/payments/billing-key/create/route.ts",
-      "accessCount": 3,
-      "lastAccessed": 1772686012569,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/auth/login/route.ts",
-      "accessCount": 3,
-      "lastAccessed": 1772688550185,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/payments/callback/route.ts",
-      "accessCount": 3,
-      "lastAccessed": 1772695835466,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/softpayment/constants.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772685893730,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/softpayment/types.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772685894167,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/softpayment/index.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772685894614,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/auth/me/route.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772688202552,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/auth/refresh/route.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772688204243,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/admin/auth/login/route.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772688205504,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/health/route.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772688206550,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/kakao/callback/route.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772689280962,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/deals/[did]/route.ts",
-      "accessCount": 2,
-      "lastAccessed": 1772689323841,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api",
-      "accessCount": 2,
-      "lastAccessed": 1772695831719,
-      "type": "directory"
-    },
-    {
-      "path": "src/app/api/payments/billing/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772685895517,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/payments/billing-key/pay/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772685896455,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/payments/billing-key/callback/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772685896900,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/payments/[trxId]/cancel/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772685897723,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/payments/[trxId]/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772685898201,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/webhooks/softpayment/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772685898610,
-      "type": "file"
-    },
-    {
-      "path": "src/lib/softpayment",
-      "accessCount": 1,
-      "lastAccessed": 1772685910152,
-      "type": "directory"
-    },
-    {
-      "path": "src/app/api/auth",
-      "accessCount": 1,
-      "lastAccessed": 1772688129761,
-      "type": "directory"
-    },
-    {
-      "path": "src/lib/api-error.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772688550320,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/uploads/presigned-url/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772688563708,
-      "type": "file"
-    },
-    {
-      "path": "src/app/(customer)/auth/login/page.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1772688578719,
-      "type": "file"
-    },
-    {
-      "path": "backend/plic/functions/auth/confirm.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772688652303,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/auth/kakao-login/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772688710130,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/kakao/auth/route.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772689281457,
-      "type": "file"
-    },
-    {
-      "path": "next.config.ts",
-      "accessCount": 1,
-      "lastAccessed": 1772689331929,
-      "type": "file"
-    }
-  ],
+  "hotPaths": [],
   "userDirectives": []
 }
