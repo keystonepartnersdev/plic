@@ -212,10 +212,16 @@ export const useUserStore = create(
             users: updatedUsers,
           });
         } catch (error: unknown) {
-          set({
-            isLoading: false,
-            apiError: getErrorMessage(error) || '사용자 정보를 불러오는데 실패했습니다.',
-          });
+          // API 에러 (401 등) → 로그인 상태였으면 강제 로그아웃
+          if (get().isLoggedIn) {
+            set({ currentUser: null, isLoggedIn: false, isLoading: false });
+            try { await secureAuth.logout(); } catch {}
+          } else {
+            set({
+              isLoading: false,
+              apiError: getErrorMessage(error) || '사용자 정보를 불러오는데 실패했습니다.',
+            });
+          }
         }
       },
 
