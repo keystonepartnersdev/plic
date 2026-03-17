@@ -12,12 +12,30 @@ import {
   AlertCircle,
   Check,
   TrendingUp,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, useAdminUserStore, defaultSettings } from '@/stores';
 import { TUserGrade, IUserHistory } from '@/types';
 
 const API_BASE_URL = '';
+
+// 미구현 기능 잠금 오버레이
+function LockedSection({ children, label = '준비 중' }: { children: React.ReactNode; label?: string }) {
+  return (
+    <div className="relative">
+      <div className="pointer-events-none select-none opacity-40 filter grayscale">
+        {children}
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center bg-gray-50/60 rounded-lg">
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+          <Lock className="w-4 h-4" />
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const GRADE_LABELS: Record<TUserGrade, string> = {
   basic: '베이직',
@@ -515,82 +533,45 @@ function GradeSettings({
         </div>
       </div>
 
-      {/* 수동 실행 */}
+      {/* 수동 실행 - 미구현 */}
       <div className="border-t border-gray-100 pt-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">수동 실행</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          일반적으로 매월 1일 자동 실행되는 작업을 수동으로 실행할 수 있습니다.
-          테스트 또는 긴급 상황에서만 사용하세요.
-        </p>
+        <LockedSection>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">수동 실행</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            일반적으로 매월 1일 자동 실행되는 작업을 수동으로 실행할 수 있습니다.
+            테스트 또는 긴급 상황에서만 사용하세요.
+          </p>
 
-        {/* 결과 메시지 */}
-        {processResult && (
-          <div className={cn(
-            'mb-4 p-4 rounded-lg flex items-center gap-3',
-            processResult.count > 0 ? 'bg-green-50' : 'bg-gray-50'
-          )}>
-            <Check className={cn(
-              'w-5 h-5',
-              processResult.count > 0 ? 'text-green-600' : 'text-gray-600'
-            )} />
-            <p className={cn(
-              'text-sm font-medium',
-              processResult.count > 0 ? 'text-green-700' : 'text-gray-700'
-            )}>
-              {processResult.message}
-            </p>
-          </div>
-        )}
-
-        <div className="flex gap-4">
-          <button
-            onClick={handleMonthlyReset}
-            disabled={isProcessing}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 border rounded-lg font-medium transition-colors',
-              isProcessing
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-            )}
-          >
-            {isProcessing ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
+          <div className="flex gap-4">
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 border rounded-lg font-medium border-gray-200 text-gray-700 bg-white"
+            >
               <RefreshCw className="w-4 h-4" />
-            )}
-            월간 사용량 리셋
-          </button>
-          <button
-            onClick={handleAutoGradeChange}
-            disabled={isProcessing}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors',
-              isProcessing
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-purple-500 text-white hover:bg-purple-600'
-            )}
-          >
-            {isProcessing ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
+              월간 사용량 리셋
+            </button>
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-purple-500 text-white"
+            >
               <TrendingUp className="w-4 h-4" />
-            )}
-            자동 등급 변경 실행
-          </button>
-        </div>
+              자동 등급 변경 실행
+            </button>
+          </div>
 
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-800">실행 순서 안내</p>
-              <p className="text-sm text-blue-700 mt-1">
-                1. <strong>월간 사용량 리셋</strong>: 현재 월 사용량 → 전월 결제금액으로 이동, 월 사용량 0으로 초기화<br />
-                2. <strong>자동 등급 변경</strong>: 전월 결제금액 기준으로 베이직 ↔ 플래티넘 등급 자동 조정
-              </p>
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-blue-800">실행 순서 안내</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  1. <strong>월간 사용량 리셋</strong>: 현재 월 사용량 → 전월 결제금액으로 이동, 월 사용량 0으로 초기화<br />
+                  2. <strong>자동 등급 변경</strong>: 전월 결제금액 기준으로 베이직 ↔ 플래티넘 등급 자동 조정
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        </LockedSection>
       </div>
     </div>
   );
@@ -605,6 +586,7 @@ function OperationSettings({
   setLocalSettings: (s: typeof defaultSettings) => void;
 }) {
   return (
+    <LockedSection>
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">점검 모드</h3>
@@ -680,6 +662,7 @@ function OperationSettings({
         </div>
       </div>
     </div>
+    </LockedSection>
   );
 }
 
@@ -693,38 +676,38 @@ function NotificationSettings({
 }) {
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 채널</h3>
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={localSettings.emailNotificationEnabled}
-              onChange={(e) =>
-                setLocalSettings({ ...localSettings, emailNotificationEnabled: e.target.checked })
-              }
-              className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
-            />
-            <div>
-              <p className="font-medium text-gray-900">이메일 알림</p>
-              <p className="text-sm text-gray-500">중요 이벤트 발생 시 이메일로 알림을 받습니다.</p>
-            </div>
-          </label>
+      <LockedSection>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 채널</h3>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={false}
+                disabled
+                className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
+              />
+              <div>
+                <p className="font-medium text-gray-900">이메일 알림</p>
+                <p className="text-sm text-gray-500">중요 이벤트 발생 시 이메일로 알림을 받습니다.</p>
+              </div>
+            </label>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={localSettings.smsNotificationEnabled}
-              onChange={(e) => setLocalSettings({ ...localSettings, smsNotificationEnabled: e.target.checked })}
-              className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
-            />
-            <div>
-              <p className="font-medium text-gray-900">SMS 알림</p>
-              <p className="text-sm text-gray-500">긴급 알림 시 SMS로 알림을 받습니다.</p>
-            </div>
-          </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={false}
+                disabled
+                className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
+              />
+              <div>
+                <p className="font-medium text-gray-900">SMS 알림</p>
+                <p className="text-sm text-gray-500">긴급 알림 시 SMS로 알림을 받습니다.</p>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
+      </LockedSection>
 
       <div className="border-t border-gray-100 pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Slack 연동</h3>
@@ -755,6 +738,7 @@ function SecuritySettings({
   setLocalSettings: (s: typeof defaultSettings) => void;
 }) {
   return (
+    <LockedSection>
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">세션 설정</h3>
@@ -845,5 +829,6 @@ function SecuritySettings({
         </div>
       </div>
     </div>
+    </LockedSection>
   );
 }
