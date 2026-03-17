@@ -6,7 +6,7 @@ import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
-const SETTINGS_TABLE = process.env.SETTINGS_TABLE || 'plic-settings';
+const CONTENTS_TABLE = process.env.CONTENTS_TABLE || 'plic-contents';
 
 // 캐시: 웹훅 URL을 매번 DB에서 읽지 않도록 (5분 캐시)
 let cachedWebhookUrl: string | null = null;
@@ -21,11 +21,11 @@ async function getSlackWebhookUrl(): Promise<string | null> {
 
   try {
     const result = await docClient.send(new GetCommand({
-      TableName: SETTINGS_TABLE,
-      Key: { settingId: 'SYSTEM_SETTINGS' },
+      TableName: CONTENTS_TABLE,
+      Key: { pk: 'SETTINGS', sk: 'system' },
     }));
 
-    cachedWebhookUrl = result.Item?.slackWebhookUrl || '';
+    cachedWebhookUrl = result.Item?.settings?.slackWebhookUrl || '';
     cacheExpiry = now + CACHE_TTL;
     return cachedWebhookUrl || null;
   } catch (error) {
@@ -59,6 +59,58 @@ async function sendSlackMessage(text: string): Promise<boolean> {
     console.error('[Slack] Error sending message:', error);
     return false;
   }
+}
+
+// 회원가입 알림
+export async function notifyNewUser(params: {
+  name: string;
+  email: string;
+  phone?: string;
+  grade?: string;
+}): Promise<boolean> {
+  const { name, email, phone, grade } = params;
+  const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+  const lines = [
+    `👤 신규 회원가입`,
+    ``,
+    `이름: ${name}`,
+    `이메일: ${email}`,
+    `연락처: ${phone || '-'}`,
+    `등급: ${grade || 'basic'}`,
+    `가입일시: ${now}`,
+  ];
+
+  return sendSlackMessage(lines.join('\n'));
+}
+
+// 신규 거래 생성 알림
+export async function notifyNewDeal(params: {
+  dealId: string;
+  dealType: string;
+  amount: number;
+  recipientBank?: string;
+  recipientHolder?: string;
+  userName: string;
+  userPhone?: string;
+}): Promise<boolean> {
+  const { dealId, dealType, amount, recipientBank, recipientHolder, userName, userPhone } = params;
+  const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+  const lines = [
+    `📋 신규 거래 생성`,
+    ``,
+    `거래번호: ${dealId}`,
+    `거래유형: ${dealType}`,
+    `송금액: ${amount.toLocaleString()}원`,
+    ``,
+    `수취인: ${recipientHolder || '-'} | ${recipientBank || '-'}`,
+    `신청자: ${userName}`,
+    `연락처: ${userPhone || '-'}`,
+    `신청일시: ${now}`,
+  ];
+
+  return sendSlackMessage(lines.join('\n'));
 }
 
 // 결제 완료 알림
@@ -107,4 +159,9 @@ export async function notifyPaymentComplete(params: {
   ];
 
   return sendSlackMessage(lines.join('\n'));
+}
+
+// 테스트 알림 발송
+export async function sendTestNotification(): Promise<boolean> {
+  return sendSlackMessage('✅ PLIC 슬랙 알림 연동 테스트 성공!');
 }
