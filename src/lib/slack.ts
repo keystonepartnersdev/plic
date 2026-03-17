@@ -67,18 +67,32 @@ export async function notifyNewUser(params: {
   email: string;
   phone?: string;
   grade?: string;
+  feeRate?: number;
+  perTransactionLimit?: number;
+  monthlyLimit?: number;
+  businessName?: string;
+  businessNumber?: string;
+  ceoName?: string;
 }): Promise<boolean> {
-  const { name, email, phone, grade } = params;
+  const { name, email, phone, grade, feeRate, perTransactionLimit, monthlyLimit, businessName, businessNumber, ceoName } = params;
   const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 
   const lines = [
     `👤 신규 회원가입`,
     ``,
-    `이름: ${name}`,
-    `이메일: ${email}`,
-    `연락처: ${phone || '-'}`,
-    `등급: ${grade || 'basic'}`,
     `가입일시: ${now}`,
+    `이름: ${name}`,
+    `연락처: ${phone || '-'}`,
+    `이메일: ${email}`,
+    `등급: ${grade || 'basic'}`,
+    `수수료율: ${feeRate ?? '-'}%`,
+    `1회 결제 한도: ${perTransactionLimit ? perTransactionLimit.toLocaleString() + '원' : '-'}`,
+    `월 한도: ${monthlyLimit ? monthlyLimit.toLocaleString() + '원' : '-'}`,
+    ``,
+    `[사업자정보]`,
+    `상호: ${businessName || '-'}`,
+    `사업자등록번호: ${businessNumber || '-'}`,
+    `대표자명: ${ceoName || '-'}`,
   ];
 
   return sendSlackMessage(lines.join('\n'));
@@ -89,25 +103,41 @@ export async function notifyNewDeal(params: {
   dealId: string;
   dealType: string;
   amount: number;
+  feeRate?: number;
+  feeAmount?: number;
+  finalAmount?: number;
   recipientBank?: string;
   recipientHolder?: string;
+  recipientAccount?: string;
   userName: string;
   userPhone?: string;
+  pgTransactionId?: string;
+  pgAuthCd?: string;
 }): Promise<boolean> {
-  const { dealId, dealType, amount, recipientBank, recipientHolder, userName, userPhone } = params;
+  const { dealId, dealType, amount, feeRate, feeAmount, finalAmount, recipientBank, recipientHolder, recipientAccount, userName, userPhone, pgTransactionId, pgAuthCd } = params;
   const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 
+  const totalAmount = finalAmount ?? amount;
+  const fee = feeAmount ?? 0;
+
   const lines = [
-    `📋 신규 거래 생성`,
+    `🔔 신규 거래 생성`,
     ``,
-    `거래번호: ${dealId}`,
-    `거래유형: ${dealType}`,
-    `송금액: ${amount.toLocaleString()}원`,
-    ``,
-    `수취인: ${recipientHolder || '-'} | ${recipientBank || '-'}`,
-    `신청자: ${userName}`,
-    `연락처: ${userPhone || '-'}`,
     `신청일시: ${now}`,
+    `PLIC거래번호: ${dealId}`,
+    `소프트먼트거래번호: ${pgTransactionId || '-'}`,
+    `승인번호: ${pgAuthCd || '-'}`,
+    `거래명: ${dealType}`,
+    ``,
+    `총금액: ${totalAmount.toLocaleString()}원 (송금액: ${amount.toLocaleString()}원, 수수료(${feeRate ?? '-'}%): ${fee.toLocaleString()}원)`,
+    ``,
+    `사용자이름: ${userName}`,
+    `연락처: ${userPhone || '-'}`,
+    ``,
+    `[수취인정보]`,
+    `수취인명: ${recipientHolder || '-'}`,
+    `은행: ${recipientBank || '-'}`,
+    `계좌번호: ${recipientAccount || '-'}`,
   ];
 
   return sendSlackMessage(lines.join('\n'));

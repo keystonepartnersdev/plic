@@ -40,6 +40,12 @@ export async function POST(request: NextRequest) {
           email: 'test@example.com',
           phone: '010-1234-5678',
           grade: 'basic',
+          feeRate: 4.5,
+          perTransactionLimit: 1000000,
+          monthlyLimit: 20000000,
+          businessName: '테스트상사',
+          businessNumber: '123-45-67890',
+          ceoName: '홍길동',
         });
         break;
       case 'deal':
@@ -47,10 +53,16 @@ export async function POST(request: NextRequest) {
           dealId: 'TEST-' + Date.now(),
           dealType: '카드→계좌',
           amount: 500000,
+          feeRate: 4.5,
+          feeAmount: 22500,
+          finalAmount: 522500,
           recipientBank: '국민은행',
           recipientHolder: '김수신 (테스트)',
+          recipientAccount: '123-456-789012',
           userName: '홍길동 (테스트)',
           userPhone: '010-1234-5678',
+          pgTransactionId: 'SM-TEST-001',
+          pgAuthCd: 'AUTH-TEST-001',
         });
         break;
       default:
