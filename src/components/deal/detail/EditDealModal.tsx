@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Loader2, Upload, Trash2, AlertCircle, Check } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 import { IDeal } from '@/types';
 import { dealsAPI } from '@/lib/api';
 import { uploadFile } from '@/lib/upload';
@@ -198,7 +199,8 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <ModalPortal>
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-2xl w-full max-w-md mx-4 max-h-[80vh] overflow-hidden flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -502,5 +504,6 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

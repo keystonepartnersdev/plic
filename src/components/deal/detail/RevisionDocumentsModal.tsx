@@ -4,6 +4,7 @@
 // 서류 보완 모달
 
 import { X, FileText, Plus, Eye, Trash2 } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 import { IDeal } from '@/types';
 import { AttachmentPreview } from './types';
 
@@ -73,6 +74,7 @@ export function RevisionDocumentsModal({
   };
 
   return (
+    <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl p-6 mx-4 max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
@@ -168,5 +170,6 @@ export function RevisionDocumentsModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

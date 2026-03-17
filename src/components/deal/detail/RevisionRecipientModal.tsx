@@ -4,6 +4,7 @@
 // 수취인 정보 보완 모달
 
 import { X, Check } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 import { BANKS } from './constants';
 import { RevisionRecipient } from './types';
 
@@ -40,6 +41,7 @@ export function RevisionRecipientModal({
     !isVerifying;
 
   return (
+    <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl p-6 mx-4 max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
@@ -149,5 +151,6 @@ export function RevisionRecipientModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import { CreditCard, AlertCircle, Clock, Shield, CheckCircle, ChevronRight, Check, XCircle } from 'lucide-react';
-import { Header } from '@/components/common';
+import { Header, ModalPortal } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { dealsAPI } from '@/lib/api';
 import { IDeal, IRegisteredCard } from '@/types';
@@ -387,7 +387,8 @@ export default function PaymentPage() {
       )}
       {/* 결제 한도 초과 모달 */}
       {showLimitError && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <ModalPortal>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl w-full max-w-sm mx-4 p-6 text-center">
             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-7 h-7 text-red-600" />
@@ -413,6 +414,7 @@ export default function PaymentPage() {
             </button>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

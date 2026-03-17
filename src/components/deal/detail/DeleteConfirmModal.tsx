@@ -4,6 +4,7 @@
 // 삭제 확인 모달 (범용)
 
 import { Trash2 } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export function DeleteConfirmModal({
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
         {showIcon && (
@@ -68,5 +70,6 @@ export function DeleteConfirmModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

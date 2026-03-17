@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, Plus, Trash2, Star, AlertCircle, Loader2 } from 'lucide-react';
-import { Header } from '@/components/common';
+import { Header, ModalPortal } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { IRegisteredCard } from '@/types/payment';
 import { cn } from '@/lib/utils';
@@ -355,6 +355,7 @@ function CardsPageContent() {
 
       {/* 카드 추가 모달 */}
       {showAddModal && (
+        <ModalPortal>
         <div className="absolute inset-0 bg-black/50 flex items-end justify-center z-50">
           <div className="bg-white w-full rounded-t-2xl p-6 animate-slide-up max-h-[90%] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
@@ -461,6 +462,7 @@ function CardsPageContent() {
             </p>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

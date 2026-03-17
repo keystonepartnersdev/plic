@@ -1,6 +1,7 @@
 // src/components/common/Modal.tsx
 'use client';
 
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -46,7 +47,7 @@ export function Modal({
     }
   };
 
-  return (
+  const modalContent = (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
       {/* 배경 오버레이 */}
       <div
@@ -94,4 +95,8 @@ export function Modal({
       </div>
     </div>
   );
+
+  // 모바일 프레임에 포탈하여 스크롤 위치와 무관하게 뷰포트 중앙에 배치
+  const portalTarget = typeof document !== 'undefined' ? document.getElementById('mobile-frame') : null;
+  return portalTarget ? createPortal(modalContent, portalTarget) : modalContent;
 }

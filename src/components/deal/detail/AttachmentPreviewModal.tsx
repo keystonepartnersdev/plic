@@ -4,6 +4,7 @@
 // 첨부파일 미리보기 모달
 
 import { X, Download, ChevronRight, FileText } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 import { AttachmentPreview } from './types';
 
 interface AttachmentPreviewModalProps {
@@ -30,8 +31,9 @@ export function AttachmentPreviewModal({
   const canNavigateNext = preview.index < totalCount - 1;
 
   return (
+    <ModalPortal>
     <div
-      className="fixed inset-0 bg-black/80 z-50 flex flex-col"
+      className="absolute inset-0 bg-black/80 z-50 flex flex-col"
       onClick={onClose}
     >
       {/* 헤더 */}
@@ -100,5 +102,6 @@ export function AttachmentPreviewModal({
         </button>
       </div>
     </div>
+    </ModalPortal>
   );
 }

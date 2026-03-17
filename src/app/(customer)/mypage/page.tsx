@@ -16,7 +16,7 @@ import {
   AlertCircle,
   UserX,
 } from 'lucide-react';
-import { Header } from '@/components/common';
+import { Header, ModalPortal } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
 import { usersAPI } from '@/lib/api';
 import { secureAuth } from '@/lib/auth';
@@ -290,8 +290,9 @@ export default function MyPage() {
 
       {/* 회원 탈퇴 확인 모달 */}
       {showWithdrawModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-          <div className="fixed inset-0" onClick={() => !isWithdrawing && setShowWithdrawModal(false)} />
+        <ModalPortal>
+        <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="absolute inset-0" onClick={() => !isWithdrawing && setShowWithdrawModal(false)} />
           <div className="relative bg-white rounded-3xl w-[calc(100%-2rem)] max-w-sm p-6 shadow-2xl border border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-3">회원 탈퇴</h2>
 
@@ -347,6 +348,7 @@ export default function MyPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
     </div>

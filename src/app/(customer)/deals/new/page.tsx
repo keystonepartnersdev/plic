@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Download, Eye, History } from 'lucide-react';
-import { Header, Modal } from '@/components/common';
+import { Header, Modal, ModalPortal } from '@/components/common';
 import { dealsAPI } from '@/lib/api';
 import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
 import { useUserStore, useDealStore, useDealDraftStore } from '@/stores';
@@ -1243,8 +1243,9 @@ function NewDealContent() {
 
             {/* 미리보기 팝업 */}
             {previewFile && (
+              <ModalPortal>
               <div
-                className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+                className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
                 onClick={() => setPreviewFile(null)}
               >
                 <div
@@ -1313,6 +1314,7 @@ function NewDealContent() {
                   </div>
                 </div>
               </div>
+              </ModalPortal>
             )}
 
             <button

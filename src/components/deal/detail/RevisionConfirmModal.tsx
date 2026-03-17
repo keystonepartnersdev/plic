@@ -4,6 +4,7 @@
 // 보완 요청 저장 확인 모달
 
 import { RevisionType } from './constants';
+import { ModalPortal } from '@/components/common';
 
 interface RevisionConfirmModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function RevisionConfirmModal({
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div className="absolute inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
         <h3 className="text-lg font-bold text-gray-900 mb-3">거래신청 확인</h3>
@@ -45,5 +47,6 @@ export function RevisionConfirmModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

@@ -4,6 +4,7 @@
 // 쿠폰 선택 모달
 
 import { X, Ticket, Check } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 import { IDiscount } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ export function CouponModal({
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div
       className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
       onClick={onClose}
@@ -122,5 +124,6 @@ export function CouponModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

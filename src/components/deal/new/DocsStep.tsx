@@ -4,6 +4,7 @@
 // Step 4: 서류 첨부
 
 import { Upload, X, FileText, AlertCircle, Eye, Download } from 'lucide-react';
+import { ModalPortal } from '@/components/common';
 import { TDealType } from '@/types';
 import { DealHelper } from '@/classes';
 import { AttachmentFile } from './types';
@@ -170,8 +171,9 @@ export function DocsStep({
 
       {/* 미리보기 팝업 */}
       {previewFile && (
+        <ModalPortal>
         <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
           onClick={() => onPreviewFile(null)}
         >
           <div
@@ -224,6 +226,7 @@ export function DocsStep({
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* 다음 버튼 */}
