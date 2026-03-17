@@ -14,7 +14,9 @@ export async function GET() {
       KeyConditionExpression: 'pk = :pk',
       ExpressionAttributeValues: { ':pk': 'BANNER' },
     }));
-    const banners = (result.Items || []).sort((a, b) => (a.priority || 0) - (b.priority || 0));
+    const banners = (result.Items || [])
+      .map((item: any) => ({ ...item, bannerId: item.sk }))
+      .sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0));
     return NextResponse.json({ success: true, data: { banners, count: banners.length } });
   } catch (error) {
     console.error('[Admin Banners] GET error:', error);

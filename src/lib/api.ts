@@ -795,6 +795,9 @@ export const adminAPI = {
     }),
 
   // 배너 관리
+  getBanners: () =>
+    requestWithAdminToken<{ banners: IHomeBanner[]; count: number }>('/admin/banners'),
+
   createBanner: (data: {
     title: string;
     imageUrl: string;

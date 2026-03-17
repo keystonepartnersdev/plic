@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
-import { contentAPI, adminAPI } from '@/lib/api';
+import { adminAPI } from '@/lib/api';
 import { IHomeBanner } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
 
@@ -28,7 +28,7 @@ export default function AdminBannersPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await contentAPI.getBanners();
+      const response = await adminAPI.getBanners();
       setBanners(response.banners || []);
     } catch (err: unknown) {
       console.error('배너 목록 로드 실패:', err);
