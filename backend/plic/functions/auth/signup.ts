@@ -50,7 +50,7 @@ const response = (statusCode: number, body: Record<string, unknown>, origin?: st
 
 interface SignupRequest {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   phone: string;
   userType: 'personal' | 'business';
@@ -71,6 +71,19 @@ interface SignupRequest {
   kakaoId?: number;
   // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
   kakaoVerificationKey?: string;
+  // 소셜 로그인 가입
+  authType?: 'direct' | 'kakao';
+  socialProvider?: 'kakao' | null;
+}
+
+// 카카오 소셜 가입 시 Cognito용 랜덤 비밀번호 생성 (사용자가 직접 사용하지 않음)
+function generateRandomPassword(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let pw = 'Kk1!'; // 최소 요구사항 보장 (대문자, 소문자, 숫자, 특수문자)
+  for (let i = 0; i < 20; i++) {
+    pw += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pw;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -91,8 +104,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     const body: SignupRequest = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
+    const { email, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
     let { kakaoVerified, kakaoId } = body;
+    const isSocialSignup = body.authType === 'kakao';
+    // 카카오 소셜 가입이면 랜덤 비밀번호 생성 (Cognito 필수값)
+    const password = isSocialSignup ? generateRandomPassword() : body.password;
 
     // kakaoVerificationKey가 있으면 DynamoDB에서 직접 카카오 인증 정보 조회
     if (kakaoVerificationKey) {
@@ -116,10 +132,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     // 필수 필드 검증
-    if (!email || !password || !name || !phone) {
+    if (!email || !name || !phone) {
       return response(400, {
         success: false,
-        error: '필수 필드가 누락되었습니다: email, password, name, phone',
+        error: '필수 필드가 누락되었습니다: email, name, phone',
+      });
+    }
+
+    // 직접 가입은 비밀번호 필수
+    if (!isSocialSignup && !password) {
+      return response(400, {
+        success: false,
+        error: '비밀번호를 입력해주세요.',
       });
     }
 
@@ -132,8 +156,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       });
     }
 
-    // 비밀번호 길이 검증
-    if (password.length < 8) {
+    // 비밀번호 길이 검증 (직접 가입만)
+    if (!isSocialSignup && password && password.length < 8) {
       return response(400, {
         success: false,
         error: '비밀번호는 8자 이상이어야 합니다.',
@@ -293,8 +317,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       name,
       phone,
       userType: userType || 'personal',
-      authType: kakaoVerified ? 'kakao' : 'direct',
-      socialProvider: kakaoVerified ? 'kakao' : 'none',
+      authType: isSocialSignup ? 'kakao' : (kakaoVerified ? 'kakao' : 'direct'),
+      socialProvider: isSocialSignup ? 'kakao' : (kakaoVerified ? 'kakao' : 'none'),
       kakaoId: kakaoId || null,
       isVerified: false,
       status: 'pending_verification',

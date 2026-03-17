@@ -107,6 +107,8 @@ function SignupContent() {
   const [kakaoVerified, setKakaoVerified] = useState(false);
   const [kakaoVerification, setKakaoVerification] = useState<{ kakaoId: number; nickname?: string; email?: string; verifiedAt: string } | null>(null);
   const [kakaoError, setKakaoError] = useState('');
+  // 카카오 소셜 회원가입 여부 (로그인에서 온 신규 유저)
+  const [isKakaoSocialSignup, setIsKakaoSocialSignup] = useState(false);
 
   // 회원 정보
   const [name, setName] = useState('');
@@ -176,11 +178,16 @@ function SignupContent() {
             const { nickname, kakaoId: kId } = result.data;
             console.log('[Signup] Kakao verified:', { nickname, kId });
             setKakaoId(kId);
-            // 카카오 인증은 본인확인일 뿐 - 이름만 pre-fill (수정 가능)
             if (nickname) setName(nickname);
-            // 이메일/비밀번호는 사용자가 직접 입력
             setKakaoVerified(true);
-            setKakaoVerification({ kakaoId: kId, nickname, email: undefined, verifiedAt: new Date().toISOString() });
+            setKakaoVerification({ kakaoId: kId, nickname, email: result.data.email, verifiedAt: new Date().toISOString() });
+
+            // 카카오 소셜 회원가입 (로그인에서 온 신규 유저)
+            if (fromLogin === 'true' && result.data.email) {
+              setIsKakaoSocialSignup(true);
+              setEmail(result.data.email);
+              setEmailVerified(true); // 카카오 이메일은 인증 완료 상태
+            }
 
             // 소셜 로그인으로 가입된 계정이 있는지 확인
             try {
@@ -271,14 +278,18 @@ function SignupContent() {
     return digits.length === 10;
   };
 
-  const canProceedInfo =
-    name.length >= 2 &&
-    phone.replace(/-/g, '').length === 11 &&
-    email.length > 0 &&
-    isValidEmail(email) &&
-    emailVerified &&
-    isValidPassword(password) &&
-    password === passwordConfirm;
+  const canProceedInfo = isKakaoSocialSignup
+    ? (name.length >= 2 &&
+       phone.replace(/-/g, '').length === 11 &&
+       email.length > 0 &&
+       isValidEmail(email))
+    : (name.length >= 2 &&
+       phone.replace(/-/g, '').length === 11 &&
+       email.length > 0 &&
+       isValidEmail(email) &&
+       emailVerified &&
+       isValidPassword(password) &&
+       password === passwordConfirm);
 
   // 이메일 인증코드 발송
   const handleSendEmailCode = async () => {
@@ -485,13 +496,21 @@ function SignupContent() {
 
       const signupData: Parameters<typeof authAPI.signup>[0] = {
         email,
-        password,
+        password: isKakaoSocialSignup ? undefined : password,
         name,
         phone: cleanPhone,
         userType,
         agreements: agreementsData,
-        // 카카오 본인인증 정보 (인증 기록용, authType은 direct)
-        ...(kakaoVerified && kakaoId ? {
+        // 카카오 소셜 회원가입
+        ...(isKakaoSocialSignup && kakaoId ? {
+          authType: 'kakao',
+          socialProvider: 'kakao',
+          kakaoVerified: true,
+          kakaoId,
+          kakaoVerificationKey: kakaoVerificationKey || undefined,
+        } : {}),
+        // 직접 회원가입 + 카카오 본인인증
+        ...(!isKakaoSocialSignup && kakaoVerified && kakaoId ? {
           kakaoVerified: true,
           kakaoId,
           kakaoVerificationKey: kakaoVerificationKey || undefined,
@@ -525,7 +544,7 @@ function SignupContent() {
 
   const handleBack = () => {
     if (step === 'kakaoVerify') setStep('agreement');
-    else if (step === 'info') setStep(kakaoVerified ? 'kakaoVerify' : 'agreement');
+    else if (step === 'info') setStep((isKakaoSocialSignup || kakaoVerified) ? 'agreement' : 'agreement');
     else if (step === 'businessInfo') setStep('info');
     else router.back();
   };
@@ -605,7 +624,7 @@ function SignupContent() {
             </div>
 
             <button
-              onClick={() => setStep(kakaoVerified ? 'info' : 'kakaoVerify')}
+              onClick={() => setStep((isKakaoSocialSignup || kakaoVerified) ? 'info' : 'kakaoVerify')}
               disabled={!allRequiredChecked}
               className="w-full h-14 mt-8 bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg rounded-xl transition-colors"
             >
@@ -719,114 +738,135 @@ function SignupContent() {
             {/* 이메일 (로그인 ID) */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">이메일 (로그인 ID)</label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              {isKakaoSocialSignup ? (
+                /* 카카오 소셜 가입: 이메일 읽기전용 */
+                <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      // 이메일 변경 시 인증 초기화
-                      if (emailVerified || emailCodeSent) {
-                        setEmailVerified(false);
-                        setEmailCodeSent(false);
-                        setEmailCode('');
-                        setEmailError('');
-                      }
-                    }}
-                    placeholder="example@email.com"
-                    readOnly={emailVerified}
-                    className={cn(
-                      "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-                      emailVerified && "bg-green-50 border-green-300 text-green-800"
+                    readOnly
+                    className="w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-600"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">카카오 계정 이메일이 자동으로 적용됩니다.</p>
+                </div>
+              ) : (
+                /* 직접 가입: 이메일 인증 필요 */
+                <>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          // 이메일 변경 시 인증 초기화
+                          if (emailVerified || emailCodeSent) {
+                            setEmailVerified(false);
+                            setEmailCodeSent(false);
+                            setEmailCode('');
+                            setEmailError('');
+                          }
+                        }}
+                        placeholder="example@email.com"
+                        readOnly={emailVerified}
+                        className={cn(
+                          "w-full h-14 pl-12 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                          emailVerified && "bg-green-50 border-green-300 text-green-800"
+                        )}
+                      />
+                    </div>
+                    {!emailVerified && (
+                      <button
+                        type="button"
+                        onClick={handleSendEmailCode}
+                        disabled={!isValidEmail(email) || emailSending}
+                        className="h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
+                      >
+                        {emailSending ? '발송중...' : emailCodeSent ? '재발송' : '인증하기'}
+                      </button>
                     )}
-                  />
-                </div>
-                {!emailVerified && (
-                  <button
-                    type="button"
-                    onClick={handleSendEmailCode}
-                    disabled={!isValidEmail(email) || emailSending}
-                    className="h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
-                  >
-                    {emailSending ? '발송중...' : emailCodeSent ? '재발송' : '인증하기'}
-                  </button>
-                )}
-                {emailVerified && (
-                  <div className="h-14 px-4 font-medium rounded-xl bg-green-100 text-green-700 flex items-center whitespace-nowrap">
-                    <Check className="w-4 h-4 mr-1" />
-                    인증완료
+                    {emailVerified && (
+                      <div className="h-14 px-4 font-medium rounded-xl bg-green-100 text-green-700 flex items-center whitespace-nowrap">
+                        <Check className="w-4 h-4 mr-1" />
+                        인증완료
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              {email && !isValidEmail(email) && (
-                <p className="text-sm text-red-500 mt-1">올바른 이메일 형식이 아닙니다.</p>
-              )}
+                  {email && !isValidEmail(email) && (
+                    <p className="text-sm text-red-500 mt-1">올바른 이메일 형식이 아닙니다.</p>
+                  )}
 
-              {/* 인증코드 입력 */}
-              {emailCodeSent && !emailVerified && (
-                <div className="mt-2 flex gap-2">
-                  <input
-                    type="text"
-                    value={emailCode}
-                    onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="인증코드 6자리"
-                    maxLength={6}
-                    className="flex-1 h-12 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-center text-lg tracking-widest"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleVerifyEmailCode}
-                    disabled={emailCode.length !== 6 || emailVerifying}
-                    className="h-12 px-4 font-medium rounded-xl transition-colors whitespace-nowrap bg-gray-800 hover:bg-gray-900 disabled:bg-gray-200 disabled:text-gray-400 text-white"
-                  >
-                    {emailVerifying ? '확인중...' : '확인'}
-                  </button>
+                  {/* 인증코드 입력 */}
+                  {emailCodeSent && !emailVerified && (
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        type="text"
+                        value={emailCode}
+                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="인증코드 6자리"
+                        maxLength={6}
+                        className="flex-1 h-12 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-center text-lg tracking-widest"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyEmailCode}
+                        disabled={emailCode.length !== 6 || emailVerifying}
+                        className="h-12 px-4 font-medium rounded-xl transition-colors whitespace-nowrap bg-gray-800 hover:bg-gray-900 disabled:bg-gray-200 disabled:text-gray-400 text-white"
+                      >
+                        {emailVerifying ? '확인중...' : '확인'}
+                      </button>
+                    </div>
+                  )}
+                  {emailError && (
+                    <p className="text-sm text-red-500 mt-1">{emailError}</p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* 비밀번호 - 카카오 소셜 가입 시 숨김 */}
+            {!isKakaoSocialSignup && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="8자리 이상"
+                      className="w-full h-14 pl-4 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {password && !isValidPassword(password) && (
+                    <p className="text-sm text-red-500 mt-1">비밀번호는 8자 이상, 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.</p>
+                  )}
                 </div>
-              )}
-              {emailError && (
-                <p className="text-sm text-red-500 mt-1">{emailError}</p>
-              )}
-            </div>
 
-            {/* 비밀번호 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="8자리 이상"
-                  className="w-full h-14 pl-4 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              {password && !isValidPassword(password) && (
-                <p className="text-sm text-red-500 mt-1">비밀번호는 8자 이상, 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.</p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 확인</label>
-              <input
-                type="password"
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                placeholder="비밀번호 재입력"
-                className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-              />
-              {passwordConfirm && password !== passwordConfirm && (
-                <p className="text-sm text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
-              )}
-            </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 확인</label>
+                  <input
+                    type="password"
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    placeholder="비밀번호 재입력"
+                    className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  />
+                  {passwordConfirm && password !== passwordConfirm && (
+                    <p className="text-sm text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
+                  )}
+                </div>
+              </>
+            )}
 
             {error && (
               <div className="p-3 bg-red-50 rounded-xl mb-4">

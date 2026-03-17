@@ -358,7 +358,7 @@ async function request<T>(
 export const authAPI = {
   signup: async (data: {
     email: string;
-    password: string;
+    password?: string;
     name: string;
     phone: string;
     userType: 'personal' | 'business';
@@ -381,6 +381,9 @@ export const authAPI = {
     kakaoVerificationKey?: string;
     // 이메일 사전인증 완료 플래그
     emailPreVerified?: boolean;
+    // 소셜 로그인 가입
+    authType?: 'direct' | 'kakao';
+    socialProvider?: 'kakao' | null;
   }) => {
     const response = await fetch('/api/auth/signup', {
       method: 'POST',

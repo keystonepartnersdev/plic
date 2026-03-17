@@ -111,6 +111,14 @@ var response = (statusCode, body, origin) => ({
   headers: getCorsHeaders(origin),
   body: JSON.stringify(body)
 });
+function generateRandomPassword() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let pw = "Kk1!";
+  for (let i = 0; i < 20; i++) {
+    pw += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pw;
+}
 var handler = async (event) => {
   const origin = event.headers?.origin || event.headers?.Origin;
   if (event.httpMethod === "OPTIONS") {
@@ -124,8 +132,10 @@ var handler = async (event) => {
       });
     }
     const body = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
+    const { email, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
     let { kakaoVerified, kakaoId } = body;
+    const isSocialSignup = body.authType === "kakao";
+    const password = isSocialSignup ? generateRandomPassword() : body.password;
     if (kakaoVerificationKey) {
       try {
         const verificationResult = await docClient.send(new import_lib_dynamodb.GetCommand({
@@ -143,10 +153,16 @@ var handler = async (event) => {
         console.error("[Signup] \uCE74\uCE74\uC624 \uC778\uC99D \uD0A4 \uC870\uD68C \uC624\uB958:", verifyError);
       }
     }
-    if (!email || !password || !name || !phone) {
+    if (!email || !name || !phone) {
       return response(400, {
         success: false,
-        error: "\uD544\uC218 \uD544\uB4DC\uAC00 \uB204\uB77D\uB418\uC5C8\uC2B5\uB2C8\uB2E4: email, password, name, phone"
+        error: "\uD544\uC218 \uD544\uB4DC\uAC00 \uB204\uB77D\uB418\uC5C8\uC2B5\uB2C8\uB2E4: email, name, phone"
+      });
+    }
+    if (!isSocialSignup && !password) {
+      return response(400, {
+        success: false,
+        error: "\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694."
       });
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -156,7 +172,7 @@ var handler = async (event) => {
         error: "\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4."
       });
     }
-    if (password.length < 8) {
+    if (!isSocialSignup && password && password.length < 8) {
       return response(400, {
         success: false,
         error: "\uBE44\uBC00\uBC88\uD638\uB294 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4."
@@ -287,8 +303,8 @@ var handler = async (event) => {
       name,
       phone,
       userType: userType || "personal",
-      authType: kakaoVerified ? "kakao" : "direct",
-      socialProvider: kakaoVerified ? "kakao" : "none",
+      authType: isSocialSignup ? "kakao" : kakaoVerified ? "kakao" : "direct",
+      socialProvider: isSocialSignup ? "kakao" : kakaoVerified ? "kakao" : "none",
       kakaoId: kakaoId || null,
       isVerified: false,
       status: "pending_verification",
