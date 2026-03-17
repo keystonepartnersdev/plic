@@ -349,9 +349,12 @@ export default function AdminDealDetailPage() {
           </div>
 
           {/* PG 결제 정보 */}
-          {deal.isPaid && deal.pgTransactionId && (
+          {(
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">PG 결제 정보 (소프트먼트)</h2>
+              {!deal.pgTransactionId ? (
+                <p className="text-gray-400 text-center py-4">PG 결제 정보가 없습니다. (이전 결제 건)</p>
+              ) : (
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">소프트먼트 거래번호</span>
@@ -423,6 +426,7 @@ export default function AdminDealDetailPage() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           )}
 

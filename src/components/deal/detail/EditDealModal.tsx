@@ -12,7 +12,7 @@ import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
 // 계좌 인증 함수
-async function verifyBankAccount(bankName: string, accountNumber: string, accountHolder: string): Promise<{ valid: boolean; accountHolder?: string }> {
+async function verifyBankAccount(bankName: string, accountNumber: string, accountHolder: string): Promise<{ valid: boolean; isMatch: boolean; accountHolder?: string }> {
   try {
     const res = await fetch('/api/popbill/account/verify', {
       method: 'POST',
@@ -21,11 +21,11 @@ async function verifyBankAccount(bankName: string, accountNumber: string, accoun
     });
     const data = await res.json();
     if (data.success && data.data?.accountHolder) {
-      return { valid: true, accountHolder: data.data.accountHolder };
+      return { valid: true, isMatch: data.data.isMatch === true, accountHolder: data.data.accountHolder };
     }
-    return { valid: false };
+    return { valid: false, isMatch: false };
   } catch {
-    return { valid: false };
+    return { valid: false, isMatch: false };
   }
 }
 
@@ -58,6 +58,8 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
   const [isVerified, setIsVerified] = useState(deal.recipient?.isVerified || false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+  const [verifiedHolderName, setVerifiedHolderName] = useState('');
 
   // 첨부파일 수정
   const [attachments, setAttachments] = useState<string[]>(deal.attachments || []);
@@ -78,27 +80,40 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
       setNewFiles([]);
       setError(null);
       setVerificationFailed(false);
+      setVerificationError('');
+      setVerifiedHolderName('');
     }
   }, [isOpen, deal]);
 
   // 계좌 검증
   const handleVerifyAccount = async () => {
-    if (!bank || !accountNumber) return;
+    if (!bank || !accountNumber || !accountHolder) return;
 
     setIsVerifying(true);
     setVerificationFailed(false);
+    setVerificationError('');
+    setVerifiedHolderName('');
 
     try {
       const result = await verifyBankAccount(bank, accountNumber, accountHolder);
 
-      if (result.valid) {
+      if (result.valid && result.isMatch) {
         setAccountHolder(result.accountHolder || accountHolder);
         setIsVerified(true);
+      } else if (result.valid && !result.isMatch) {
+        // 계좌는 존재하지만 예금주 불일치
+        setVerificationFailed(true);
+        setVerifiedHolderName(result.accountHolder || '');
+        setVerificationError(
+          `입력한 예금주(${accountHolder})와 실제 예금주(${result.accountHolder})가 일치하지 않습니다. 예금주명을 수정해주세요.`
+        );
       } else {
         setVerificationFailed(true);
+        setVerificationError('계좌 정보가 올바르지 않습니다. 다시 확인해주세요.');
       }
     } catch {
       setVerificationFailed(true);
+      setVerificationError('계좌 확인 중 오류가 발생했습니다.');
     } finally {
       setIsVerifying(false);
     }
@@ -380,6 +395,8 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                     onChange={(e) => {
                       setAccountHolder(e.target.value);
                       setIsVerified(false);
+                      setVerificationFailed(false);
+                      setVerifiedHolderName('');
                     }}
                     className={cn(
                       "flex-1 h-12 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
@@ -390,9 +407,9 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                   />
                   <button
                     onClick={handleVerifyAccount}
-                    disabled={!bank || !accountNumber || isVerifying || isVerified}
+                    disabled={!bank || !accountNumber || !accountHolder || isVerifying || isVerified}
                     className={cn(
-                      "px-4 h-12 rounded-xl font-medium transition-colors",
+                      "px-4 h-12 rounded-xl font-medium transition-colors whitespace-nowrap",
                       isVerified
                         ? "bg-green-500 text-white"
                         : "bg-primary-400 text-white hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400"
@@ -403,14 +420,39 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                     ) : isVerified ? (
                       <Check className="w-5 h-5" />
                     ) : (
-                      '확인'
+                      '계좌확인'
                     )}
                   </button>
                 </div>
+
+                {/* 인증 성공 */}
+                {isVerified && (
+                  <div className="mt-2 p-3 bg-green-50 rounded-xl">
+                    <p className="text-green-700 font-medium flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4" />
+                      계좌 확인이 완료되었습니다.
+                    </p>
+                  </div>
+                )}
+
+                {/* 인증 실패 */}
                 {verificationFailed && (
-                  <p className="mt-2 text-sm text-red-500">
-                    계좌 정보가 일치하지 않습니다. 다시 확인해주세요.
-                  </p>
+                  <div className="mt-2 p-3 bg-red-50 rounded-xl">
+                    <p className="text-sm text-red-600">{verificationError}</p>
+                    {verifiedHolderName && !isVerified && (
+                      <button
+                        onClick={() => {
+                          setAccountHolder(verifiedHolderName);
+                          setIsVerified(false);
+                          setVerificationFailed(false);
+                          setVerifiedHolderName('');
+                        }}
+                        className="mt-2 text-sm text-red-700 underline hover:no-underline"
+                      >
+                        실제 예금주({verifiedHolderName})로 자동 수정
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -489,7 +531,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0)))}
+            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0))) || (editType === 'recipient' && !isVerified)}
             className="flex-1 h-12 bg-primary-400 text-white rounded-xl font-medium hover:bg-primary-500 transition-colors disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2"
           >
             {(isSaving || isUploading) ? (

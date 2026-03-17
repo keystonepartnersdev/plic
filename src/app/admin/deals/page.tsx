@@ -222,7 +222,14 @@ function AdminDealsContent() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">거래정보</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">
+                    <div className="space-y-0.5">
+                      <p>거래정보</p>
+                      <p className="text-xs font-normal text-gray-400">PLIC거래번호</p>
+                      <p className="text-xs font-normal text-gray-400">소프트먼트거래번호</p>
+                      <p className="text-xs font-normal text-gray-400">승인번호</p>
+                    </div>
+                  </th>
                   <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">유형</th>
                   <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">상태</th>
                   <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">결제금액</th>
