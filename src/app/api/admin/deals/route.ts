@@ -10,7 +10,9 @@ const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
 export async function GET() {
   try {
     const result = await docClient.send(new ScanCommand({ TableName: DEALS_TABLE }));
-    const deals = result.Items || [];
+    const deals = (result.Items || []).sort((a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
     return NextResponse.json({ success: true, data: { deals, count: deals.length } });
   } catch (error) {
     console.error('[Admin Deals] GET error:', error);

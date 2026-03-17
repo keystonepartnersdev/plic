@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, Pin, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { contentAPI, adminAPI } from '@/lib/api';
+import { adminAPI } from '@/lib/api';
 import { INotice } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
 
@@ -27,7 +27,7 @@ export default function AdminNoticesPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await contentAPI.getNotices();
+      const response = await adminAPI.getNotices();
       setNotices(response.notices || []);
     } catch (err: unknown) {
       console.error('공지사항 목록 로드 실패:', err);

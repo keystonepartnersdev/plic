@@ -5,7 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { TUserGrade } from '@/types';
 import { getErrorMessage } from '@/lib/utils';
 
-const API_BASE_URL = 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = '/api';
 
 // 등급별 설정
 export interface IGradeSettings {

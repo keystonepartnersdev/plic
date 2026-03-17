@@ -10,7 +10,9 @@ const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 export async function GET() {
   try {
     const result = await docClient.send(new ScanCommand({ TableName: USERS_TABLE }));
-    const users = result.Items || [];
+    const users = (result.Items || []).sort((a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
     return NextResponse.json({ success: true, data: { users, count: users.length } });
   } catch (error) {
     console.error('[Admin Users] GET error:', error);

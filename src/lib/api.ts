@@ -823,6 +823,9 @@ export const adminAPI = {
     }),
 
   // 공지사항 관리
+  getNotices: () =>
+    requestWithAdminToken<{ notices: INotice[]; count: number }>('/admin/notices'),
+
   createNotice: (data: {
     title: string;
     content: string;

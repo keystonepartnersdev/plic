@@ -14,9 +14,11 @@ export async function GET() {
       KeyConditionExpression: 'pk = :pk',
       ExpressionAttributeValues: { ':pk': 'NOTICE' },
     }));
-    const notices = (result.Items || []).sort((a, b) =>
-      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-    );
+    const notices = (result.Items || [])
+      .map((item: any) => ({ ...item, noticeId: item.sk }))
+      .sort((a: any, b: any) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
     return NextResponse.json({ success: true, data: { notices, count: notices.length } });
   } catch (error) {
     console.error('[Admin Notices] GET error:', error);
