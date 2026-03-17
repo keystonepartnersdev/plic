@@ -52,7 +52,8 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
-    prompt: 'login', // 매번 로그인 강제 (세션 재사용 방지)
+    // prompt: 'login'을 사용하면 ID/PW 웹 폼만 강제되어 카카오톡 앱 인증이 불가
+    // 대신 /api/kakao/auth에서 항상 카카오 로그아웃을 먼저 수행하여 세션 초기화
   });
 
   if (state) {

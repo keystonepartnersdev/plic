@@ -57,7 +57,8 @@ export default function HomePage() {
   );
 
   const banners = getVisibleBanners();
-  const faqs = useMemo(() => getHomeFeaturedFAQs().slice(0, 5), [getHomeFeaturedFAQs]);
+  const storeFaqs = useContentStore((state) => state.faqs);
+  const faqs = useMemo(() => getHomeFeaturedFAQs().slice(0, 5), [storeFaqs, getHomeFeaturedFAQs]);
 
   const formatAmount = (value: string) => {
     const numericValue = value.replace(/[^\d]/g, '');

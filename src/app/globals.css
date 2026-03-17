@@ -193,6 +193,12 @@
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom);
   }
+
+  /* 모바일 브라우저 동적 뷰포트 높이 (브라우저 UI 영역 제외) */
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
+  }
 }
 
 /* Custom Scrollbar */
