@@ -37,7 +37,7 @@ const menuItems = [
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'analytics.view', implemented: true },
   { href: '/admin/api-logs', icon: Bug, label: 'API Logs', permission: 'analytics.view', implemented: true },
   { href: '/admin/admins', icon: UserCog, label: '어드민관리', permission: 'admin.view', implemented: true },
-  { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view', implemented: false }, // 설정값 저장만 되고 실제 적용 안 됨
+  { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view', implemented: true },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
