@@ -41,15 +41,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }));
     const deals = dealsResult.Items || [];
 
-    // 3. 트래킹 이벤트 조회 (최근 30일)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const eventsResult = await docClient.send(new ScanCommand({
-      TableName: EVENTS_TABLE,
-      FilterExpression: '#ts >= :start',
-      ExpressionAttributeNames: { '#ts': 'timestamp' },
-      ExpressionAttributeValues: { ':start': thirtyDaysAgo },
-    }));
-    const events = eventsResult.Items || [];
+    // 3. 트래킹 이벤트 조회 (최근 30일) - 테이블 미존재 시 빈 배열
+    let events: Record<string, unknown>[] = [];
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const eventsResult = await docClient.send(new ScanCommand({
+        TableName: EVENTS_TABLE,
+        FilterExpression: '#ts >= :start',
+        ExpressionAttributeNames: { '#ts': 'timestamp' },
+        ExpressionAttributeValues: { ':start': thirtyDaysAgo },
+      }));
+      events = eventsResult.Items || [];
+    } catch (eventsError: any) {
+      console.warn('Events table scan failed (table may not exist):', eventsError.message);
+    }
 
     // ========================================
     // 1. 사용자 현황 (User Status Distribution)
