@@ -4,7 +4,7 @@
 // 거래 상태 카드 컴포넌트
 
 import Link from 'next/link';
-import { Check, Clock, AlertCircle, CreditCard, XCircle } from 'lucide-react';
+import { Check, Clock, AlertCircle, CreditCard } from 'lucide-react';
 import { IDeal, TDealStatus } from '@/types';
 import { DealHelper } from '@/classes';
 import { cn } from '@/lib/utils';
@@ -13,19 +13,21 @@ import { STATUS_COLORS } from './constants';
 
 interface StatusCardProps {
   deal: IDeal;
+  onPaymentBlocked?: () => void;
 }
 
-export function StatusCard({ deal }: StatusCardProps) {
+export function StatusCard({ deal, onPaymentBlocked }: StatusCardProps) {
   const { currentUser } = useUserStore();
   const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid);
   const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
 
-  // 사업자 인증 상태 확인 (businessInfo.verificationStatus 기준)
+  // 결제 차단 조건
   const verificationStatus = currentUser?.businessInfo?.verificationStatus;
   const isBusinessUser = currentUser?.userType === 'business';
-  const isRejected = isBusinessUser && verificationStatus === 'rejected';
-  const isPendingVerification = isBusinessUser && verificationStatus === 'pending';
-  const isPaymentBlocked = isBusinessUser && verificationStatus !== 'verified';
+  const isPaymentBlocked =
+    currentUser?.status === 'pending_verification' ||
+    currentUser?.status === 'pending' ||
+    (isBusinessUser && verificationStatus !== 'verified');
 
   // 상태별 아이콘
   const StatusIcon = () => {
@@ -73,52 +75,19 @@ export function StatusCard({ deal }: StatusCardProps) {
       {/* 결제 버튼 - draft 또는 awaiting_payment 상태이면서 미결제일 때 */}
       {(deal.status === 'draft' || deal.status === 'awaiting_payment') && !deal.isPaid && (
         isPaymentBlocked ? (
-          <div className="mt-4">
-            <button
-              disabled
-              className="
-                w-full h-14
-                bg-gray-300
-                text-gray-500 font-semibold
-                rounded-xl
-                flex items-center justify-center gap-2
-                cursor-not-allowed
-              "
-            >
-              <CreditCard className="w-5 h-5" />
-              결제하기
-            </button>
-            {isRejected ? (
-              <div className="mt-3 p-4 bg-red-50 rounded-xl">
-                <div className="flex items-start gap-2">
-                  <XCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-red-700 mb-1">사업자 인증이 거절되었습니다.</p>
-                    {currentUser?.businessInfo?.verificationMemo && (
-                      <p className="text-sm text-red-600 mb-2">{currentUser.businessInfo.verificationMemo}</p>
-                    )}
-                    <p className="text-sm text-red-600">사업자 등록증을 다시 첨부해주세요.</p>
-                    <Link
-                      href="/mypage/edit"
-                      className="inline-block mt-2 text-sm font-semibold text-red-700 underline"
-                    >
-                      사업자 등록증 재첨부 →
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-3 p-4 bg-yellow-50 rounded-xl">
-                <div className="flex items-start gap-2">
-                  <Clock className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-700">사업자 인증 진행중입니다.</p>
-                    <p className="text-sm text-yellow-600 mt-1">영업일 기준 당일 내에 검토가 완료됩니다.</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={onPaymentBlocked}
+            className="
+              mt-4 w-full h-14
+              bg-gray-300
+              text-gray-500 font-semibold
+              rounded-xl
+              flex items-center justify-center gap-2
+            "
+          >
+            <CreditCard className="w-5 h-5" />
+            결제하기
+          </button>
         ) : (
           <Link
             href={`/payment/${deal.did}`}

@@ -96,99 +96,21 @@ export default function PaymentPage() {
     );
   }
 
-  // 사업자 인증 대기/거절 상태 체크 (user.status 또는 businessInfo.verificationStatus 기준)
+  // 결제 차단 백업 체크 (거래 상세에서 이미 차단하지만, 직접 URL 접근 방어)
   const isBusinessUser = currentUser.userType === 'business';
   const verificationStatus = currentUser.businessInfo?.verificationStatus;
-  const isPendingVerification = currentUser.status === 'pending_verification';
-  if (isPendingVerification || (isBusinessUser && verificationStatus !== 'verified')) {
-    const isRejected = verificationStatus === 'rejected';
+  const isPaymentBlocked =
+    currentUser.status === 'suspended' ||
+    currentUser.status === 'withdrawn' ||
+    currentUser.status === 'pending' ||
+    currentUser.status === 'pending_verification' ||
+    (isBusinessUser && verificationStatus !== 'verified');
 
-    if (isRejected) {
-      return (
-        <div className="min-h-screen bg-gray-50">
-          <Header title="결제하기" showBack />
-          <div className="px-5 py-12">
-            <div className="bg-white rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <XCircle className="w-8 h-8 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                사업자 인증 거절
-              </h2>
-              <p className="text-gray-500 mb-6">
-                사업자 인증이 거절되어<br />
-                결제 및 송금이 불가합니다.<br /><br />
-                사업자 등록증을 다시 첨부하여<br />
-                재심사를 요청해주세요.
-              </p>
-              {currentUser.businessInfo?.verificationMemo && (
-                <div className="bg-red-50 rounded-xl p-4 text-left mb-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-red-800">
-                      <p className="font-medium mb-1">거절 사유</p>
-                      <p className="text-red-700">
-                        {currentUser.businessInfo.verificationMemo}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <button
-                onClick={() => router.push('/mypage/edit')}
-                className="w-full h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl mb-3"
-              >
-                사업자 등록증 재첨부
-              </button>
-              <button
-                onClick={() => router.back()}
-                className="w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
-              >
-                돌아가기
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
+  if (isPaymentBlocked) {
+    router.replace(`/deals/${did}`);
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="결제하기" showBack />
-        <div className="px-5 py-12">
-          <div className="bg-white rounded-2xl p-8 text-center">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-yellow-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              사업자 인증 대기 중
-            </h2>
-            <p className="text-gray-500 mb-6">
-              사업자 정보 검토가 완료되면<br />
-              결제 및 송금이 가능합니다.<br /><br />
-              하단의 [거래내역]에서 등록하신<br />
-              거래 정보를 확인하실 수 있습니다.
-            </p>
-            <div className="bg-yellow-50 rounded-xl p-4 text-left">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium mb-1">검토 진행 중</p>
-                  <p className="text-yellow-700">
-                    영업일 기준 당일 내에 검토가 완료됩니다.
-                    승인 완료 시 알림을 보내드립니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => router.back()}
-              className="mt-6 w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
-            >
-              돌아가기
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
       </div>
     );
   }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { useDealStore } from '@/stores';
-import { Header } from '@/components/common';
+import { useParams, useRouter } from 'next/navigation';
+import { useDealStore, useUserStore } from '@/stores';
+import { Header, Modal } from '@/components/common';
 import {
   useDealDetail,
   StatusCard,
@@ -94,7 +94,27 @@ export default function DealDetailPage() {
     handleOpenPreview,
   } = useDealDetail(did);
 
+  const router = useRouter();
   const { deals: allDeals } = useDealStore();
+
+  // 결제 차단 모달 (결제 버튼 클릭 시)
+  const [showBlockedModal, setShowBlockedModal] = useState<
+    'hold' | 'pending_verification' | 'rejected' | null
+  >(null);
+
+  // 정지/탈퇴: 페이지 진입 자체 차단 (항상 렌더)
+  const blockedOnLoad = currentUser?.status === 'suspended' || currentUser?.status === 'withdrawn';
+
+  // 결제 버튼 클릭 시 차단 모달
+  const handlePaymentBlocked = () => {
+    if (currentUser?.status === 'pending') {
+      setShowBlockedModal('hold');
+    } else if (currentUser?.businessInfo?.verificationStatus === 'rejected') {
+      setShowBlockedModal('rejected');
+    } else {
+      setShowBlockedModal('pending_verification');
+    }
+  };
 
   // 이번 달 사용 금액: 실제 완료 거래에서 계산 (DB 값은 취소 건 미반영 가능)
   const computedUsedAmount = useMemo(() => {
@@ -137,7 +157,7 @@ export default function DealDetailPage() {
       <Header title="거래 상세" showBack />
 
       {/* 상태 카드 */}
-      <StatusCard deal={deal} />
+      <StatusCard deal={deal} onPaymentBlocked={handlePaymentBlocked} />
 
       {/* 할인 섹션 */}
       {showDiscountSection && (
@@ -306,6 +326,62 @@ export default function DealDetailPage() {
           onConfirm={handleDeleteDeal}
           onCancel={() => setShowDealDeleteModal(false)}
         />
+      )}
+
+      {/* 정지/탈퇴 차단 모달 (페이지 진입 차단) */}
+      {mounted && blockedOnLoad && (
+        <Modal
+          isOpen={true}
+          onClose={() => router.back()}
+          title={currentUser?.status === 'suspended' ? '계정 정지' : '탈퇴 계정'}
+          showCloseButton={false}
+          confirmText="돌아가기"
+          onConfirm={() => router.back()}
+        >
+          <p className="whitespace-pre-line">
+            {currentUser?.status === 'suspended'
+              ? '계정이 정지되었습니다.\n고객센터로 문의해주세요.'
+              : '탈퇴한 계정입니다.'}
+          </p>
+        </Modal>
+      )}
+
+      {/* 결제 차단 모달 (결제 버튼 클릭 시) */}
+      {mounted && showBlockedModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => setShowBlockedModal(null)}
+          title={
+            showBlockedModal === 'hold' ? '서비스 이용 불가' :
+            showBlockedModal === 'rejected' ? '사업자 인증 거절' :
+            '사업자 인증 대기'
+          }
+          confirmText={showBlockedModal === 'rejected' ? '사업자 등록증 재첨부' : '확인'}
+          onConfirm={
+            showBlockedModal === 'rejected'
+              ? () => router.push('/mypage/edit')
+              : () => setShowBlockedModal(null)
+          }
+          showCancel={showBlockedModal === 'rejected'}
+          cancelText="닫기"
+          onCancel={() => setShowBlockedModal(null)}
+        >
+          <p className="whitespace-pre-line">
+            {showBlockedModal === 'hold' && '서비스 이용이 불가합니다.\n고객센터로 문의해주세요.'}
+            {showBlockedModal === 'pending_verification' && '사업자 인증 진행중입니다.\n영업일 기준 당일 내에 검토가 완료됩니다.'}
+            {showBlockedModal === 'rejected' && (
+              <>
+                사업자 인증이 거절되었습니다.
+                {currentUser?.businessInfo?.verificationMemo && (
+                  <>
+                    {'\n\n'}거절 사유: {currentUser.businessInfo.verificationMemo}
+                  </>
+                )}
+                {'\n\n'}사업자 등록증을 다시 첨부해주세요.
+              </>
+            )}
+          </p>
+        </Modal>
       )}
 
       {/* 수정 모달 */}
