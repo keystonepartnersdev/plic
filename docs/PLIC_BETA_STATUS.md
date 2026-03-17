@@ -1,6 +1,6 @@
 # PLIC 베타 현황 문서 v1.0
 
-> 최종 업데이트: 2026-03-11
+> 최종 업데이트: 2026-03-17
 > 상태: **Beta**
 > 서비스 URL: https://plic.kr (Vercel)
 > API Gateway: https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod
@@ -183,6 +183,7 @@ PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
 | Kakao | 소셜 로그인 / 본인인증 / 2차 인증 | Next.js API Route → Kakao OAuth (세션 초기화 + prompt=login) | ✅ 완료 |
 | AWS Cognito | 사용자 인증 (JWT) | Lambda → Cognito | ✅ 완료 |
 | AWS S3 | 파일 업로드 | Presigned URL | ✅ 완료 |
+| Slack | 신규 회원가입/결제 완료 알림 | Webhook (DynamoDB 설정 기반, 5분 캐시) | ✅ 완료 |
 
 ---
 
@@ -424,3 +425,15 @@ aws lambda update-function-code \
 | **통계/한도 실제 거래 데이터 계산** | 어드민 회원상세: 전체 deals API 병렬 조회 (Lambda recentDeals limit:20 우회), `dealStats`로 거래 통계/한도 현황 계산. 고객 마이페이지/송금/거래상세: deals store에서 이번 달 completed 거래 합산으로 usedAmount 계산. DB 값 의존 제거로 취소 건 누락 방지 |
 | **거래취소/결제취소 상태 구분** | `DealHelper.getStatusConfig(status, isPaid)` 수정: `cancelled` + `isPaid=true` → "결제취소"(빨강), `cancelled` + `isPaid=false` → "거래취소"(회색). 어드민 거래정보, 어드민 회원상세, 어드민 대시보드, 고객 거래목록/상세 등 전체 7개 호출부 반영 |
 | **어드민 거래정보 uid 필터** | 회원상세 "전체보기" 링크(`/admin/deals?uid=xxx`) 작동. Lambda `AdminDealsListFunction`이 uid 파라미터 미지원하므로 전체 조회 후 프론트에서 필터링. 필터 시 "(회원 필터)" 표시 + "전체 보기" 해제 링크. 거래 상세 링크 동일 작동 |
+
+### 2026-03-17
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **PG 결제 정보 전체 저장** | 결제 성공 시 카드사/카드번호/승인번호/할부/결제수단 등 PG 상세 정보를 DynamoDB에 저장 (`pgCardIssuer`, `pgCardNo`, `pgAuthCd` 등) |
+| **어드민 PG 정보 항상 표시** | 거래 상세 PG 결제 정보 섹션을 결제 여부와 무관하게 항상 표시 (미결제 시 안내 문구) |
+| **어드민 거래목록 헤더 개선** | 거래정보 열에 PLIC거래번호/소프트먼트거래번호/승인번호 서브라벨 추가 |
+| **계좌인증 버그 수정** | `CreateDealFunction` Lambda에서 `isVerified: false` 강제 설정 제거 + 기존 15건 DynamoDB 일괄 보정 |
+| **EditDealModal 계좌확인 개선** | '확인'→'계좌확인', 예금주 불일치 시 자동수정 옵션, 인증 완료 전 저장 불가 (RecipientStep과 동일 동작) |
+| **Slack 알림 연동** | 신규 회원가입(🎉 가입일/이름/연락처/이메일/사업자정보) + 결제 완료(🔔 거래번호/승인번호/금액/수수료/수취인/발송인/회원정보) Slack 웹훅 알림. DynamoDB 설정 기반 5분 캐시 |
+| **등급 표시명 변경** | 어드민 회원목록 등급 열: '회원' → 베이직/플래티넘/B2B/임직원 |
