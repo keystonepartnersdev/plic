@@ -139,13 +139,25 @@ export const useUserStore = create(
           // httpOnly 쿠키로 인증 상태 확인
           const meResult = await secureAuth.getMe();
           if (!meResult.success) {
-            set({ isLoading: false });
+            // 서버에서 인증 실패 → 로그인 상태였으면 강제 로그아웃
+            if (get().isLoggedIn) {
+              set({ currentUser: null, isLoggedIn: false, isLoading: false });
+              try { await secureAuth.logout(); } catch {}
+            } else {
+              set({ isLoading: false });
+            }
             return;
           }
           // BFF 응답 형식 양쪽 호환: meResult.user (플랫) 또는 meResult.data (중첩)
           const userData = meResult.user || meResult.data?.user || meResult.data;
           if (!userData?.uid) {
-            set({ isLoading: false });
+            // 사용자 데이터 없음 → 로그인 상태였으면 강제 로그아웃
+            if (get().isLoggedIn) {
+              set({ currentUser: null, isLoggedIn: false, isLoading: false });
+              try { await secureAuth.logout(); } catch {}
+            } else {
+              set({ isLoading: false });
+            }
             return;
           }
 
