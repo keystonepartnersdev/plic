@@ -445,3 +445,5 @@ aws lambda update-function-code \
 | **회원가입 자동 로그인** | 카카오/직접 회원가입 완료 후 자동 로그인 처리 + 환영 모달 표시 → 홈 이동. 자동 로그인 실패 시 기존 완료 화면 fallback |
 | **1회 결제 한도 200만원** | 신규 가입자 1회 결제 한도 기본값 100만원 → 200만원으로 변경. 프론트엔드 상수, Lambda signup, 어드민 UI, API fallback 등 12개 파일 일괄 변경. 기존 가입자는 DB 값 유지 |
 | **어드민 사업자 정보 수정** | 어드민 > 회원상세 > 사업자인증 탭에서 상호/사업자등록번호/대표자명 직접 수정 가능. PATCH API 추가 (`/api/admin/users/{uid}/business`). 변경 시 히스토리 자동 기록 |
+| **Google Sheets 수수료율 추가** | 결제 완료 시 Google Sheets 전송 데이터에 거래 수수료율(feeRate) 필드 추가. 일반 결제 콜백, 빌링키 결제, 어드민 일괄 전송 3곳 반영 |
+| **미사용 DynamoDB 테이블 삭제** | `mokkoji-fcm-tokens` 테이블 삭제 (PLIC 무관, 데이터 0건) |
