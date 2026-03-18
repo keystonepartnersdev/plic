@@ -15,6 +15,7 @@ export interface PaymentSheetRow {
   finalAmount: number;         // 총결제금액
   amount: number;              // 송금액
   feeAmount: number;           // 수수료
+  feeRate: number;             // 수수료율 (거래 시점 적용률)
   recipientHolder: string;     // 수취인예금주
   recipientBank: string;       // 수취인은행
   recipientAccount: string;    // 수취인계좌번호
