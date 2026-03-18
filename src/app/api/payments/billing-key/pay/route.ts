@@ -162,6 +162,7 @@ export async function POST(request: NextRequest) {
               finalAmount: dealData.finalAmount || dealData.amount || 0,
               amount: dealData.amount || 0,
               feeAmount: dealData.feeAmount || 0,
+              feeRate: dealData.feeRate || 0,
               recipientHolder: dealData.recipient?.accountHolder || '',
               recipientBank: dealData.recipient?.bank || '',
               recipientAccount: dealData.recipient?.accountNumber || '',

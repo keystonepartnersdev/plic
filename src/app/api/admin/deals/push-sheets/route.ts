@@ -57,6 +57,7 @@ export async function POST() {
           finalAmount: deal.finalAmount || deal.amount || 0,
           amount: deal.amount || 0,
           feeAmount: deal.feeAmount || 0,
+          feeRate: deal.feeRate || 0,
           recipientHolder: deal.recipient?.accountHolder || '',
           recipientBank: deal.recipient?.bank || '',
           recipientAccount: deal.recipient?.accountNumber || '',
