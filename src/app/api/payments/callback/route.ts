@@ -11,6 +11,7 @@ import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { notifyPaymentComplete } from '@/lib/slack';
+import { appendPaymentToSheet } from '@/lib/google-sheets';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -154,6 +155,28 @@ export async function POST(request: NextRequest) {
               pgTransactionId: approvedTrxId || '',
               pgAuthCd: approveResponse.data?.payInfo?.authCd || '',
             }).catch(err => console.error('[Payment Callback] Slack notification failed:', err));
+
+            // Google Sheets 기록 (비동기, 실패해도 무시)
+            appendPaymentToSheet({
+              paidAt: new Date().toISOString(),
+              dealId,
+              pgTransactionId: approvedTrxId || '',
+              pgTrackId: trackId || '',
+              pgAuthCd: approveResponse.data?.payInfo?.authCd || '',
+              dealType: dealData.dealName || '',
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              amount: dealData.amount || 0,
+              feeAmount: dealData.feeAmount || 0,
+              recipientHolder: dealData.recipient?.accountHolder || '',
+              recipientBank: dealData.recipient?.bank || '',
+              recipientAccount: dealData.recipient?.accountNumber || '',
+              senderName: dealData.senderName || '',
+              userName: userData?.name || '',
+              userPhone: userData?.phone || '',
+              businessName: userData?.businessInfo?.businessName || '',
+              businessNumber: userData?.businessInfo?.businessNumber || '',
+              representativeName: userData?.businessInfo?.representativeName || '',
+            }).catch(err => console.error('[Payment Callback] Google Sheets failed:', err));
           }
         } catch (userError) {
           console.error('[Payment Callback] Failed to update user usedAmount:', userError);
