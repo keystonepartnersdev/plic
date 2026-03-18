@@ -52,8 +52,7 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
-    // prompt 미설정: 카카오톡 앱 간편로그인(푸시 알림) 지원
-    // 세션 자동완료 방지는 /api/kakao/auth에서 로그아웃 후 리다이렉트로 처리
+    prompt: 'login', // 캐시된 카카오 세션 무시, 매번 로그인 페이지 표시 (카카오톡 앱 푸시 알림 포함)
   });
 
   if (state) {
