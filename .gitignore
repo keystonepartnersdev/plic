@@ -62,3 +62,7 @@ node_modules/
 
 # bkit temp
 docs/docs/
+
+# plugin state files
+.omc/
+docs/.bkit-memory.json

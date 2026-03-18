@@ -1,7 +1,0 @@
-{
-  "tool_name": "Read",
-  "tool_input_preview": "{\"file_path\":\"/Users/taegyulee/Desktop/PLIC/backend/plic/LoginFunction/login.js\",\"limit\":100}",
-  "error": "File content (632.9KB) exceeds maximum allowed size (256KB). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.",
-  "timestamp": "2026-03-05T05:30:34.417Z",
-  "retry_count": 1
-}
