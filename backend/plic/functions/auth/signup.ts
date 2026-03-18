@@ -326,7 +326,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       feeRate: 4.0,
       isGradeManual: false,
       monthlyLimit: 20000000,
-      perTransactionLimit: 1000000,
+      perTransactionLimit: 2000000,
       usedAmount: 0,
       agreements: {
         service: agreements.service,

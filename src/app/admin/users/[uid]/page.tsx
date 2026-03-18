@@ -106,7 +106,7 @@ export default function AdminUserDetailPage() {
     status: 'active' as TUserStatus,
     feeRate: 4.5,
     monthlyLimit: 20000000,
-    perTransactionLimit: 1000000,
+    perTransactionLimit: 2000000,
   });
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -115,6 +115,13 @@ export default function AdminUserDetailPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<TUserStatus>('active');
   const [statusChangeReason, setStatusChangeReason] = useState('');
+  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
+  const [isSavingBusiness, setIsSavingBusiness] = useState(false);
+  const [businessEditData, setBusinessEditData] = useState({
+    businessName: '',
+    businessNumber: '',
+    representativeName: '',
+  });
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [editInfoData, setEditInfoData] = useState({
     name: '',
@@ -141,7 +148,7 @@ export default function AdminUserDetailPage() {
         status: userResponse.user.status || 'active',
         feeRate: userResponse.user.feeRate ?? 4.5,
         monthlyLimit: userResponse.user.monthlyLimit ?? 20000000,
-        perTransactionLimit: userResponse.user.perTransactionLimit ?? 1000000,
+        perTransactionLimit: userResponse.user.perTransactionLimit ?? 2000000,
       });
       setEditInfoData({
         name: userResponse.user.name || '',
@@ -235,7 +242,7 @@ export default function AdminUserDetailPage() {
       if (editData.monthlyLimit !== user.monthlyLimit) {
         settingsUpdate.monthlyLimit = editData.monthlyLimit;
       }
-      if (editData.perTransactionLimit !== (user.perTransactionLimit ?? 1000000)) {
+      if (editData.perTransactionLimit !== (user.perTransactionLimit ?? 2000000)) {
         settingsUpdate.perTransactionLimit = editData.perTransactionLimit;
       }
       if (Object.keys(settingsUpdate).length > 0) {
@@ -259,7 +266,7 @@ export default function AdminUserDetailPage() {
       status: user.status,
       feeRate: user.feeRate ?? 4.5,
       monthlyLimit: user.monthlyLimit ?? 20000000,
-      perTransactionLimit: user.perTransactionLimit ?? 1000000,
+      perTransactionLimit: user.perTransactionLimit ?? 2000000,
     });
     setIsEditing(false);
   };
@@ -820,9 +827,77 @@ export default function AdminUserDetailPage() {
           {/* 사업자 인증 관리 */}
           {user.userType === 'business' && user.businessInfo && (
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Building className="w-5 h-5 text-gray-400" />
-                <h2 className="text-lg font-semibold text-gray-900">사업자 인증</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-gray-400" />
+                  <h2 className="text-lg font-semibold text-gray-900">사업자 인증</h2>
+                </div>
+                {!isEditingBusiness ? (
+                  <button
+                    onClick={() => {
+                      setBusinessEditData({
+                        businessName: user.businessInfo?.businessName || '',
+                        businessNumber: user.businessInfo?.businessNumber || '',
+                        representativeName: user.businessInfo?.representativeName || '',
+                      });
+                      setIsEditingBusiness(true);
+                    }}
+                    className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    수정
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsEditingBusiness(false)}
+                      disabled={isSavingBusiness}
+                      className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setIsSavingBusiness(true);
+                        try {
+                          const adminToken = localStorage.getItem('plic_admin_token');
+                          const res = await fetch(`/api/admin/users/${uid}/business`, {
+                            method: 'PATCH',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${adminToken}`,
+                            },
+                            body: JSON.stringify(businessEditData),
+                          });
+                          const result = await res.json();
+                          if (result.success) {
+                            alert('사업자 정보가 수정되었습니다.');
+                            setIsEditingBusiness(false);
+                            // 사용자 데이터 리로드
+                            const reloadRes = await fetch(`/api/admin/users/${uid}`, {
+                              headers: { 'Authorization': `Bearer ${adminToken}` },
+                            });
+                            const reloadData = await reloadRes.json();
+                            if (reloadData.success) {
+                              setUser(reloadData.data?.user || reloadData.user);
+                            }
+                          } else {
+                            alert(result.error || '수정에 실패했습니다.');
+                          }
+                        } catch {
+                          alert('수정 중 오류가 발생했습니다.');
+                        } finally {
+                          setIsSavingBusiness(false);
+                        }
+                      }}
+                      disabled={isSavingBusiness}
+                      className="flex items-center gap-1 text-sm bg-primary-400 hover:bg-primary-500 text-white px-3 py-1 rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {isSavingBusiness ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+                      저장
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 인증 상태 배지 */}
@@ -845,19 +920,47 @@ export default function AdminUserDetailPage() {
 
               {/* 사업자 정보 */}
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-500">상호</span>
-                  <span className="font-medium text-gray-900">{user.businessInfo.businessName}</span>
+                  {isEditingBusiness ? (
+                    <input
+                      type="text"
+                      value={businessEditData.businessName}
+                      onChange={(e) => setBusinessEditData({ ...businessEditData, businessName: e.target.value })}
+                      className="w-48 h-8 px-3 text-right border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-sm"
+                    />
+                  ) : (
+                    <span className="font-medium text-gray-900">{user.businessInfo.businessName}</span>
+                  )}
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-500">사업자등록번호</span>
-                  <span className="font-medium text-gray-900 font-mono">
-                    {user.businessInfo.businessNumber.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3')}
-                  </span>
+                  {isEditingBusiness ? (
+                    <input
+                      type="text"
+                      value={businessEditData.businessNumber}
+                      onChange={(e) => setBusinessEditData({ ...businessEditData, businessNumber: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })}
+                      placeholder="숫자 10자리"
+                      className="w-48 h-8 px-3 text-right border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-sm font-mono"
+                    />
+                  ) : (
+                    <span className="font-medium text-gray-900 font-mono">
+                      {user.businessInfo.businessNumber.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3')}
+                    </span>
+                  )}
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-500">대표자명</span>
-                  <span className="font-medium text-gray-900">{user.businessInfo.representativeName}</span>
+                  {isEditingBusiness ? (
+                    <input
+                      type="text"
+                      value={businessEditData.representativeName}
+                      onChange={(e) => setBusinessEditData({ ...businessEditData, representativeName: e.target.value })}
+                      className="w-48 h-8 px-3 text-right border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-sm"
+                    />
+                  ) : (
+                    <span className="font-medium text-gray-900">{user.businessInfo.representativeName}</span>
+                  )}
                 </div>
                 {user.businessInfo.businessLicenseKey && (
                   <div className="flex justify-between items-center">
@@ -1087,14 +1190,14 @@ export default function AdminUserDetailPage() {
                     <p className="text-xs text-gray-400 mt-1">
                       = {(editData.perTransactionLimit / 10000).toLocaleString()}만원
                     </p>
-                    {editData.perTransactionLimit !== (user.perTransactionLimit ?? 1000000) && (
+                    {editData.perTransactionLimit !== (user.perTransactionLimit ?? 2000000) && (
                       <p className="text-xs text-blue-600 mt-1">
-                        {((user.perTransactionLimit ?? 1000000) / 10000).toLocaleString()}만원 → {(editData.perTransactionLimit / 10000).toLocaleString()}만원
+                        {((user.perTransactionLimit ?? 2000000) / 10000).toLocaleString()}만원 → {(editData.perTransactionLimit / 10000).toLocaleString()}만원
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="font-medium text-gray-900">{(user.perTransactionLimit ?? 1000000).toLocaleString()}원</p>
+                  <p className="font-medium text-gray-900">{(user.perTransactionLimit ?? 2000000).toLocaleString()}원</p>
                 )}
               </div>
 

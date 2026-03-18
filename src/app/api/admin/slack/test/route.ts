@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
           phone: '010-1234-5678',
           grade: 'basic',
           feeRate: 4.5,
-          perTransactionLimit: 1000000,
+          perTransactionLimit: 2000000,
           monthlyLimit: 20000000,
           businessName: '테스트상사',
           businessNumber: '123-45-67890',

@@ -76,7 +76,7 @@ export async function PUT(
     if (perTransactionLimit !== undefined && perTransactionLimit !== user.perTransactionLimit) {
       updateExpressions.push('perTransactionLimit = :perTransactionLimit');
       expressionAttributeValues[':perTransactionLimit'] = perTransactionLimit;
-      const prevLimit = user.perTransactionLimit || 1000000;
+      const prevLimit = user.perTransactionLimit || 2000000;
       historyEntries.push({
         id: `${historyId}-pertx`, field: 'perTransactionLimit', fieldLabel: '1회 결제 한도',
         prevValue: `${(prevLimit / 10000).toLocaleString()}만원`,
@@ -110,7 +110,7 @@ export async function PUT(
         uid,
         feeRate: feeRate ?? user.feeRate,
         monthlyLimit: monthlyLimit ?? user.monthlyLimit,
-        perTransactionLimit: perTransactionLimit ?? user.perTransactionLimit ?? 1000000,
+        perTransactionLimit: perTransactionLimit ?? user.perTransactionLimit ?? 2000000,
       },
     });
   } catch (error) {

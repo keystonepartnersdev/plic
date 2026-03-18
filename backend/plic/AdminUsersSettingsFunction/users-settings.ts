@@ -145,7 +145,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (perTransactionLimit !== undefined && perTransactionLimit !== user.perTransactionLimit) {
       updateExpressions.push('perTransactionLimit = :perTransactionLimit');
       expressionAttributeValues[':perTransactionLimit'] = perTransactionLimit;
-      const prevLimit = user.perTransactionLimit || 1000000;
+      const prevLimit = user.perTransactionLimit || 2000000;
       historyEntries.push({
         id: `${historyId}-pertx`,
         field: 'perTransactionLimit',
@@ -190,7 +190,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         uid,
         feeRate: feeRate ?? user.feeRate,
         monthlyLimit: monthlyLimit ?? user.monthlyLimit,
-        perTransactionLimit: perTransactionLimit ?? user.perTransactionLimit ?? 1000000,
+        perTransactionLimit: perTransactionLimit ?? user.perTransactionLimit ?? 2000000,
       },
     });
   } catch (error: any) {

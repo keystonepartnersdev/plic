@@ -325,7 +325,7 @@ function NewDealContent() {
     0
   );
 
-  const perTransactionLimit = currentUser?.perTransactionLimit || 1000000;
+  const perTransactionLimit = currentUser?.perTransactionLimit || 2000000;
   const isOverPerTransaction = numericAmount > perTransactionLimit;
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
