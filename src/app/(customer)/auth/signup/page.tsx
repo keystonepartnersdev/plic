@@ -4,12 +4,13 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Check, ChevronRight, Eye, EyeOff, Phone, User, Mail, Upload, X, AlertCircle, FileText } from 'lucide-react';
-import { Header } from '@/components/common';
+import { Header, Modal } from '@/components/common';
 import { authAPI } from '@/lib/api';
 import { uploadFile, validateFile } from '@/lib/upload';
 import { TUserType } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { KakaoVerifyStep } from '@/components/auth/signup/KakaoVerifyStep';
+import { useUserStore } from '@/stores/useUserStore';
 
 type Step = 'agreement' | 'kakaoVerify' | 'info' | 'businessInfo' | 'complete';
 
@@ -62,6 +63,7 @@ function SignupContent() {
   const initRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // 약관 기본값 정의
   const defaultAgreements: Agreement[] = [
@@ -534,7 +536,63 @@ function SignupContent() {
       // 회원가입 완료 - sessionStorage 정리
       sessionStorage.removeItem('signup_agreements');
       sessionStorage.removeItem('signup_step');
-      setStepState('complete'); // setStep 대신 직접 호출 (sessionStorage 저장 안함)
+
+      // 자동 로그인 시도
+      try {
+        if (isKakaoSocialSignup && kakaoId) {
+          // 카카오 소셜 가입: kakao-login API 호출
+          const kakaoLoginRes = await fetch('/api/auth/kakao-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email, kakaoId }),
+          });
+          const kakaoLoginData = await kakaoLoginRes.json();
+          if (kakaoLoginData.success) {
+            const rawUser = kakaoLoginData.data?.user || kakaoLoginData.user;
+            if (rawUser) {
+              useUserStore.getState().setUser({
+                uid: rawUser.uid,
+                name: rawUser.name,
+                phone: rawUser.phone,
+                email: rawUser.email,
+                userType: rawUser.userType || 'personal',
+                businessInfo: rawUser.businessInfo,
+                authType: rawUser.authType || 'kakao',
+                socialProvider: rawUser.socialProvider || 'kakao',
+                isVerified: rawUser.isVerified ?? true,
+                verifiedAt: rawUser.verifiedAt,
+                status: rawUser.status || 'active',
+                grade: rawUser.grade || 'basic',
+                feeRate: rawUser.feeRate ?? 4.5,
+                isGradeManual: rawUser.isGradeManual ?? false,
+                monthlyLimit: rawUser.monthlyLimit ?? 20000000,
+                perTransactionLimit: rawUser.perTransactionLimit ?? 2000000,
+                usedAmount: rawUser.usedAmount ?? 0,
+                agreements: rawUser.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
+                totalPaymentAmount: rawUser.totalPaymentAmount ?? 0,
+                totalDealCount: rawUser.totalDealCount ?? 0,
+                lastMonthPaymentAmount: rawUser.lastMonthPaymentAmount ?? 0,
+                history: rawUser.history || [],
+                createdAt: rawUser.createdAt || new Date().toISOString(),
+                updatedAt: rawUser.updatedAt || new Date().toISOString(),
+              });
+            }
+            setShowWelcomeModal(true);
+            return;
+          }
+        } else {
+          // 직접 가입: 일반 로그인
+          await useUserStore.getState().login(email, password);
+          setShowWelcomeModal(true);
+          return;
+        }
+      } catch (autoLoginErr) {
+        console.error('[Signup] 자동 로그인 실패:', autoLoginErr);
+      }
+
+      // 자동 로그인 실패 시 fallback: 기존 완료 화면
+      setStepState('complete');
     } catch (err: unknown) {
       setError(getErrorMessage(err) || '회원가입 중 오류가 발생했습니다.');
     } finally {
@@ -1049,7 +1107,7 @@ function SignupContent() {
           </div>
         )}
 
-        {/* Step 5: 완료 */}
+        {/* Step 5: 완료 (자동 로그인 실패 시 fallback) */}
         {step === 'complete' && (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1081,6 +1139,47 @@ function SignupContent() {
             </button>
           </div>
         )}
+
+        {/* 환영 모달 (자동 로그인 성공 시) */}
+        <Modal
+          isOpen={showWelcomeModal}
+          onClose={() => {
+            setShowWelcomeModal(false);
+            router.replace('/');
+          }}
+          title="가입 완료!"
+        >
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-primary-400" />
+            </div>
+            <p className="text-gray-700 mb-2">
+              {name}님, PLIC 가입을 환영합니다.
+            </p>
+            {userType === 'business' && (
+              <div className="p-3 bg-blue-50 rounded-xl mb-4 text-left">
+                <div className="flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">사업자 인증 진행 중</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      사업자등록증 확인 후 서비스 이용이 가능합니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setShowWelcomeModal(false);
+                router.replace('/');
+              }}
+              className="w-full h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl transition-colors"
+            >
+              확인
+            </button>
+          </div>
+        </Modal>
       </div>
     </div>
   );

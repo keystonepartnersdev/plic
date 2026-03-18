@@ -47,7 +47,7 @@ const BANKS = [
   '경남은행', '광주은행', '전북은행', '제주은행',
 ];
 
-export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0, perTransactionLimit = 1000000 }: EditDealModalProps) {
+export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0, perTransactionLimit = 2000000 }: EditDealModalProps) {
   // 금액 수정
   const [amount, setAmount] = useState(deal.amount);
 

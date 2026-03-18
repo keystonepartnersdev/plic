@@ -50,7 +50,10 @@ export type THistoryField =
   | 'email'            // 이메일
   | 'phone'            // 연락처
   | 'thirdParty'       // 제3자 정보제공 동의
-  | 'marketing';       // 마케팅 수신 동의
+  | 'marketing'        // 마케팅 수신 동의
+  | 'businessName'     // 상호
+  | 'businessNumber'   // 사업자등록번호
+  | 'representativeName'; // 대표자명
 
 // 회원 히스토리 항목
 export interface IUserHistory {
@@ -90,7 +93,7 @@ export interface IUser {
 
   // 한도
   monthlyLimit: number;
-  perTransactionLimit?: number; // 1회 결제 한도 (송금액 기준, 기본값 100만원)
+  perTransactionLimit?: number; // 1회 결제 한도 (송금액 기준, 기본값 200만원)
   usedAmount: number;
 
   // 동의 항목
