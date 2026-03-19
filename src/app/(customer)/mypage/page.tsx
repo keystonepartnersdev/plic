@@ -314,7 +314,7 @@ export default function MyPage() {
               </div>
 
               <p className="text-xs text-gray-500">
-                탈퇴 후 동일 계정으로 재가입이 가능합니다. 단, 보유 중인 쿠폰 및 혜택은 모두 소멸됩니다.
+                탈퇴 후 동일 계정으로 재가입이 불가합니다. 보유 중인 쿠폰 및 혜택은 모두 소멸됩니다.
               </p>
             </div>
 
