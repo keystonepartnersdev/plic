@@ -1158,31 +1158,17 @@ function SignupContent() {
           title="가입 완료!"
           showCloseButton={false}
         >
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-9 h-9 text-green-600" strokeWidth={3} />
+          <p>
+            <strong className="text-gray-900">{name}</strong>님, PLIC 가입을 환영합니다.
+          </p>
+          {userType === 'business' && (
+            <div className="p-3 bg-blue-50 rounded-xl mt-3">
+              <p className="text-sm text-blue-800 font-semibold">사업자 인증 진행 중</p>
+              <p className="text-xs text-blue-600 mt-1">
+                운영팀에서 사업자등록증을 확인 중입니다. 인증 완료 후 서비스 이용이 가능합니다.
+              </p>
             </div>
-            <p className="text-lg font-semibold text-gray-900 mb-1">
-              {name}님, 환영합니다!
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              PLIC 가입이 완료되었습니다.
-            </p>
-            {userType === 'business' && (
-              <div className="p-4 bg-blue-50 rounded-xl text-left">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-blue-800 font-semibold">사업자 인증 진행 중</p>
-                    <p className="text-xs text-blue-600 mt-1 leading-relaxed">
-                      운영팀에서 사업자등록증을 확인 중입니다.<br />
-                      인증 완료 후 서비스 이용이 가능합니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </Modal>
       </div>
     </div>
