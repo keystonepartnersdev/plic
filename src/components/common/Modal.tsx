@@ -87,7 +87,7 @@ export function Modal({
           )}
           <button
             onClick={handleConfirm}
-            className={`h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl transition-all duration-300 ${showCancel ? 'flex-1' : 'w-full max-w-[200px]'}`}
+            className={`h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl transition-all duration-300 ${showCancel ? 'flex-1' : 'w-full'}`}
           >
             {confirmText}
           </button>
