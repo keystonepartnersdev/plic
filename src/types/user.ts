@@ -114,6 +114,11 @@ export interface IUser {
   // 히스토리
   history: IUserHistory[];
 
+  // 탈퇴 관련 (plic-withdrawn-users에서 조회 시)
+  isWithdrawn?: boolean;
+  withdrawnAt?: string;
+  retentionUntil?: string;
+
   // 일시 정보 (ISO Date String)
   createdAt: string;
   updatedAt: string;

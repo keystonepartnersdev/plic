@@ -275,11 +275,19 @@ export default function AdminUserDetailPage() {
     setIsSaving(true);
     try {
       await adminAPI.updateUserStatus(user.uid, 'withdrawn', '관리자 회원탈퇴 처리');
-      await fetchUser();
       setShowWithdrawModal(false);
+      alert('회원 탈퇴가 처리되었습니다. 법적 보관 데이터가 분리 저장되었습니다.');
+      await fetchUser();
     } catch (err: unknown) {
       console.error('회원 탈퇴 처리 실패:', err);
-      alert(getErrorMessage(err) || '회원 탈퇴 처리에 실패했습니다.');
+      const errorMsg = getErrorMessage(err) || '회원 탈퇴 처리에 실패했습니다.';
+      // 진행 중 거래가 있는 경우 경고
+      if (errorMsg.includes('진행 중인 거래')) {
+        setShowWithdrawModal(false);
+        alert(errorMsg);
+      } else {
+        alert(errorMsg);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -419,25 +427,31 @@ export default function AdminUserDetailPage() {
             {GRADE_LABELS[user.grade]}
             {user.isGradeManual && <span className="ml-1 text-xs">(수동)</span>}
           </span>
-          <button
-            onClick={openStatusModal}
-            disabled={isSaving}
-            className={cn(
-              'px-3 py-1.5 text-sm font-medium rounded-lg flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer',
-              STATUS_COLORS[user.status]
-            )}
-          >
-            {STATUS_LABELS[user.status]}
-            <Edit2 className="w-3 h-3" />
-          </button>
-          {user.status !== 'withdrawn' && (
-            <button
-              onClick={() => setShowWithdrawModal(true)}
-              disabled={isSaving}
-              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-            >
-              회원탈퇴
-            </button>
+          {user.isWithdrawn || user.status === 'withdrawn' ? (
+            <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 text-gray-500">
+              탈퇴 (읽기전용)
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={openStatusModal}
+                disabled={isSaving}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-lg flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer',
+                  STATUS_COLORS[user.status]
+                )}
+              >
+                {STATUS_LABELS[user.status]}
+                <Edit2 className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => setShowWithdrawModal(true)}
+                disabled={isSaving}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              >
+                회원탈퇴
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1302,7 +1316,7 @@ export default function AdminUserDetailPage() {
             <p className="text-gray-600 text-sm leading-relaxed mb-6">
               <strong className="text-gray-900">{user.name}</strong>님을 정말 탈퇴 처리하시겠습니까?
               <br /><br />
-              탈퇴 후에도 회원 정보는 유지되지만, 해당 회원은 로그인할 수 없게 됩니다.
+              탈퇴 시 회원 정보는 법적 보관 테이블로 분리 저장되며, 해당 회원은 로그인 및 동일 계정 재가입이 불가합니다.
             </p>
             <div className="flex gap-3">
               <button

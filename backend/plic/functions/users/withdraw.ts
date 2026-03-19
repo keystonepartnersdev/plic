@@ -1,5 +1,5 @@
 // backend/plic/functions/users/withdraw.ts
-// DELETE /users/me - 회원 탈퇴 (법적 보관 + 원본 완전 삭제)
+// DELETE /users/me - 회원 탈퇴 (법적 보관 + 원본 완전 삭제 + Cognito 유지)
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -10,7 +10,6 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import {
   CognitoIdentityProviderClient,
-  AdminDeleteUserCommand,
   GetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
@@ -22,7 +21,6 @@ const USERS_TABLE = 'plic-users';
 const DEALS_TABLE = 'plic-deals';
 const WITHDRAWN_USERS_TABLE = 'plic-withdrawn-users';
 const WITHDRAWN_DEALS_TABLE = 'plic-withdrawn-deals';
-const COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID;
 
 // 진행 중인 거래 상태 목록
 const ACTIVE_DEAL_STATUSES = ['awaiting_payment', 'pending', 'reviewing', 'hold'];
@@ -61,30 +59,6 @@ const getUserEmailFromToken = async (authHeader: string | undefined): Promise<st
   }
 };
 
-// 마스킹 함수들 (분리 보관 테이블에 저장할 때 사용)
-function maskName(name: string): string {
-  if (!name) return '***';
-  if (name.length === 1) return '*';
-  if (name.length === 2) return name[0] + '*';
-  return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
-}
-
-function maskEmail(email: string): string {
-  if (!email) return '***@***';
-  const [local, domain] = email.split('@');
-  if (!domain) return '***';
-  const maskedLocal = local.length <= 2 ? local[0] + '***' : local.substring(0, 2) + '***';
-  return `${maskedLocal}@${domain}`;
-}
-
-function maskPhone(phone: string): string {
-  if (!phone) return '***-****-****';
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 4) return '***';
-  const last4 = digits.slice(-4);
-  return `***-****-${last4}`;
-}
-
 export const handler: APIGatewayProxyHandler = async (event) => {
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -102,7 +76,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   try {
-    // 2. 사용자 조회 (email-index GSI로 검색 - uid 형식 불일치 문제 해결)
+    // 2. 사용자 조회 (email-index GSI로 검색)
     const queryResult = await docClient.send(new QueryCommand({
       TableName: USERS_TABLE,
       IndexName: 'email-index',
@@ -115,7 +89,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     const user = queryResult.Items[0];
-    const uid = user.uid; // 실제 DynamoDB 파티션 키 사용
+    const uid = user.uid;
 
     if (user.status === 'withdrawn') {
       return response(400, { success: false, error: '이미 탈퇴된 계정입니다.' });
@@ -140,21 +114,29 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       });
     }
 
-    // 4. 법적 보관 데이터를 분리 테이블에 저장 (마스킹 처리)
+    // 4. 법적 보관 데이터를 분리 테이블에 저장 (원본 데이터 그대로 보관)
     const now = new Date();
     const withdrawnAt = now.toISOString();
     const retentionUntil = new Date(now.getFullYear() + RETENTION_YEARS, now.getMonth(), now.getDate()).toISOString();
 
-    // 4-1. 탈퇴 회원 정보 보관 (마스킹 적용)
+    // 4-1. 탈퇴 회원 정보 보관 (원본 전체 저장 - 마스킹 없음)
     await docClient.send(new PutCommand({
       TableName: WITHDRAWN_USERS_TABLE,
       Item: {
         uid,
-        maskedName: maskName(user.name),
-        maskedEmail: maskEmail(user.email),
-        maskedPhone: maskPhone(user.phone),
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
         grade: user.grade,
+        authType: user.authType || 'email',
         kakaoId: user.kakaoId || null,
+        businessInfo: user.businessInfo || null,
+        feeRate: user.feeRate,
+        perTransactionLimit: user.perTransactionLimit,
+        monthlyLimit: user.monthlyLimit,
+        totalDealCount: user.totalDealCount || 0,
+        totalPaymentAmount: user.totalPaymentAmount || 0,
+        status: 'withdrawn',
         joinedAt: user.createdAt,
         withdrawnAt,
         retentionUntil,
@@ -162,7 +144,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       },
     }));
 
-    // 4-2. 완료/취소 거래 내역 보관
+    // 4-2. 완료/취소 거래 내역 보관 (원본 그대로)
     const completedDeals = allDeals.filter(deal =>
       ['completed', 'cancelled', 'refunded', 'expired'].includes(deal.status)
     );
@@ -176,9 +158,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           originalDid: deal.did,
           amount: deal.amount,
           fee: deal.fee,
+          feeRate: deal.feeRate,
+          feeAmount: deal.feeAmount,
+          finalAmount: deal.finalAmount,
           status: deal.status,
-          recipientName: deal.recipientName ? maskName(deal.recipientName) : undefined,
-          recipientBank: deal.recipientBank,
+          recipient: deal.recipient || null,
+          senderName: deal.senderName || null,
+          dealName: deal.dealName || null,
           createdAt: deal.createdAt,
           completedAt: deal.completedAt || deal.updatedAt,
           withdrawnAt,
@@ -193,22 +179,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       Key: { uid },
     }));
 
-    // 6. Cognito 사용자 완전 삭제
-    // Cognito Username은 email 기반으로 생성됨
-    const cognitoUsername = user.email;
-    if (cognitoUsername) {
-      try {
-        await cognitoClient.send(new AdminDeleteUserCommand({
-          UserPoolId: COGNITO_USER_POOL_ID!,
-          Username: cognitoUsername,
-        }));
-      } catch (cognitoError: any) {
-        // UserNotFoundException은 무시 (이미 삭제된 경우)
-        if (cognitoError.name !== 'UserNotFoundException') {
-          console.error('Cognito user deletion failed:', cognitoError);
-        }
-      }
-    }
+    // 6. Cognito는 유지 (삭제하지 않음)
+    // - 재가입 차단: signup.ts에서 Cognito 존재 + plic-users 없음 = 탈퇴 회원으로 판단
+    // - kakao-login.ts에서도 동일 로직으로 차단
 
     // 7. 성공 응답
     return response(200, {
