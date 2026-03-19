@@ -2,15 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { sendVerificationEmail } from '@/lib/ses';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
-const sesClient = new SESClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 
 const CONTENTS_TABLE = process.env.CONTENTS_TABLE || 'plic-contents';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
-const SES_SENDER = process.env.SES_SENDER_EMAIL || 'noreply@plic.kr';
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,40 +61,12 @@ export async function POST(request: NextRequest) {
       },
     }));
 
-    // SES로 이메일 발송
-    await sesClient.send(new SendEmailCommand({
-      Source: SES_SENDER,
-      Destination: { ToAddresses: [email] },
-      Message: {
-        Subject: { Data: '[PLIC] 이메일 인증코드', Charset: 'UTF-8' },
-        Body: {
-          Html: {
-            Data: `
-              <div style="max-width:480px;margin:0 auto;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;padding:40px 20px;">
-                <div style="text-align:center;margin-bottom:32px;">
-                  <h1 style="font-size:24px;font-weight:700;color:#111;">PLIC 이메일 인증</h1>
-                </div>
-                <p style="font-size:16px;color:#333;margin-bottom:24px;">
-                  아래 인증코드를 입력해주세요.
-                </p>
-                <div style="text-align:center;padding:24px;background:#f8f9fa;border-radius:12px;margin-bottom:24px;">
-                  <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#6366f1;">${code}</span>
-                </div>
-                <p style="font-size:14px;color:#888;">
-                  이 인증코드는 5분간 유효합니다.<br/>
-                  본인이 요청하지 않았다면 이 이메일을 무시하세요.
-                </p>
-              </div>
-            `,
-            Charset: 'UTF-8',
-          },
-        },
-      },
-    }));
+    // SES로 이메일 발송 (공통 유틸 사용)
+    await sendVerificationEmail(email, code);
 
     console.log(`[SendEmailCode] Code sent to ${email}`);
     return NextResponse.json({ success: true, data: { message: '인증코드가 발송되었습니다.' } });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[SendEmailCode] Error:', error);
     return NextResponse.json(
       { success: false, error: '인증코드 발송에 실패했습니다. 잠시 후 다시 시도해주세요.' },

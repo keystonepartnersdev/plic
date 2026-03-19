@@ -1,6 +1,6 @@
 # PLIC 베타 현황 문서 v1.0
 
-> 최종 업데이트: 2026-03-18
+> 최종 업데이트: 2026-03-19
 > 상태: **Beta**
 > 서비스 URL: https://plic.kr (Vercel)
 > API Gateway: https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod
@@ -448,3 +448,11 @@ aws lambda update-function-code \
 | **Google Sheets 수수료율 추가** | 결제 완료 시 Google Sheets 전송 데이터에 거래 수수료율(feeRate) 필드 추가. 일반 결제 콜백, 빌링키 결제, 어드민 일괄 전송 3곳 반영 |
 | **미사용 DynamoDB 테이블 삭제** | `mokkoji-fcm-tokens` 테이블 삭제 (PLIC 무관, 데이터 0건) |
 | **대시보드 대기 목록 이전** | 애널리틱스의 '사업자 인증 대기' / '거래 검수 대기' 섹션을 대시보드로 이전. 통계 카드와 최근 거래 테이블 사이에 배치. 건수 뱃지, 전체보기 링크, 개별 클릭 시 상세 이동 |
+
+### 2026-03-19
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **SES 이메일 공통 유틸** | `src/lib/ses.ts` 신규 생성. 이메일 인증코드/임시 비밀번호/송금 완료 알림 3종 SES 발송 함수 통합. 기존 `send-email-code` API도 공통 유틸 사용하도록 리팩토링 |
+| **비밀번호 재설정** | `/api/auth/reset-password` API 신규. 이메일 입력 → 가입 확인 → Cognito 임시 비밀번호 설정 → SES 발송. 카카오 계정은 비밀번호 재설정 불가 처리. `/auth/reset-password` 페이지 + 로그인 페이지에 '비밀번호를 잊으셨나요?' 링크 추가 |
+| **송금 완료 이메일 통보** | 어드민에서 거래 상태를 `completed`로 변경 시 사용자에게 송금 완료 안내 이메일 자동 발송. 거래번호/결제금액/수수료/송금금액/수취 계좌 정보 포함 |

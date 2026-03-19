@@ -251,7 +251,13 @@ function LoginContent() {
           </button>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
+          <Link href="/auth/reset-password" className="text-sm text-gray-400 hover:text-gray-600 transition-colors duration-300">
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
+
+        <div className="mt-4 text-center">
           <p className="text-gray-500 font-medium">
             아직 회원이 아니신가요?{' '}
             <Link href="/auth/signup" className="text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
