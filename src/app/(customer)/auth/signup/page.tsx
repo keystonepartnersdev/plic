@@ -23,23 +23,13 @@ interface Agreement {
 }
 
 // 초기 step 결정 (컴포넌트 외부에서 동기적으로)
+// 항상 agreement부터 시작 → 이탈 후 재진입 시 이전 상태 복원 방지
 function getInitialStep(): Step {
   if (typeof window === 'undefined') return 'agreement';
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const fromLogin = urlParams.get('fromLogin');
-
-  // 로그인에서 온 신규 회원 → 항상 약관동의부터
-  if (fromLogin === 'true') {
-    sessionStorage.removeItem('signup_step'); // 이전 step 제거
-    return 'agreement';
-  }
-
-  // 일반 접근 → 저장된 step 복원 또는 agreement
-  const savedStep = sessionStorage.getItem('signup_step');
-  if (savedStep && ['agreement', 'kakaoVerify', 'info', 'businessInfo'].includes(savedStep)) {
-    return savedStep as Step;
-  }
+  // 회원가입 페이지 진입 시 항상 세션 초기화
+  sessionStorage.removeItem('signup_step');
+  sessionStorage.removeItem('signup_agreements');
 
   return 'agreement';
 }
