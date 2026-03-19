@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { sendTransferCompleteEmail } from '@/lib/ses';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -67,6 +68,28 @@ export async function PUT(
           ConditionExpression: 'attribute_exists(uid)',
         }));
       } catch (e) { console.error('사용자 통계 차감 실패:', e); }
+    }
+
+    // 송금 완료 시 사용자에게 이메일 통보
+    if (body.status === 'completed' && deal.uid) {
+      try {
+        const userResult = await docClient.send(new GetCommand({ TableName: USERS_TABLE, Key: { uid: deal.uid } }));
+        const userData = userResult.Item;
+        if (userData?.email) {
+          sendTransferCompleteEmail(userData.email, {
+            dealId: did,
+            amount: deal.amount || 0,
+            feeAmount: deal.feeAmount || 0,
+            finalAmount: deal.finalAmount || deal.amount || 0,
+            recipientBank: deal.recipient?.bank || '',
+            recipientAccount: deal.recipient?.accountNumber || '',
+            recipientHolder: deal.recipient?.accountHolder || '',
+            transferredAt: now,
+          }).catch(err => console.error('[Admin Deals] Transfer email failed:', err));
+        }
+      } catch (emailErr) {
+        console.error('[Admin Deals] Failed to send transfer email:', emailErr);
+      }
     }
 
     return NextResponse.json({ success: true, data: { message: '거래 상태가 변경되었습니다.', did, status: body.status } });
