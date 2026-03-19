@@ -23,13 +23,28 @@ interface Agreement {
 }
 
 // 초기 step 결정 (컴포넌트 외부에서 동기적으로)
-// 항상 agreement부터 시작 → 이탈 후 재진입 시 이전 상태 복원 방지
 function getInitialStep(): Step {
   if (typeof window === 'undefined') return 'agreement';
 
-  // 회원가입 페이지 진입 시 항상 세션 초기화
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasVerificationKey = urlParams.has('verificationKey');
+  const hasFromLogin = urlParams.get('fromLogin') === 'true';
+
+  // 카카오 인증 후 redirect → 세션 유지 (약관 동의 보존), 로딩 표시용 info step
+  if (hasVerificationKey) {
+    const savedStep = sessionStorage.getItem('signup_step');
+    // 카카오 인증 후에는 info step으로 진입 (useEffect에서 상세 처리)
+    if (savedStep && ['info', 'businessInfo'].includes(savedStep)) {
+      return savedStep as Step;
+    }
+    return 'info';
+  }
+
+  // 로그인에서 온 신규 회원 또는 일반 접근 → 세션 초기화, agreement부터 시작
   sessionStorage.removeItem('signup_step');
-  sessionStorage.removeItem('signup_agreements');
+  if (!hasFromLogin) {
+    sessionStorage.removeItem('signup_agreements');
+  }
 
   return 'agreement';
 }
