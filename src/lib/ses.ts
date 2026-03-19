@@ -42,26 +42,28 @@ export async function sendVerificationEmail(to: string, code: string): Promise<v
   }));
 }
 
-// 임시 비밀번호 발송
-export async function sendTemporaryPasswordEmail(to: string, tempPassword: string): Promise<void> {
-  const html = wrapEmailHtml('임시 비밀번호 안내', `
-    <p style="font-size:16px;color:#333;margin-bottom:16px;">비밀번호 재설정 요청에 따라 임시 비밀번호를 발급해드립니다.</p>
-    <div style="text-align:center;padding:24px;background:#f8f9fa;border-radius:12px;margin-bottom:24px;">
-      <p style="font-size:13px;color:#64748b;margin:0 0 8px 0;">임시 비밀번호</p>
-      <span style="font-size:24px;font-weight:700;letter-spacing:2px;color:#2563EB;">${tempPassword}</span>
+// 비밀번호 재설정 링크 발송
+export async function sendPasswordResetEmail(to: string, resetLink: string): Promise<void> {
+  const html = wrapEmailHtml('비밀번호 재설정', `
+    <p style="font-size:16px;color:#333;margin-bottom:24px;">비밀번호 재설정 요청이 접수되었습니다.<br/>아래 버튼을 클릭하여 새 비밀번호를 설정해주세요.</p>
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href="${resetLink}" style="display:inline-block;padding:16px 48px;background:linear-gradient(to right,#2563EB,#3B82F6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:50px;">새 비밀번호 설정</a>
+    </div>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;text-align:center;">버튼이 작동하지 않으면 아래 링크를 복사하여 브라우저에 붙여넣기 하세요.</p>
+    <div style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:24px;word-break:break-all;">
+      <a href="${resetLink}" style="font-size:12px;color:#2563EB;text-decoration:none;">${resetLink}</a>
     </div>
     <div style="background:#fef3c7;border-radius:8px;padding:16px;margin-bottom:16px;">
       <p style="font-size:14px;color:#92400e;margin:0;font-weight:600;">⚠️ 보안 안내</p>
-      <p style="font-size:13px;color:#92400e;margin:8px 0 0 0;">로그인 후 반드시 비밀번호를 변경해주세요.<br/>임시 비밀번호는 24시간 동안만 유효합니다.</p>
+      <p style="font-size:13px;color:#92400e;margin:8px 0 0 0;">이 링크는 30분간 유효하며, 1회만 사용 가능합니다.<br/>본인이 요청하지 않았다면 이 이메일을 무시하세요.</p>
     </div>
-    <p style="font-size:14px;color:#888;">본인이 요청하지 않았다면 이 이메일을 무시하세요.<br/>계정 보안에 문제가 있다고 판단되면 고객센터로 연락해주세요.</p>
   `);
 
   await sesClient.send(new SendEmailCommand({
     Source: SES_SENDER,
     Destination: { ToAddresses: [to] },
     Message: {
-      Subject: { Data: '[PLIC] 임시 비밀번호 안내', Charset: 'UTF-8' },
+      Subject: { Data: '[PLIC] 비밀번호 재설정 안내', Charset: 'UTF-8' },
       Body: { Html: { Data: html, Charset: 'UTF-8' } },
     },
   }));
