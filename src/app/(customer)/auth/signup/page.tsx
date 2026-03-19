@@ -1156,8 +1156,9 @@ function SignupContent() {
             router.replace('/');
           }}
           title="가입 완료!"
+          showCloseButton={false}
         >
-          <div className="text-center py-4">
+          <div className="text-center">
             <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-primary-400" />
             </div>
@@ -1165,7 +1166,7 @@ function SignupContent() {
               {name}님, PLIC 가입을 환영합니다.
             </p>
             {userType === 'business' && (
-              <div className="p-3 bg-blue-50 rounded-xl mb-4 text-left">
+              <div className="p-3 bg-blue-50 rounded-xl text-left">
                 <div className="flex gap-2">
                   <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                   <div>
@@ -1177,15 +1178,6 @@ function SignupContent() {
                 </div>
               </div>
             )}
-            <button
-              onClick={() => {
-                setShowWelcomeModal(false);
-                router.replace('/');
-              }}
-              className="w-full h-12 bg-primary-400 hover:bg-primary-500 text-white font-semibold rounded-xl transition-colors"
-            >
-              확인
-            </button>
           </div>
         </Modal>
       </div>
