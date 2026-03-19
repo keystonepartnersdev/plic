@@ -300,7 +300,10 @@ function SignupContent() {
       const data = await res.json();
       if (data.success) {
         setEmailCodeSent(true);
-        setEmailError('');
+        // 이메일 마스킹: ab***@domain.com 형태
+        const [local, domain] = email.split('@');
+        const masked = local.length <= 2 ? local[0] + '***' : local.substring(0, 2) + '***';
+        setEmailError(`${masked}@${domain} 이메일로 인증번호가 전송되었습니다. 메일함에서 확인해주세요.`);
       } else {
         setEmailError(data.error || '인증코드 발송에 실패했습니다.');
       }
@@ -868,7 +871,7 @@ function SignupContent() {
                     </div>
                   )}
                   {emailError && (
-                    <p className="text-sm text-red-500 mt-1">{emailError}</p>
+                    <p className={`text-sm mt-1 ${emailError.includes('인증번호가 전송되었습니다') ? 'text-blue-600' : 'text-red-500'}`}>{emailError}</p>
                   )}
                 </>
               )}
