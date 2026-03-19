@@ -170,10 +170,9 @@ export async function PUT(request: NextRequest) {
       data: { message: '비밀번호가 성공적으로 변경되었습니다.' },
     });
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    console.error('[ResetPassword] PUT Error:', errMsg);
+    console.error('[ResetPassword] PUT Error:', error);
     return NextResponse.json(
-      { success: false, error: '비밀번호 변경 중 오류가 발생했습니다.', debug: errMsg },
+      { success: false, error: '비밀번호 변경 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }
