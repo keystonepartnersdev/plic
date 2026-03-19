@@ -56,27 +56,27 @@ export function Modal({
       />
 
       {/* 모달 컨텐츠 - PLIC 디자인 시스템 적용 */}
-      <div className="relative bg-white rounded-3xl w-[calc(100%-2rem)] max-w-sm p-8 shadow-2xl border border-gray-100">
+      <div className="relative bg-white rounded-3xl w-[calc(100%-2rem)] max-w-sm max-h-[calc(100%-4rem)] flex flex-col p-8 shadow-2xl border border-gray-100">
         {/* 닫기 버튼 */}
         {showCloseButton && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-300"
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-300 z-10"
           >
             <X className="w-5 h-5" strokeWidth={2} />
           </button>
         )}
 
         {/* 제목 */}
-        <h2 className="text-xl font-bold text-gray-900 mb-4 pr-8">{title}</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4 pr-8 flex-shrink-0">{title}</h2>
 
         {/* 내용 */}
-        <div className="text-gray-600 leading-relaxed mb-6">
+        <div className="text-gray-600 leading-relaxed mb-6 overflow-y-auto flex-1 min-h-0">
           {children}
         </div>
 
         {/* 버튼 영역 */}
-        <div className={`flex gap-3 ${showCancel ? 'flex-row' : 'justify-center'}`}>
+        <div className={`flex gap-3 flex-shrink-0 ${showCancel ? 'flex-row' : ''}`}>
           {showCancel && (
             <button
               onClick={handleCancel}
