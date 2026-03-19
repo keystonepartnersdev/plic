@@ -56,7 +56,7 @@ export function Modal({
       />
 
       {/* 모달 컨텐츠 - PLIC 디자인 시스템 적용 */}
-      <div className="relative bg-white rounded-3xl w-[calc(100%-2rem)] max-w-sm max-h-[calc(100%-4rem)] flex flex-col p-8 shadow-2xl border border-gray-100">
+      <div className="relative bg-white rounded-3xl w-[calc(100%-2rem)] max-w-sm max-h-[80%] p-6 shadow-2xl border border-gray-100 overflow-y-auto">
         {/* 닫기 버튼 */}
         {showCloseButton && (
           <button
@@ -68,15 +68,15 @@ export function Modal({
         )}
 
         {/* 제목 */}
-        <h2 className="text-xl font-bold text-gray-900 mb-4 pr-8 flex-shrink-0">{title}</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4 pr-8">{title}</h2>
 
         {/* 내용 */}
-        <div className="text-gray-600 leading-relaxed mb-6 overflow-y-auto flex-1 min-h-0">
+        <div className="text-gray-600 leading-relaxed mb-4">
           {children}
         </div>
 
         {/* 버튼 영역 */}
-        <div className={`flex gap-3 flex-shrink-0 ${showCancel ? 'flex-row' : ''}`}>
+        <div className={`flex gap-3 ${showCancel ? 'flex-row' : ''}`}>
           {showCancel && (
             <button
               onClick={handleCancel}
