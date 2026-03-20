@@ -1,6 +1,6 @@
 # PLIC 베타 현황 문서 v1.0
 
-> 최종 업데이트: 2026-03-19
+> 최종 업데이트: 2026-03-20
 > 상태: **Beta**
 > 서비스 URL: https://plic.kr (Vercel)
 > API Gateway: https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod
@@ -466,3 +466,12 @@ aws lambda update-function-code \
 | **비밀번호 재설정** | `/api/auth/reset-password` API 신규. 이메일 입력 → 가입 확인 → Cognito 임시 비밀번호 설정 → SES 발송. 카카오 계정은 비밀번호 재설정 불가 처리. `/auth/reset-password` 페이지 + 로그인 페이지에 '비밀번호를 잊으셨나요?' 링크 추가 |
 | **송금 완료 이메일 통보** | 어드민에서 거래 상태를 `completed`로 변경 시 사용자에게 송금 완료 안내 이메일 자동 발송. 거래번호/결제금액/수수료/송금금액/수취 계좌 정보 포함 |
 | **회원 탈퇴 시스템 통합 개선** | 어드민/회원 직접 탈퇴 로직 통일. (1) 마스킹 제거 → 원본 데이터 그대로 법적 보관 (2) Cognito 유지 → 동일 계정 재가입 차단 (3) 어드민 탈퇴 시 진행 중 거래 체크 + 분리 보관 + 원본 삭제 (4) 어드민 회원목록에 탈퇴 회원 통합 표시 (plic-withdrawn-users 조회) (5) 탈퇴 회원 상세 읽기전용 처리 (6) 마이페이지 재가입 불가 안내 문구 변경 |
+
+### 2026-03-20
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **Signup Lambda 200만원 재배포** | esbuild 재빌드 → Lambda 업로드. 소스는 200만원이었으나 빌드된 JS가 구버전(100만원)이었던 문제 해결 |
+| **Modal 버튼 잘림 수정** | Modal 컴포넌트 flex-col/flex-1 구조 제거 → overflow-y-auto로 변경. 내용이 길어도 확인 버튼 항상 표시 |
+| **환영 모달 간결화** | 회원가입 완료 환영 모달 내용 컴팩트하게 정리. 중복 확인 버튼 제거 |
+| **SEO 최적화** | 메타태그 전면 개선 (title template, OG, Twitter Card, keywords 확장), robots.ts (크롤링 제어), sitemap.ts (주요 5페이지), opengraph-image.tsx (동적 OG 이미지 1200x630). 네이버/구글 사이트 인증 환경변수 준비 완료 |
