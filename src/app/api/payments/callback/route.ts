@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         await docClient.send(new UpdateCommand({
           TableName: DEALS_TABLE,
           Key: { did: dealId },
-          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, pgCardIssuerCode = :issuerCode, pgCardAcquirer = :acquirer, pgCardAcquirerCode = :acquirerCode, pgInstallment = :installment, pgPayMethodTypeCode = :payMethod, pgTransactionDate = :trxDate, updatedAt = :updatedAt',
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, pgCardIssuerCode = :issuerCode, pgCardAcquirer = :acquirer, pgCardAcquirerCode = :acquirerCode, pgInstallment = :installment, pgPayMethodTypeCode = :payMethod, pgTransactionDate = :trxDate, updatedAt = :updatedAt, statusHistory = list_append(if_not_exists(statusHistory, :emptyList), :newHistory)',
           ExpressionAttributeNames: {
             '#status': 'status',
           },
@@ -109,6 +109,8 @@ export async function POST(request: NextRequest) {
             ':payMethod': payInfo?.payMethodTypeCode || '',
             ':trxDate': approveResponse.data?.transactionDate || '',
             ':updatedAt': new Date().toISOString(),
+            ':emptyList': [],
+            ':newHistory': [{ prevStatus: 'awaiting_payment', newStatus: 'reviewing', changedAt: new Date().toISOString(), changedBy: 'system', reason: '결제 승인 완료' }],
           },
         }));
 

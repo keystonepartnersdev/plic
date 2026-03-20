@@ -370,6 +370,10 @@ export function useDealDetail(did: string) {
               },
               ...(deal.history || []),
             ],
+            statusHistory: [
+              { prevStatus: 'need_revision', newStatus: 'reviewing', changedAt: new Date().toISOString(), changedBy: 'user', reason: '서류 보완 제출' },
+              ...(deal.statusHistory || []),
+            ],
           });
 
           setShowRevisionModal(false);
@@ -430,6 +434,10 @@ export function useDealDetail(did: string) {
           actorId: currentUser?.uid,
         },
         ...(deal.history || []),
+      ],
+      statusHistory: [
+        { prevStatus: 'need_revision', newStatus: 'reviewing', changedAt: new Date().toISOString(), changedBy: 'user', reason: '수취인 정보 보완 제출' },
+        ...(deal.statusHistory || []),
       ],
     });
 

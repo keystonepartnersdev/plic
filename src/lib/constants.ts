@@ -18,6 +18,7 @@ export const DEAL_STATUS_LABELS: Record<TDealStatus, string> = {
   reviewing: '검토중',
   hold: '보류',
   need_revision: '보완필요',
+  approved: '검수완료',
   cancelled: '거래취소',
   completed: '거래완료',
 } as const;
@@ -32,6 +33,7 @@ export const DEAL_STATUS_COLORS: Record<TDealStatus, string> = {
   reviewing: 'yellow',
   hold: 'orange',
   need_revision: 'red',
+  approved: 'blue',
   cancelled: 'gray',
   completed: 'green',
 } as const;

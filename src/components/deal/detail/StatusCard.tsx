@@ -33,6 +33,7 @@ export function StatusCard({ deal, onPaymentBlocked }: StatusCardProps) {
   const StatusIcon = () => {
     switch (deal.status) {
       case 'completed':
+      case 'approved':
         return <Check className="w-6 h-6" />;
       case 'need_revision':
       case 'cancelled':

@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 type TabType = 'progress' | 'revision' | 'completed';
 
 const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
-  { id: 'progress', label: '진행중', statuses: ['draft', 'pending', 'reviewing', 'hold', 'awaiting_payment'] },
+  { id: 'progress', label: '진행중', statuses: ['draft', 'pending', 'reviewing', 'hold', 'awaiting_payment', 'approved'] },
   { id: 'revision', label: '보완필요', statuses: ['need_revision'] },
   { id: 'completed', label: '거래완료', statuses: ['completed'] },
 ];

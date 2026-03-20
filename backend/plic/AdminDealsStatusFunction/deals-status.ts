@@ -22,7 +22,7 @@ const response = (statusCode: number, body: Record<string, unknown>) => ({
   body: JSON.stringify(body),
 });
 
-type TDealStatus = 'draft' | 'awaiting_payment' | 'pending' | 'reviewing' | 'hold' | 'need_revision' | 'cancelled' | 'completed';
+type TDealStatus = 'draft' | 'awaiting_payment' | 'pending' | 'reviewing' | 'hold' | 'need_revision' | 'approved' | 'cancelled' | 'completed';
 
 interface UpdateStatusBody {
   status: TDealStatus;
@@ -64,7 +64,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     const validStatuses: TDealStatus[] = [
       'draft', 'awaiting_payment', 'pending', 'reviewing',
-      'hold', 'need_revision', 'cancelled', 'completed',
+      'hold', 'need_revision', 'approved', 'cancelled', 'completed',
     ];
 
     if (!validStatuses.includes(body.status)) {

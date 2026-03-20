@@ -7,6 +7,7 @@ export type TDealStatus =
   | 'reviewing'        // 검토중
   | 'hold'             // 보류
   | 'need_revision'    // 보완필요
+  | 'approved'         // 검수완료
   | 'cancelled'        // 거래취소
   | 'completed';       // 거래완료
 
@@ -44,6 +45,16 @@ export interface IDealHistory {
   description: string;
   actor: 'user' | 'system' | 'admin';
   actorId?: string;
+}
+
+export interface IDealStatusHistory {
+  prevStatus: TDealStatus;
+  newStatus: TDealStatus;
+  changedAt: string;
+  changedBy: 'user' | 'system' | 'admin';
+  reason?: string;
+  revisionType?: string;
+  revisionMemo?: string;
 }
 
 export interface IDeal {
@@ -99,6 +110,7 @@ export interface IDeal {
 
   // 이력
   history: IDealHistory[];
+  statusHistory?: IDealStatusHistory[];
 
   // 일시 정보
   createdAt: string;
