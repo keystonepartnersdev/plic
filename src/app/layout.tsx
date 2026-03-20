@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PLIC - 카드로 송금하다 | 신용카드 계좌이체 서비스",
+    default: "PLIC - 카드로 송금하다 | 카드결제 송금 서비스",
     template: "%s | PLIC",
   },
   description: "현금이나 계좌이체로 지불해야 하는 금액, 신용카드로 편하게 결제하세요. 결제일까지 여유, 원금 100% 송금, 카드 혜택 그대로! B2B 사업자 전용 카드 송금 서비스.",
