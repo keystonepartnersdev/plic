@@ -37,20 +37,11 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "https://www.plic.kr",
     siteName: "PLIC",
-    images: [
-      {
-        url: "/images/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "PLIC - 카드로 송금하다",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "PLIC - 카드로 송금하다",
-    description: "신용카드로 계좌이체. 원금 100% 송금, 카드 혜택 그대로!",
-    images: ["/images/og-image.png"],
+    description: "카드결제로 송금. 원금 100% 송금, 카드 혜택 그대로!",
   },
   robots: {
     index: true,
