@@ -539,6 +539,14 @@ export default function AdminDealDetailPage() {
               {deal.status !== 'completed' && deal.status !== 'cancelled' && (
                 <>
                   <button
+                    onClick={() => handleStatusChange('approved')}
+                    disabled={isProcessing || !deal.isPaid || deal.status === 'approved'}
+                    className="w-full flex items-center justify-center gap-2 h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Check className="w-4 h-4" />
+                    검수 완료
+                  </button>
+                  <button
                     onClick={() => handleStatusChange('completed')}
                     disabled={isProcessing || !deal.isPaid}
                     className="w-full flex items-center justify-center gap-2 h-10 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -639,26 +647,58 @@ export default function AdminDealDetailPage() {
             </div>
           </div>
 
-          {/* 히스토리 */}
+          {/* 상태 변경 이력 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">처리 이력</h2>
-            {deal.history && deal.history.length > 0 ? (
-              <div className="space-y-4">
-                {deal.history.map((item, index) => (
-                  <div key={index} className="flex gap-3">
-                    <div className="w-2 h-2 mt-2 rounded-full bg-primary-400 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-gray-900">{item.action}</p>
-                      <p className="text-sm text-gray-500">{item.description}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(item.timestamp).toLocaleString('ko-KR')}
-                      </p>
+            {/* statusHistory (상태 변경 추적) */}
+            {deal.statusHistory && deal.statusHistory.length > 0 ? (
+              <div className="space-y-3">
+                {deal.statusHistory.map((item: { prevStatus: string; newStatus: string; changedAt: string; changedBy: string; reason?: string; revisionMemo?: string }, index: number) => {
+                  const statusLabel = (s: string) => {
+                    const labels: Record<string, string> = { draft: '작성중', awaiting_payment: '결제대기', pending: '진행중', reviewing: '검토중', hold: '보류', need_revision: '보완필요', approved: '검수완료', cancelled: '거래취소', completed: '거래완료' };
+                    return labels[s] || s;
+                  };
+                  const byLabel = item.changedBy === 'admin' ? '운영팀' : item.changedBy === 'user' ? '사용자' : '시스템';
+                  return (
+                    <div key={index} className="flex gap-3 items-start">
+                      <div className="w-2 h-2 mt-2 rounded-full bg-primary-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">{statusLabel(item.prevStatus)}</span>
+                          <span className="text-gray-400 text-xs">→</span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">{statusLabel(item.newStatus)}</span>
+                          <span className="text-xs text-gray-400">({byLabel})</span>
+                        </div>
+                        {item.reason && <p className="text-xs text-gray-500 mt-1">{item.reason}</p>}
+                        {item.revisionMemo && <p className="text-xs text-gray-500 mt-0.5">메모: {item.revisionMemo}</p>}
+                        <p className="text-xs text-gray-400 mt-1">{new Date(item.changedAt).toLocaleString('ko-KR')}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-gray-500 text-center py-4">처리 이력이 없습니다.</p>
+            )}
+
+            {/* 기존 history (보완 제출 등) */}
+            {deal.history && deal.history.length > 0 && (
+              <>
+                <hr className="my-4 border-gray-100" />
+                <h3 className="text-sm font-medium text-gray-500 mb-3">사용자 활동</h3>
+                <div className="space-y-3">
+                  {deal.history.map((item, index) => (
+                    <div key={index} className="flex gap-3">
+                      <div className="w-2 h-2 mt-2 rounded-full bg-gray-300 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">{item.action}</p>
+                        <p className="text-xs text-gray-500">{item.description}</p>
+                        <p className="text-xs text-gray-400 mt-1">{new Date(item.timestamp).toLocaleString('ko-KR')}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

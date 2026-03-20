@@ -113,6 +113,7 @@ export class DealHelper {
     reviewing: { name: '검토중', color: 'yellow', tab: 'progress' },
     hold: { name: '보류', color: 'orange', tab: 'progress' },
     need_revision: { name: '보완필요', color: 'red', tab: 'revision' },
+    approved: { name: '검수완료', color: 'blue', tab: 'progress' },
     cancelled: { name: '거래취소', color: 'gray', tab: 'completed' },
     completed: { name: '거래완료', color: 'green', tab: 'completed' },
   };

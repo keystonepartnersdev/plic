@@ -9,7 +9,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 
-type TDealStatus = 'draft' | 'awaiting_payment' | 'pending' | 'reviewing' | 'hold' | 'need_revision' | 'cancelled' | 'completed';
+type TDealStatus = 'draft' | 'awaiting_payment' | 'pending' | 'reviewing' | 'hold' | 'need_revision' | 'approved' | 'cancelled' | 'completed';
 
 export async function PUT(
   request: NextRequest,
@@ -22,7 +22,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: '상태값은 필수입니다.' }, { status: 400 });
     }
 
-    const validStatuses: TDealStatus[] = ['draft', 'awaiting_payment', 'pending', 'reviewing', 'hold', 'need_revision', 'cancelled', 'completed'];
+    const validStatuses: TDealStatus[] = ['draft', 'awaiting_payment', 'pending', 'reviewing', 'hold', 'need_revision', 'approved', 'cancelled', 'completed'];
     if (!validStatuses.includes(body.status)) {
       return NextResponse.json({ success: false, error: '유효하지 않은 상태값입니다.' }, { status: 400 });
     }
@@ -33,6 +33,9 @@ export async function PUT(
     }
 
     const now = new Date().toISOString();
+    const deal = getResult.Item;
+    const prevStatus = deal.status;
+
     const updateExpressions: string[] = ['#status = :status', 'updatedAt = :now'];
     const values: Record<string, unknown> = { ':status': body.status, ':now': now };
     const names: Record<string, string> = { '#status': 'status' };
@@ -51,6 +54,20 @@ export async function PUT(
       values[':revisionTypeNull'] = null; values[':revisionMemoNull'] = null;
     }
 
+    // 상태 변경 히스토리 추가
+    const historyEntry = {
+      prevStatus,
+      newStatus: body.status,
+      changedAt: now,
+      changedBy: 'admin',
+      ...(body.reason ? { reason: body.reason } : {}),
+      ...(body.revisionType ? { revisionType: body.revisionType } : {}),
+      ...(body.revisionMemo ? { revisionMemo: body.revisionMemo } : {}),
+    };
+    const existingHistory = deal.statusHistory || [];
+    updateExpressions.push('statusHistory = :statusHistory');
+    values[':statusHistory'] = [historyEntry, ...existingHistory];
+
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE, Key: { did },
       UpdateExpression: `SET ${updateExpressions.join(', ')}`,
@@ -58,7 +75,6 @@ export async function PUT(
     }));
 
     // 취소 시 사용자 통계 차감
-    const deal = getResult.Item;
     if (body.status === 'cancelled' && deal.isPaid && deal.uid) {
       try {
         await docClient.send(new UpdateCommand({

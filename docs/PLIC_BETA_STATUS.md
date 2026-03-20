@@ -471,6 +471,14 @@ aws lambda update-function-code \
 
 | 항목 | 변경 내용 |
 |------|----------|
+| **거래 상태 '검수완료' 추가** | `approved` 상태값 신규 추가. TDealStatus 타입, 상수(라벨/색상), DealHelper STATUS_CONFIG, API 유효성 검증, 사용자 거래목록 탭, StatusCard 아이콘, 어드민 상태 변경 버튼 전체 반영 |
+| **거래 상태 변경 히스토리** | `plic-deals` 테이블에 `statusHistory` 배열 필드 추가. 상태 변경 시마다 prevStatus/newStatus/changedAt/changedBy/reason 기록. 어드민 상태 변경, 결제 콜백(reviewing), 사용자 보완 제출(서류/수취인) 4곳에 히스토리 저장 로직 적용 |
+| **어드민 처리이력 UI 개선** | 어드민 거래상세 '처리이력' 섹션에 statusHistory 타임라인 표시. 이전상태→새상태 뱃지, 변경자(운영팀/사용자/시스템), 사유/메모, 일시 표시. 기존 history(사용자 활동)도 하단에 분리 표시 |
+
+### 2026-03-20
+
+| 항목 | 변경 내용 |
+|------|----------|
 | **Signup Lambda 200만원 재배포** | esbuild 재빌드 → Lambda 업로드. 소스는 200만원이었으나 빌드된 JS가 구버전(100만원)이었던 문제 해결 |
 | **Modal 버튼 잘림 수정** | Modal 컴포넌트 flex-col/flex-1 구조 제거 → overflow-y-auto로 변경. 내용이 길어도 확인 버튼 항상 표시 |
 | **환영 모달 간결화** | 회원가입 완료 환영 모달 내용 컴팩트하게 정리. 중복 확인 버튼 제거 |
