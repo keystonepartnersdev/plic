@@ -11,6 +11,7 @@ import { TUserType } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { KakaoVerifyStep } from '@/components/auth/signup/KakaoVerifyStep';
 import { useUserStore } from '@/stores/useUserStore';
+import tracking from '@/lib/tracking';
 
 type Step = 'agreement' | 'kakaoVerify' | 'info' | 'businessInfo' | 'complete';
 
@@ -55,12 +56,16 @@ function SignupContent() {
   // 초기 step을 URL 기반으로 결정 (렌더링 전에 동기적으로)
   const [step, setStepState] = useState<Step>(getInitialStep);
 
-  // step 변경 시 sessionStorage에도 저장
+  // step 변경 시 sessionStorage에도 저장 + 퍼널 트래킹
   const setStep = (newStep: Step) => {
     setStepState(newStep);
     if (newStep !== 'complete') {
       sessionStorage.setItem('signup_step', newStep);
     }
+    // 가입 퍼널 트래킹
+    if (newStep === 'agreement') tracking.signupFunnel.start();
+    else if (newStep === 'complete') tracking.signupFunnel.complete();
+    else tracking.signupFunnel.step(newStep);
   };
 
   // 초기화 완료 여부

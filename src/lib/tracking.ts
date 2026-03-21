@@ -291,6 +291,29 @@ export const tracking = {
     confirm: () => tracking.funnel('transfer_confirm', '확인'),
     complete: () => tracking.funnel('transfer_complete', '완료'),
   },
+
+  // 가입 퍼널 헬퍼
+  signupFunnel: {
+    start: () => tracking.funnel('signup_start', '가입 시작'),
+    step: (stepName: string) => tracking.funnel(`signup_step_${stepName}`, `가입 단계: ${stepName}`),
+    complete: () => tracking.funnel('signup_complete', '가입 완료'),
+    abandon: () => tracking.funnel('signup_abandon', '가입 이탈'),
+  },
+
+  // 로그인 퍼널 헬퍼
+  loginFunnel: {
+    attempt: () => tracking.funnel('login_attempt', '로그인 시도'),
+    success: () => tracking.funnel('login_success', '로그인 성공'),
+    fail: (reason?: string) => tracking.funnel('login_fail', '로그인 실패', { reason }),
+  },
+
+  // 결제 퍼널 헬퍼
+  paymentFunnel: {
+    start: (dealId?: string) => tracking.funnel('payment_start', '결제 진입', { dealId }),
+    attempt: (dealId?: string) => tracking.funnel('payment_attempt', '결제 시도', { dealId }),
+    success: (dealId?: string, amount?: number) => tracking.funnel('payment_success', '결제 성공', { dealId, amount }),
+    fail: (dealId?: string, reason?: string) => tracking.funnel('payment_fail', '결제 실패', { dealId, reason }),
+  },
 };
 
 // 전역 에러 핸들러 설정

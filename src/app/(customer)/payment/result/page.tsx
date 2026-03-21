@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Home, FileText } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useDealStore, useUserStore } from '@/stores';
 import { dealsAPI } from '@/lib/api';
+import tracking from '@/lib/tracking';
 
 function PaymentResultContent() {
   const router = useRouter();
@@ -27,6 +28,18 @@ function PaymentResultContent() {
   // URL 파라미터에서 결제 결과 추출
   const success = searchParams.get('success') === 'true';
   const error = searchParams.get('error');
+
+  // 결제 결과 트래킹
+  useEffect(() => {
+    if (!mounted) return;
+    const did = searchParams.get('dealId');
+    const amt = Number(searchParams.get('amount') || 0);
+    if (success) {
+      tracking.paymentFunnel.success(did || undefined, amt);
+    } else {
+      tracking.paymentFunnel.fail(did || undefined, error || '결제 실패');
+    }
+  }, [mounted, success]); // eslint-disable-line react-hooks/exhaustive-deps
   const trxId = searchParams.get('trxId');
   const trackId = searchParams.get('trackId');
   const amount = searchParams.get('amount');

@@ -8,6 +8,7 @@ import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { getErrorMessage } from '@/lib/utils';
 import { secureAuth } from '@/lib/auth';
+import tracking from '@/lib/tracking';
 
 function LoginContent() {
   const router = useRouter();
@@ -125,6 +126,7 @@ function LoginContent() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    tracking.loginFunnel.attempt();
 
     if (!email) {
       setError('이메일을 입력해주세요.');
@@ -149,8 +151,10 @@ function LoginContent() {
         setUser(user);
       }
 
+      tracking.loginFunnel.success();
       router.replace('/');
     } catch (err: unknown) {
+      tracking.loginFunnel.fail(getErrorMessage(err) || '로그인 실패');
       setError(getErrorMessage(err) || '로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);

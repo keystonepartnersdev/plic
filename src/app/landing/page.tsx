@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import tracking from '@/lib/tracking';
+import { TrackingProvider } from '@/components/common';
 import {
   Menu, X, ArrowRight, Sparkles, CreditCard,
   Clock, BadgeCheck, Zap, Building2, Gift, BarChart3,
@@ -90,7 +91,7 @@ function Navigation() {
 // ==================== Hero ====================
 function Hero() {
   return (
-    <section className="relative flex flex-col bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
+    <section data-section="hero" className="relative flex flex-col bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
       {/* 텍스트 + 버튼 영역 */}
       <div className="max-w-4xl mx-auto px-6 w-full text-center pt-24 pb-4 lg:pt-32 lg:pb-6">
         <motion.div
@@ -127,7 +128,7 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
         >
-          <Link href="https://plic.kr" className="inline-flex items-center gap-2 px-8 py-4 bg-[#2563EB] text-white rounded-full font-semibold text-lg hover:bg-[#1d4ed8] transition-all duration-300 shadow-lg shadow-blue-500/25">
+          <Link href="https://plic.kr" data-track="landing_cta_hero" className="inline-flex items-center gap-2 px-8 py-4 bg-[#2563EB] text-white rounded-full font-semibold text-lg hover:bg-[#1d4ed8] transition-all duration-300 shadow-lg shadow-blue-500/25">
             무료로 시작하기
             <ArrowRight size={20} />
           </Link>
@@ -273,7 +274,7 @@ function Features() {
   ];
 
   return (
-    <section id="service-intro" className="py-24 px-6 bg-gradient-to-b from-blue-50 to-white">
+    <section id="service-intro" data-section="features" className="py-24 px-6 bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -358,7 +359,7 @@ function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="py-24 px-6 bg-white">
+    <section id="how-it-works" data-section="how-it-works" className="py-24 px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -439,7 +440,7 @@ function Security() {
   ];
 
   return (
-    <section id="security" className="py-32 px-6 bg-white overflow-hidden">
+    <section id="security" data-section="security" className="py-32 px-6 bg-white overflow-hidden">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -552,7 +553,7 @@ function Reviews() {
   ];
 
   return (
-    <section id="reviews" className="py-24 overflow-hidden" style={{ backgroundColor: '#f8fafc' }}>
+    <section id="reviews" data-section="reviews" className="py-24 overflow-hidden" style={{ backgroundColor: '#f8fafc' }}>
       <style jsx>{`
         @keyframes reviewScroll {
           0% {
@@ -672,7 +673,7 @@ function FAQ() {
   ];
 
   return (
-    <section id="faq" className="py-24 px-6 bg-white">
+    <section id="faq" data-section="faq" className="py-24 px-6 bg-white">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -767,7 +768,7 @@ function FAQ() {
 // ==================== CTA ====================
 function CTA() {
   return (
-    <section className="relative py-32 px-6 overflow-hidden bg-gradient-to-br from-[#2563EB] via-[#3b82f6] to-indigo-600">
+    <section data-section="cta" className="relative py-32 px-6 overflow-hidden bg-gradient-to-br from-[#2563EB] via-[#3b82f6] to-indigo-600">
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(10)].map((_, i) => (
           <motion.div
@@ -812,7 +813,7 @@ function CTA() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <Link href="https://plic.kr" className="group w-full sm:w-auto px-10 py-5 bg-white text-[#2563EB] rounded-full font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-3 shadow-2xl">
+            <Link href="https://plic.kr" data-track="landing_cta_bottom" className="group w-full sm:w-auto px-10 py-5 bg-white text-[#2563EB] rounded-full font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-3 shadow-2xl">
               무료로 시작하기
               <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -945,17 +946,19 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
-      <Navigation />
-      <Hero />
-      <CardBanner />
-      <Features />
-      <HowItWorks />
-      <Security />
-      <Reviews />
-      <FAQ />
-      <CTA />
-      <Footer />
-    </div>
+    <TrackingProvider>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        <Navigation />
+        <Hero />
+        <CardBanner />
+        <Features />
+        <HowItWorks />
+        <Security />
+        <Reviews />
+        <FAQ />
+        <CTA />
+        <Footer />
+      </div>
+    </TrackingProvider>
   );
 }

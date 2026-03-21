@@ -8,6 +8,7 @@ import { Header, ModalPortal } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { dealsAPI } from '@/lib/api';
 import { IDeal, IRegisteredCard } from '@/types';
+import tracking from '@/lib/tracking';
 
 type PaymentMethod = 'new' | 'registered';
 
@@ -275,6 +276,7 @@ export default function PaymentPage() {
 
   // 결제 핸들러 - 결제 수단에 따라 분기
   const handlePayment = async () => {
+    tracking.paymentFunnel.attempt(deal?.did);
     if (paymentMethod === 'registered' && selectedCard) {
       await handleBillingKeyPayment();
     } else {
