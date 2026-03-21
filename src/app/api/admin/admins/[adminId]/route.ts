@@ -43,6 +43,8 @@ export async function PUT(
       status: body.status ?? existing.Item.status,
       permissions: body.permissions ?? existing.Item.permissions,
       ...(body.password ? { password: body.password } : {}),
+      ...(body.isLocked !== undefined ? { isLocked: body.isLocked } : {}),
+      ...(body.loginFailCount !== undefined ? { loginFailCount: body.loginFailCount } : {}),
       updatedAt: new Date().toISOString(),
     };
     await docClient.send(new PutCommand({ TableName: ADMINS_TABLE, Item: updatedItem }));
