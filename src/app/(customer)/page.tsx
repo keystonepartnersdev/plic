@@ -8,6 +8,7 @@ import { useUserStore, useContentStore, useDealDraftStore, useDealStore } from '
 import { DealHelper, ContentHelper } from '@/classes';
 import { BannerSlider, Modal } from '@/components/common';
 import { cn } from '@/lib/utils';
+import tracking from '@/lib/tracking';
 
 export default function HomePage() {
   const router = useRouter();
@@ -221,6 +222,7 @@ export default function HomePage() {
                   return;
                 }
                 const url = numericAmount > 0 ? `/deals/new?amount=${numericAmount}` : '/deals/new';
+                tracking.click('home_transfer', '송금 신청하기');
                 window.location.href = url;
               }}
               className="
@@ -240,6 +242,7 @@ export default function HomePage() {
           ) : (
             <Link
               href="/auth/login"
+              data-track="home_login"
               className="
                 mt-5 w-full h-14
                 bg-gradient-to-r from-[#2563EB] to-[#3B82F6]

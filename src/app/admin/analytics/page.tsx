@@ -158,6 +158,7 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<BusinessAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'journey' | 'business'>('journey');
 
   const fetchData = async () => {
     setLoading(true);
@@ -203,24 +204,47 @@ export default function AdminAnalyticsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-500 mt-1">유입부터 전환까지 전체 유저 여정 통합 분석</p>
+          <p className="text-gray-500 mt-1">유입부터 전환까지 전체 분석</p>
         </div>
+        {activeTab === 'business' && (
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+            새로고침
+          </button>
+        )}
+      </div>
+
+      {/* 메인 탭 */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-6">
         <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          onClick={() => setActiveTab('journey')}
+          className={cn(
+            'px-5 py-2.5 rounded-md text-sm font-medium transition-all flex-1',
+            activeTab === 'journey' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
         >
-          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-          새로고침
+          유저 여정 트래킹
+        </button>
+        <button
+          onClick={() => setActiveTab('business')}
+          className={cn(
+            'px-5 py-2.5 rounded-md text-sm font-medium transition-all flex-1',
+            activeTab === 'business' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          비즈니스 지표
         </button>
       </div>
 
-      {/* 유저 여정 트래킹 (미가입자 포함 전체 활동) */}
-      <UserJourneyTab />
+      {/* 유저 여정 탭 */}
+      {activeTab === 'journey' && <UserJourneyTab />}
 
-      {/* 구분선 */}
-      <div className="my-8 border-t border-gray-200" />
-      <h2 className="text-xl font-bold text-gray-900 mb-6">비즈니스 지표 (가입 유저 기반)</h2>
+      {/* 비즈니스 지표 탭 */}
+      {activeTab === 'business' && <>
 
       {/* 에러 메시지 */}
       {error && (
@@ -496,6 +520,7 @@ export default function AdminAnalyticsPage() {
         </div>
       )}
 
+      </>}
     </div>
   );
 }

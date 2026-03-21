@@ -119,6 +119,7 @@ function LoginContent() {
 
   // 카카오 인증 시작
   const handleKakaoLogin = () => {
+    tracking.click('login_kakao', '카카오로 시작하기');
     window.location.href = '/api/kakao/auth?returnTo=/auth/login';
   };
 
@@ -256,7 +257,7 @@ function LoginContent() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/auth/reset-password" className="text-sm text-gray-400 hover:text-gray-600 transition-colors duration-300">
+          <Link href="/auth/reset-password" data-track="login_reset_pw" className="text-sm text-gray-400 hover:text-gray-600 transition-colors duration-300">
             비밀번호를 잊으셨나요?
           </Link>
         </div>
@@ -264,7 +265,7 @@ function LoginContent() {
         <div className="mt-4 text-center">
           <p className="text-gray-500 font-medium">
             아직 회원이 아니신가요?{' '}
-            <Link href="/auth/signup" className="text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
+            <Link href="/auth/signup" data-track="login_signup_link" className="text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
               회원가입
             </Link>
           </p>
