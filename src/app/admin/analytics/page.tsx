@@ -20,6 +20,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { cn, getErrorMessage } from '@/lib/utils';
+import { UserJourneyTab } from '@/components/admin/UserJourneyTab';
 
 // API 기본 URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
@@ -157,6 +158,7 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<BusinessAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'business' | 'journey'>('business');
 
   const fetchData = async () => {
     setLoading(true);
@@ -199,20 +201,50 @@ export default function AdminAnalyticsPage() {
   return (
     <div>
       {/* 페이지 헤더 */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">비즈니스 Analytics</h1>
-          <p className="text-gray-500 mt-1">PLIC 핵심 지표 및 전환율 분석</p>
+          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-gray-500 mt-1">비즈니스 지표 및 유저 여정 분석</p>
         </div>
+        {activeTab === 'business' && (
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+            새로고침
+          </button>
+        )}
+      </div>
+
+      {/* 탭 */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-6">
         <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          onClick={() => setActiveTab('business')}
+          className={cn(
+            'px-5 py-2.5 rounded-md text-sm font-medium transition-all flex-1',
+            activeTab === 'business' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
         >
-          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-          새로고침
+          비즈니스 지표
+        </button>
+        <button
+          onClick={() => setActiveTab('journey')}
+          className={cn(
+            'px-5 py-2.5 rounded-md text-sm font-medium transition-all flex-1',
+            activeTab === 'journey' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          유저 여정 트래킹
         </button>
       </div>
+
+      {/* 유저 여정 탭 */}
+      {activeTab === 'journey' && <UserJourneyTab />}
+
+      {/* 비즈니스 탭 */}
+      {activeTab === 'business' && <>
 
       {/* 에러 메시지 */}
       {error && (
@@ -487,6 +519,8 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
       )}
+
+      </>}
     </div>
   );
 }

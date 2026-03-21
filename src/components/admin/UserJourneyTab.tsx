@@ -94,7 +94,7 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
   );
 }
 
-export default function UserJourneyPage() {
+export function UserJourneyTab() {
   const [data, setData] = useState<JourneyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'funnel' | 'behavior' | 'events'>('overview');
