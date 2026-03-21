@@ -122,28 +122,35 @@ let flushTimer: NodeJS.Timeout | null = null;
 const BUFFER_SIZE = 10;
 const FLUSH_INTERVAL = 5000; // 5초
 
-// 이벤트 전송
+// 이벤트 전송 (sendBeacon 우선, fetch fallback)
 const flushEvents = async () => {
   if (eventBuffer.length === 0) return;
 
   const eventsToSend = [...eventBuffer];
   eventBuffer = [];
 
+  const payload = JSON.stringify({ events: eventsToSend });
+
+  // sendBeacon: 페이지 이탈 시에도 전송 보장
+  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+    const sent = navigator.sendBeacon('/api/tracking/events', new Blob([payload], { type: 'application/json' }));
+    if (sent) return;
+  }
+
+  // fetch fallback
   try {
     const response = await fetch('/api/tracking/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: eventsToSend }),
+      body: payload,
+      keepalive: true, // 페이지 이탈 시에도 전송 유지
     });
 
     if (!response.ok) {
-      console.error('Tracking API error:', await response.text());
-      // 실패 시 이벤트 복구
       eventBuffer = [...eventsToSend, ...eventBuffer];
     }
   } catch (error) {
     console.error('Tracking send error:', error);
-    // 네트워크 오류 시 이벤트 복구
     eventBuffer = [...eventsToSend, ...eventBuffer];
   }
 };

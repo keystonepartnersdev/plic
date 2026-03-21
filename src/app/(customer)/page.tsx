@@ -223,6 +223,7 @@ export default function HomePage() {
                 }
                 const url = numericAmount > 0 ? `/deals/new?amount=${numericAmount}` : '/deals/new';
                 tracking.click('home_transfer', '송금 신청하기');
+                tracking.flush();
                 window.location.href = url;
               }}
               className="

@@ -120,6 +120,7 @@ function LoginContent() {
   // 카카오 인증 시작
   const handleKakaoLogin = () => {
     tracking.click('login_kakao', '카카오로 시작하기');
+    tracking.flush(); // 페이지 이탈 전 즉시 전송
     window.location.href = '/api/kakao/auth?returnTo=/auth/login';
   };
 

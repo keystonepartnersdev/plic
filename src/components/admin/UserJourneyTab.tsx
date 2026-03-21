@@ -55,12 +55,12 @@ function toKSTShort(timestamp: string): string {
 
 // 이벤트 타입 한국어 매핑
 const EVENT_TYPE_KR: Record<string, string> = {
-  pageview: '페이지뷰',
-  click: '클릭',
-  funnel: '퍼널',
-  error: '에러',
-  performance: '성능',
-  custom: '사용자정의',
+  pageview: '페이지 방문',
+  click: '버튼/링크 클릭',
+  funnel: '단계 진행',
+  error: '오류 발생',
+  performance: '페이지 로딩속도',
+  custom: '행동 기록',
 };
 
 // 엑셀(CSV) 다운로드
