@@ -10,6 +10,7 @@ import { useUserStore, useDealStore, useDealDraftStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
+import tracking from '@/lib/tracking';
 
 type Step = 'type' | 'amount' | 'recipient' | 'docs' | 'confirm';
 
@@ -253,10 +254,20 @@ function NewDealContent() {
     }
   }, [searchParams]);
 
-  // 단계 변경 시 Draft 업데이트
+  // 단계 변경 시 Draft 업데이트 + 퍼널 트래킹
   const handleStepChange = (newStep: Step) => {
     setStep(newStep);
     setCurrentStep(newStep as TDealStep);
+
+    // 송금 퍼널 트래킹
+    const funnelMap: Record<Step, () => void> = {
+      type: tracking.transferFunnel.start,
+      amount: tracking.transferFunnel.info,
+      recipient: tracking.transferFunnel.recipient,
+      docs: tracking.transferFunnel.attachment,
+      confirm: tracking.transferFunnel.confirm,
+    };
+    funnelMap[newStep]?.();
   };
 
   // 데이터 변경 시 Draft에 저장 (디바운스)
@@ -615,6 +626,9 @@ function NewDealContent() {
       console.log('[NewDeal] Creating deal with data:', JSON.stringify(dealData, null, 2));
       const response = await dealsAPI.create(dealData);
       console.log('[NewDeal] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
+
+      // 송금 완료 퍼널 트래킹
+      tracking.transferFunnel.complete();
 
       // Draft 제출 완료 후 삭제
       submitDraft();

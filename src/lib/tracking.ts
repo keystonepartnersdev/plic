@@ -286,6 +286,7 @@ export const tracking = {
   transferFunnel: {
     start: () => tracking.funnel('transfer_start', '송금 시작'),
     info: () => tracking.funnel('transfer_info', '정보 입력'),
+    recipient: () => tracking.funnel('transfer_recipient', '수취인 입력'),
     attachment: () => tracking.funnel('transfer_attachment', '증빙 업로드'),
     confirm: () => tracking.funnel('transfer_confirm', '확인'),
     complete: () => tracking.funnel('transfer_complete', '완료'),

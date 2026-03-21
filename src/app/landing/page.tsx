@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import tracking from '@/lib/tracking';
 import {
   Menu, X, ArrowRight, Sparkles, CreditCard,
   Clock, BadgeCheck, Zap, Building2, Gift, BarChart3,
@@ -938,6 +939,11 @@ function Footer() {
 
 // ==================== Main Page ====================
 export default function LandingPage() {
+  // 랜딩 페이지 트래킹 (Customer Layout 밖이므로 직접 호출)
+  useEffect(() => {
+    tracking.pageview({ page: 'landing' });
+  }, []);
+
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       <Navigation />

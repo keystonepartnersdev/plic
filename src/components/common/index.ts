@@ -10,3 +10,4 @@ export { Modal } from './Modal';
 export { ModalPortal } from './ModalPortal';
 export { ErrorBoundary } from './ErrorBoundary';
 export { RevisionBanner } from './RevisionBanner';
+export { TrackingProvider } from './TrackingProvider';
