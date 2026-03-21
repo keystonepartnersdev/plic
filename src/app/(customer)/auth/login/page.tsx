@@ -33,6 +33,7 @@ function LoginContent() {
       const resultData = await resultRes.json();
 
       if (!resultData.success || !resultData.data?.email || !resultData.data?.kakaoId) {
+        tracking.loginFunnel.fail('카카오 인증 정보 조회 실패');
         setError('카카오 인증 정보를 가져올 수 없습니다.');
         router.replace('/auth/login', { scroll: false });
         return;
@@ -53,6 +54,7 @@ function LoginContent() {
       const checkData = await checkRes.json();
 
       if (!checkData.success) {
+        tracking.loginFunnel.fail(checkData.error || '회원 확인 실패');
         setError(checkData.error || '회원 확인에 실패했습니다.');
         router.replace('/auth/login', { scroll: false });
         return;
@@ -61,6 +63,7 @@ function LoginContent() {
       // 백엔드에서 자동 로그인 완료된 경우 (토큰은 httpOnly 쿠키로 자동 설정됨)
       if (checkData.autoLogin && checkData.data) {
         setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
+        tracking.loginFunnel.success();
 
         // 사용자 정보 저장 (토큰은 httpOnly 쿠키로 이미 설정됨)
         setUser(checkData.data.user);
@@ -92,6 +95,7 @@ function LoginContent() {
       return;
     } catch (err) {
       console.error('카카오 로그인 처리 실패:', err);
+      tracking.loginFunnel.fail('카카오 로그인 실패');
       setError('카카오 로그인 처리 중 오류가 발생했습니다.');
       router.replace('/auth/login', { scroll: false });
     } finally {
