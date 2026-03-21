@@ -293,6 +293,23 @@ export const tracking = {
     flushEvents();
   },
 
+  // 버퍼 없이 즉시 전송 (페이지 떠나기 전 필수 이벤트용)
+  sendNow: (...events: TrackingEvent[]) => {
+    if (typeof navigator === 'undefined') return;
+    const payload = JSON.stringify({ events });
+    try {
+      navigator.sendBeacon('/api/tracking/events', new Blob([payload], { type: 'application/json' }));
+    } catch {
+      // fallback
+      fetch('/api/tracking/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  },
+
   // 송금 퍼널 헬퍼
   transferFunnel: {
     start: () => tracking.funnel('transfer_start', '송금 시작'),

@@ -119,13 +119,17 @@ function LoginContent() {
 
   // 카카오 인증 시작
   const handleKakaoLogin = () => {
-    tracking.loginFunnel.attempt();
-    tracking.click('login_kakao', '카카오로 시작하기');
-    tracking.flush();
-    // sendBeacon 전송 완료 보장을 위한 최소 딜레이 후 이동
+    // 버퍼 없이 즉시 전송 (페이지 이동 전 확실한 전송 보장)
+    const now = new Date().toISOString();
+    const sessionId = sessionStorage.getItem('plic_session_id') || '';
+    const anonymousId = localStorage.getItem('plic_anonymous_id') || '';
+    tracking.sendNow(
+      { eventType: 'funnel', sessionId, anonymousId, timestamp: now, page: { path: '/auth/login', title: document.title, referrer: '' }, funnel: { step: 'login_attempt', name: '로그인 시도' } },
+      { eventType: 'click', sessionId, anonymousId, timestamp: now, page: { path: '/auth/login', title: document.title, referrer: '' }, click: { element: 'login_kakao', text: '카카오로 시작하기' } }
+    );
     setTimeout(() => {
       window.location.href = '/api/kakao/auth?returnTo=/auth/login';
-    }, 150);
+    }, 200);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
