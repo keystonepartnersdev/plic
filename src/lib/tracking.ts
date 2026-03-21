@@ -134,6 +134,7 @@ const flushEvents = async () => {
   // sendBeacon: 페이지 이탈 시에도 전송 보장
   if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
     const sent = navigator.sendBeacon('/api/tracking/events', new Blob([payload], { type: 'application/json' }));
+    console.log(`[PLIC 트래킹] sendBeacon ${eventsToSend.length}건 전송: ${sent ? '성공' : '실패'}`);
     if (sent) return;
   }
 
@@ -157,6 +158,9 @@ const flushEvents = async () => {
 
 // 버퍼에 이벤트 추가
 const bufferEvent = (event: TrackingEvent) => {
+  if (typeof window !== 'undefined') {
+    console.log(`[PLIC 트래킹] ${event.eventType}${event.eventName ? `:${event.eventName}` : ''}${event.funnel ? `:${event.funnel.step}` : ''}`, event);
+  }
   eventBuffer.push(event);
 
   // 버퍼가 차면 즉시 전송
