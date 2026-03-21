@@ -89,7 +89,8 @@ export async function POST(request: NextRequest) {
       message: `${events.length} events stored`,
     });
   } catch (error) {
-    console.error('[Tracking Events] POST error:', error);
-    return NextResponse.json({ success: false, error: 'Event storage failed' }, { status: 200 });
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Tracking Events] POST error:', errMsg);
+    return NextResponse.json({ success: false, error: errMsg }, { status: 200 });
   }
 }
