@@ -125,7 +125,8 @@ export async function GET() {
       { step: 'transfer_recipient', name: '수취인 입력', count: funnelCounts['transfer_recipient'] || 0 },
       { step: 'transfer_attachment', name: '증빙 업로드', count: funnelCounts['transfer_attachment'] || 0 },
       { step: 'transfer_confirm', name: '확인', count: funnelCounts['transfer_confirm'] || 0 },
-      { step: 'transfer_complete', name: '송금 완료', count: funnelCounts['transfer_complete'] || 0 },
+      { step: 'transfer_submitted', name: '거래 생성', count: funnelCounts['transfer_submitted'] || 0 },
+      { step: 'transfer_complete', name: '송금 완료(승인)', count: funnelCounts['transfer_complete'] || 0 },
     ];
 
     // 결제 퍼널

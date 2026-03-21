@@ -25,6 +25,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
+import tracking from '@/lib/tracking';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus, IUser } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
@@ -171,6 +172,10 @@ export default function AdminDealDetailPage() {
     setIsProcessing(true);
     try {
       await adminAPI.updateDealStatus(deal.did, newStatus);
+      // 어드민 승인 완료 시 송금완료 트래킹
+      if (newStatus === 'completed') {
+        tracking.transferFunnel.complete();
+      }
       await fetchDeal(); // 데이터 다시 로드
     } catch (err: unknown) {
       console.error('거래 상태 변경 실패:', err);

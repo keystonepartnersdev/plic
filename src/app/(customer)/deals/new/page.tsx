@@ -627,8 +627,8 @@ function NewDealContent() {
       const response = await dealsAPI.create(dealData);
       console.log('[NewDeal] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
 
-      // 송금 완료 퍼널 트래킹
-      tracking.transferFunnel.complete();
+      // 거래 생성 완료 트래킹 (송금 완료는 어드민 승인 시 기록)
+      tracking.funnel('transfer_submitted', '거래 생성 완료');
 
       // Draft 제출 완료 후 삭제
       submitDraft();

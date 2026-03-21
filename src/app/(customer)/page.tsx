@@ -222,6 +222,7 @@ export default function HomePage() {
                   return;
                 }
                 const url = numericAmount > 0 ? `/deals/new?amount=${numericAmount}` : '/deals/new';
+                tracking.transferFunnel.start();
                 tracking.click('home_transfer', '송금 신청하기');
                 tracking.flush();
                 setTimeout(() => { window.location.href = url; }, 150);
