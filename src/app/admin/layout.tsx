@@ -16,6 +16,7 @@ import {
   LogOut,
   BarChart3,
   Bug,
+  Activity,
 } from 'lucide-react';
 import { useAdminStore } from '@/stores';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ const menuItems = [
   { href: '/admin/contents/notices', icon: Bell, label: '공지사항', permission: 'content.notice.manage', implemented: true },
   { href: '/admin/contents/faqs', icon: HelpCircle, label: 'FAQ관리', permission: 'content.faq.manage', implemented: true },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'analytics.view', implemented: true },
+  { href: '/admin/user-journey', icon: Activity, label: '유저 여정', permission: 'analytics.view', implemented: true },
   { href: '/admin/api-logs', icon: Bug, label: 'API Logs', permission: 'analytics.view', implemented: true },
   { href: '/admin/admins', icon: UserCog, label: '어드민관리', permission: 'admin.view', implemented: true },
   { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view', implemented: true },
