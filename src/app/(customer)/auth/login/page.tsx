@@ -122,7 +122,10 @@ function LoginContent() {
     tracking.loginFunnel.attempt();
     tracking.click('login_kakao', '카카오로 시작하기');
     tracking.flush();
-    window.location.href = '/api/kakao/auth?returnTo=/auth/login';
+    // sendBeacon 전송 완료 보장을 위한 최소 딜레이 후 이동
+    setTimeout(() => {
+      window.location.href = '/api/kakao/auth?returnTo=/auth/login';
+    }, 150);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
