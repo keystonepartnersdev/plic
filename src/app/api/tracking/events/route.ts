@@ -1,14 +1,47 @@
 /**
  * 트래킹 이벤트 수집 API
- * POST /api/tracking/events - DynamoDB 직접 저장
+ * POST /api/tracking/events - DynamoDB 직접 저장 (테이블 자동 생성)
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, DescribeTableCommand, CreateTableCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const EVENTS_TABLE = process.env.EVENTS_TABLE || 'plic-events';
+
+let tableVerified = false;
+
+// 테이블 존재 확인 및 자동 생성
+async function ensureTable() {
+  if (tableVerified) return;
+
+  try {
+    await dynamoClient.send(new DescribeTableCommand({ TableName: EVENTS_TABLE }));
+    tableVerified = true;
+  } catch (err: unknown) {
+    const error = err as { name?: string };
+    if (error.name === 'ResourceNotFoundException') {
+      // 테이블 생성
+      await dynamoClient.send(new CreateTableCommand({
+        TableName: EVENTS_TABLE,
+        KeySchema: [
+          { AttributeName: 'eventId', KeyType: 'HASH' },
+        ],
+        AttributeDefinitions: [
+          { AttributeName: 'eventId', AttributeType: 'S' },
+        ],
+        BillingMode: 'PAY_PER_REQUEST',
+      }));
+      // 테이블 생성 대기
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      tableVerified = true;
+      console.log('[Tracking] plic-events table created');
+    } else {
+      throw err;
+    }
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +51,8 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(events) || events.length === 0) {
       return NextResponse.json({ success: true, message: 'No events' });
     }
+
+    await ensureTable();
 
     // 최대 25개씩 배치 처리 (DynamoDB 제한)
     const batches = [];
@@ -55,7 +90,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Tracking Events] POST error:', error);
-    // 트래킹 실패가 사용자 경험에 영향주면 안 됨
     return NextResponse.json({ success: false, error: 'Event storage failed' }, { status: 200 });
   }
 }
