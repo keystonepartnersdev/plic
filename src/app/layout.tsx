@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "플릭(PLIC) - 카드로 송금하다 | 카드결제 송금 서비스",
     template: "%s | 플릭 PLIC",
   },
-  description: "플릭(PLIC) - 현금이나 계좌이체로 지불해야 하는 금액, 신용카드로 편하게 결제하세요. 결제일까지 여유, 원금 100% 송금, 카드 혜택 그대로! B2B 사업자 전용 카드 송금 서비스.",
+  description: "플릭 - 신용카드로 계좌이체! 원금 100% 송금, 카드혜택 그대로. B2B 사업자 전용 카드 송금 서비스.",
   keywords: ["플릭", "PLIC", "plic.kr", "카드결제 송금", "카드송금", "신용카드 계좌이체", "사업자송금", "법인카드 송금", "B2B 송금", "카드로 송금", "사업자 결제", "플릭 카드송금", "플릭 서비스"],
   authors: [{ name: "플릭 PLIC", url: "https://www.plic.kr" }],
   creator: "플릭 PLIC",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "플릭(PLIC) - 카드로 송금하다",
-    description: "플릭(PLIC) - 현금이나 계좌이체로 지불해야 하는 금액, 신용카드로 편하게 결제하세요. 원금 100% 송금, 카드 혜택 그대로!",
+    description: "플릭 - 신용카드로 계좌이체! 원금 100% 송금, 카드혜택 그대로. B2B 사업자 전용 카드 송금 서비스.",
     type: "website",
     locale: "ko_KR",
     url: "https://www.plic.kr",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "플릭(PLIC) - 카드로 송금하다",
-    description: "플릭(PLIC) 카드결제로 송금. 원금 100% 송금, 카드 혜택 그대로!",
+    description: "플릭 - 신용카드로 계좌이체! 원금 100% 송금, 카드혜택 그대로. B2B 사업자 전용 카드 송금 서비스.",
     images: ["https://www.plic.kr/images/og-image.png"],
   },
   robots: {
@@ -92,7 +92,7 @@ const jsonLd = {
         "@type": "ImageObject",
         url: "https://www.plic.kr/favicon.svg",
       },
-      description: "카드결제 송금 서비스 플릭(PLIC). 신용카드로 계좌이체, 사업자 B2B 송금 서비스.",
+      description: "플릭 - 신용카드로 계좌이체! 원금 100% 송금, 카드혜택 그대로. B2B 사업자 전용 카드 송금 서비스.",
       foundingLocation: "대한민국",
       sameAs: ["https://www.plic.kr"],
     },
@@ -102,7 +102,7 @@ const jsonLd = {
       url: "https://www.plic.kr",
       name: "플릭 PLIC",
       alternateName: "플릭",
-      description: "플릭(PLIC) - 카드로 송금하다. 신용카드 계좌이체 B2B 사업자 카드 송금 서비스.",
+      description: "플릭 - 신용카드로 계좌이체! 원금 100% 송금, 카드혜택 그대로. B2B 사업자 전용 카드 송금 서비스.",
       publisher: {
         "@id": "https://www.plic.kr/#organization",
       },
@@ -127,7 +127,7 @@ const jsonLd = {
       about: {
         "@id": "https://www.plic.kr/#organization",
       },
-      description: "플릭(PLIC) - 현금이나 계좌이체로 지불해야 하는 금액, 신용카드로 편하게 결제하세요.",
+      description: "플릭 - 신용카드로 계좌이체! 원금 100% 송금, 카드혜택 그대로. B2B 사업자 전용 카드 송금 서비스.",
       inLanguage: "ko-KR",
     },
   ],
