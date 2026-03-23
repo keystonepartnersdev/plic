@@ -173,7 +173,8 @@ export default function AdminUserDetailPage() {
     const completed = userDeals.filter(d => d.status === 'completed');
     const pending = userDeals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status));
     const cancelled = userDeals.filter(d => d.status === 'cancelled');
-    const totalPaymentAmount = completed.reduce((sum, d) => sum + (d.totalAmount || d.finalAmount || 0), 0);
+    // finalAmount = 실제 카드 결제금액(할인 적용 후), totalAmount = 할인 전 금액
+    const totalPaymentAmount = completed.reduce((sum, d) => sum + (d.finalAmount || d.totalAmount || 0), 0);
     const totalAmount = completed.reduce((sum, d) => sum + (d.amount || 0), 0);
     // 이번 달 사용 금액
     const now = new Date();
@@ -612,19 +613,19 @@ export default function AdminUserDetailPage() {
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-primary-400">
-                  {(dealStats.totalPaymentAmount / 10000).toLocaleString()}만
+                  {dealStats.totalPaymentAmount.toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">누적 결제금액</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">
-                  {((user.lastMonthPaymentAmount || 0) / 10000).toLocaleString()}만
+                  {(user.lastMonthPaymentAmount || 0).toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">전월 결제금액</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-gray-900">
-                  {(dealStats.usedAmount / 10000).toLocaleString()}만
+                  {dealStats.usedAmount.toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">이번 달 사용</p>
               </div>
@@ -662,7 +663,7 @@ export default function AdminUserDetailPage() {
                 <p className="text-xs text-gray-500">취소</p>
               </div>
               <div className="p-3 bg-primary-50 rounded-lg text-center">
-                <p className="text-lg font-bold text-primary-400">{(dealStats.totalAmount / 10000).toFixed(0)}만</p>
+                <p className="text-lg font-bold text-primary-400">{dealStats.totalAmount.toLocaleString()}원</p>
                 <p className="text-xs text-gray-500">총 송금액</p>
               </div>
             </div>
@@ -1282,7 +1283,7 @@ export default function AdminUserDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">전월 결제금액</span>
                   <span className="font-medium text-gray-900">
-                    {((user.lastMonthPaymentAmount || 0) / 10000).toLocaleString()}만원
+                    {(user.lastMonthPaymentAmount || 0).toLocaleString()}원
                   </span>
                 </div>
                 <div className="flex justify-between">
