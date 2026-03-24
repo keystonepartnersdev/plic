@@ -184,24 +184,27 @@ export async function GET(request: NextRequest) {
       { step: 'login_fail', name: '로그인 실패', count: funnelCounts['login_fail'] || 0 },
     ];
 
-    // 송금 퍼널 (재설계: 증빙업로드완료→거래생성→결제완료→송금완료)
+    // 거래생성 퍼널 (송금시작 → 정보입력 → 수취인 → 증빙업로드 → 거래생성)
+    // transfer_confirm + transfer_submitted를 "거래 생성"으로 통합 (큰 값 사용)
+    const dealCreateCount = Math.max(
+      funnelCounts['transfer_confirm'] || 0,
+      funnelCounts['transfer_submitted'] || 0
+    );
     const transferFunnel = [
       { step: 'transfer_start', name: '송금 시작', count: funnelCounts['transfer_start'] || 0 },
       { step: 'transfer_info', name: '정보 입력', count: funnelCounts['transfer_info'] || 0 },
       { step: 'transfer_recipient', name: '수취인 입력', count: funnelCounts['transfer_recipient'] || 0 },
-      { step: 'transfer_attachment', name: '증빙 업로드 완료', count: funnelCounts['transfer_attachment'] || 0 },
-      { step: 'transfer_confirm', name: '최종 확인', count: funnelCounts['transfer_confirm'] || 0 },
-      { step: 'transfer_submitted', name: '거래 생성', count: funnelCounts['transfer_submitted'] || 0 },
-      { step: 'transfer_payment_complete', name: '결제 완료', count: funnelCounts['transfer_payment_complete'] || 0 },
-      { step: 'transfer_complete', name: '송금 완료(승인)', count: funnelCounts['transfer_complete'] || 0 },
+      { step: 'transfer_attachment', name: '증빙 업로드', count: funnelCounts['transfer_attachment'] || 0 },
+      { step: 'transfer_submitted', name: '거래 생성', count: dealCreateCount },
     ];
 
-    // 결제 퍼널
+    // 결제 퍼널 (결제진입 → 결제시도 → 결제성공 → 송금완료(승인))
     const paymentFunnel = [
       { step: 'payment_start', name: '결제 진입', count: funnelCounts['payment_start'] || 0 },
       { step: 'payment_attempt', name: '결제 시도', count: funnelCounts['payment_attempt'] || 0 },
-      { step: 'payment_success', name: '결제 성공', count: funnelCounts['payment_success'] || 0 },
+      { step: 'payment_success', name: '결제 성공', count: (funnelCounts['payment_success'] || 0) + (funnelCounts['transfer_payment_complete'] || 0) },
       { step: 'payment_fail', name: '결제 실패', count: funnelCounts['payment_fail'] || 0 },
+      { step: 'transfer_complete', name: '송금 완료(승인)', count: funnelCounts['transfer_complete'] || 0 },
     ];
 
     // === 9. 이탈 페이지 Top 10 ===
