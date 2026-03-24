@@ -78,6 +78,20 @@ function SignupContent() {
     sessionStorage.setItem('plic_signup_started', 'true');
   };
 
+  // 초기 마운트 시 가입 시작 트래킹 (getInitialStep은 setStep을 거치지 않으므로)
+  const startTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!startTrackedRef.current) {
+      startTrackedRef.current = true;
+      tracking.signupFunnel.start();
+      // 초기 스텝이 agreement가 아닌 경우 (카카오 경유 등) 해당 스텝도 트래킹
+      if (step !== 'agreement') {
+        tracking.signupFunnel.step(step);
+      }
+      sessionStorage.setItem('plic_signup_started', 'true');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 초기화 완료 여부
   const [initialized, setInitialized] = useState(false);
   const initRef = useRef(false);
