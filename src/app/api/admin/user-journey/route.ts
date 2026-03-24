@@ -124,7 +124,28 @@ export async function GET(request: NextRequest) {
     }
 
     // === 5. 체류 시간 분포 ===
+    // 5-1. 세션별 첫/마지막 이벤트 시간으로 10초 이하 이탈 계산
+    const sessionTimestamps: Record<string, { first: string; last: string }> = {};
+    for (const e of events) {
+      const sid = e.sessionId as string;
+      const ts = e.timestamp as string;
+      if (!sid || !ts) continue;
+      if (!sessionTimestamps[sid]) {
+        sessionTimestamps[sid] = { first: ts, last: ts };
+      } else {
+        if (ts < sessionTimestamps[sid].first) sessionTimestamps[sid].first = ts;
+        if (ts > sessionTimestamps[sid].last) sessionTimestamps[sid].last = ts;
+      }
+    }
+    let bounceSessions = 0;
+    for (const { first, last } of Object.values(sessionTimestamps)) {
+      const duration = new Date(last).getTime() - new Date(first).getTime();
+      if (duration <= 10000) bounceSessions++;
+    }
+
+    // 5-2. 기존 마일스톤 집계
     const sessionMilestones: Record<string, number> = {};
+    sessionMilestones['10초 이하'] = bounceSessions;
     for (const e of events) {
       if (e.eventName === 'session_milestone' && e.custom) {
         const label = (e.custom as Record<string, string>).label || 'unknown';

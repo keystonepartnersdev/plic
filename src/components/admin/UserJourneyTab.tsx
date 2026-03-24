@@ -506,7 +506,7 @@ export function UserJourneyTab() {
               <div className="space-y-4">
                 {Object.entries(data.sessionMilestones)
                   .sort((a, b) => {
-                    const order = ['30초', '1분', '3분', '5분', '10분'];
+                    const order = ['10초 이하', '30초', '1분', '3분', '5분', '10분'];
                     return order.indexOf(a[0]) - order.indexOf(b[0]);
                   })
                   .map(([label, count]) => {
@@ -514,7 +514,7 @@ export function UserJourneyTab() {
                     return (
                       <div key={label}>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-600">{label} 이상 체류</span>
+                          <span className="text-gray-600">{label === '10초 이하' ? `${label} 이탈` : `${label} 이상 체류`}</span>
                           <span className="font-semibold">{count}명</span>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-3">
