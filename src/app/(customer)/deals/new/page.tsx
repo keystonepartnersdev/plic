@@ -259,6 +259,9 @@ function NewDealContent() {
     setStep(newStep);
     setCurrentStep(newStep as TDealStep);
 
+    // 스텝 전환 시 스크롤 최상단으로 리셋
+    window.scrollTo(0, 0);
+
     // 송금 퍼널 트래킹
     const funnelMap: Record<Step, () => void> = {
       type: tracking.transferFunnel.start,
@@ -894,7 +897,7 @@ function NewDealContent() {
                 if (numericAmount > 0) {
                   updateDraft({ amount: numericAmount });
                 }
-                setStep('type');
+                handleStepChange('type');
               }}
               className="w-full mb-6 text-left"
             >
