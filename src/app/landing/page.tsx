@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import tracking from '@/lib/tracking';
 import { TrackingProvider } from '@/components/common';
@@ -9,7 +9,7 @@ import {
   Clock, BadgeCheck, Zap, Building2, Gift, BarChart3,
   UserCheck, Send, CheckCircle, Shield, Lock, AlertTriangle,
   Star, Quote, TrendingUp, Users, ShoppingBag,
-  Plus, Minus, MessageCircle
+  Plus, Minus, MessageCircle, Briefcase, FileCheck, Scale
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -88,92 +88,276 @@ function Navigation() {
   );
 }
 
+// ==================== 2.5D SVG Graphics ====================
+function CardFlowGraphic({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="card1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#2563EB" />
+        </linearGradient>
+        <linearGradient id="card2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#818CF8" />
+          <stop offset="100%" stopColor="#6366F1" />
+        </linearGradient>
+        <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="4" dy="6" stdDeviation="8" floodColor="#2563EB" floodOpacity="0.15" />
+        </filter>
+      </defs>
+      {/* Back card */}
+      <rect x="50" y="20" width="130" height="82" rx="12" fill="url(#card2)" opacity="0.5" transform="rotate(5 115 61)" filter="url(#cardShadow)" />
+      {/* Front card */}
+      <rect x="20" y="40" width="130" height="82" rx="12" fill="url(#card1)" filter="url(#cardShadow)" />
+      <rect x="32" y="58" width="40" height="28" rx="4" fill="white" opacity="0.25" />
+      <rect x="32" y="100" width="80" height="8" rx="4" fill="white" opacity="0.3" />
+      {/* Arrow */}
+      <circle cx="165" cy="110" r="20" fill="#10B981" opacity="0.9" />
+      <path d="M158 110 L170 110 M166 105 L172 110 L166 115" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ShieldGraphic({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#1D4ED8" />
+        </linearGradient>
+        <filter id="shieldShadow" x="-20%" y="-10%" width="140%" height="140%">
+          <feDropShadow dx="3" dy="6" stdDeviation="10" floodColor="#2563EB" floodOpacity="0.2" />
+        </filter>
+      </defs>
+      {/* Shield body */}
+      <path d="M100 20 L160 50 C160 50 165 130 100 180 C35 130 40 50 40 50 Z" fill="url(#shieldGrad)" filter="url(#shieldShadow)" />
+      {/* Inner highlight */}
+      <path d="M100 35 L148 58 C148 58 152 120 100 163 C48 120 52 58 52 58 Z" fill="white" opacity="0.1" />
+      {/* Check mark */}
+      <circle cx="100" cy="95" r="28" fill="white" opacity="0.2" />
+      <path d="M82 95 L95 108 L120 82" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Sparkles */}
+      <circle cx="170" cy="40" r="4" fill="#FBBF24" opacity="0.8" />
+      <circle cx="30" cy="70" r="3" fill="#34D399" opacity="0.8" />
+      <circle cx="160" cy="140" r="3" fill="#818CF8" opacity="0.6" />
+    </svg>
+  );
+}
+
+function MoneyFlowGraphic({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 240 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="phoneGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#F1F5F9" />
+          <stop offset="100%" stopColor="#E2E8F0" />
+        </linearGradient>
+        <filter id="phoneShadow" x="-15%" y="-10%" width="130%" height="130%">
+          <feDropShadow dx="3" dy="5" stdDeviation="8" floodColor="#0F172A" floodOpacity="0.12" />
+        </filter>
+      </defs>
+      {/* Phone */}
+      <rect x="30" y="10" width="80" height="150" rx="14" fill="url(#phoneGrad)" stroke="#CBD5E1" strokeWidth="1.5" filter="url(#phoneShadow)" />
+      <rect x="38" y="28" width="64" height="110" rx="4" fill="white" />
+      <rect x="60" y="14" width="20" height="6" rx="3" fill="#CBD5E1" />
+      {/* Screen content */}
+      <rect x="44" y="36" width="52" height="6" rx="3" fill="#2563EB" opacity="0.7" />
+      <rect x="44" y="48" width="36" height="4" rx="2" fill="#94A3B8" />
+      <rect x="44" y="58" width="52" height="20" rx="6" fill="#EFF6FF" />
+      <text x="55" y="72" fontSize="9" fill="#2563EB" fontWeight="bold">₩1,000,000</text>
+      {/* Flow arrows */}
+      <path d="M120 85 C150 85 150 65 180 65" stroke="#2563EB" strokeWidth="2.5" strokeDasharray="4 3" fill="none" />
+      <path d="M120 85 C150 85 150 105 180 105" stroke="#2563EB" strokeWidth="2.5" strokeDasharray="4 3" fill="none" />
+      {/* Bank icons */}
+      <rect x="180" y="50" width="40" height="30" rx="8" fill="#EFF6FF" stroke="#BFDBFE" strokeWidth="1" />
+      <text x="191" y="69" fontSize="7" fill="#2563EB" fontWeight="bold">은행</text>
+      <rect x="180" y="90" width="40" height="30" rx="8" fill="#F0FDF4" stroke="#BBF7D0" strokeWidth="1" />
+      <text x="191" y="109" fontSize="7" fill="#16A34A" fontWeight="bold">수취</text>
+      {/* Coins */}
+      <circle cx="145" cy="40" r="10" fill="#FBBF24" opacity="0.8" />
+      <text x="141" y="44" fontSize="9" fill="white" fontWeight="bold">₩</text>
+      <circle cx="155" cy="135" r="8" fill="#FBBF24" opacity="0.6" />
+      <text x="152" y="138" fontSize="7" fill="white" fontWeight="bold">₩</text>
+    </svg>
+  );
+}
+
+function LegalDocGraphic({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="docGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#F8FAFC" />
+        </linearGradient>
+        <filter id="docShadow" x="-15%" y="-10%" width="130%" height="130%">
+          <feDropShadow dx="2" dy="4" stdDeviation="8" floodColor="#0F172A" floodOpacity="0.1" />
+        </filter>
+      </defs>
+      {/* Document */}
+      <rect x="45" y="20" width="110" height="145" rx="10" fill="url(#docGrad)" stroke="#E2E8F0" strokeWidth="1.5" filter="url(#docShadow)" />
+      {/* Document lines */}
+      <rect x="60" y="45" width="80" height="5" rx="2.5" fill="#E2E8F0" />
+      <rect x="60" y="58" width="60" height="5" rx="2.5" fill="#E2E8F0" />
+      <rect x="60" y="71" width="72" height="5" rx="2.5" fill="#E2E8F0" />
+      <rect x="60" y="84" width="55" height="5" rx="2.5" fill="#E2E8F0" />
+      {/* Stamp / Seal */}
+      <circle cx="120" cy="125" r="22" fill="none" stroke="#2563EB" strokeWidth="2.5" opacity="0.7" />
+      <circle cx="120" cy="125" r="17" fill="none" stroke="#2563EB" strokeWidth="1" opacity="0.5" />
+      <text x="108" y="129" fontSize="10" fill="#2563EB" fontWeight="bold" opacity="0.8">인가</text>
+      {/* Check badge */}
+      <circle cx="155" cy="35" r="16" fill="#10B981" />
+      <path d="M147 35 L153 41 L163 30" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Scale icon (justice) */}
+      <g transform="translate(30, 130)" opacity="0.6">
+        <line x1="15" y1="5" x2="15" y2="25" stroke="#6366F1" strokeWidth="2" />
+        <line x1="5" y1="5" x2="25" y2="5" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" />
+        <path d="M3 5 L8 18 Q5.5 22 3 18 Z" fill="#6366F1" opacity="0.4" />
+        <path d="M22 5 L27 18 Q24.5 22 22 18 Z" fill="#6366F1" opacity="0.4" />
+      </g>
+    </svg>
+  );
+}
+
 // ==================== Hero ====================
 function Hero() {
   return (
-    <section data-section="hero" className="relative flex flex-col bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
-      {/* 텍스트 + 버튼 영역 */}
-      <div className="max-w-4xl mx-auto px-6 w-full text-center pt-24 pb-4 lg:pt-32 lg:pb-6">
+    <section data-section="hero" className="relative bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
+      {/* Desktop: 좌측 텍스트 + 우측 영상 */}
+      <div className="hidden md:flex max-w-7xl mx-auto px-6 pt-28 pb-20 items-center gap-12 lg:gap-20">
+        {/* 좌측: 텍스트 영역 (좌측 정렬) */}
+        <div className="flex-1 text-left">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
+              <Briefcase size={14} />
+              <span>사업자 전용 서비스</span>
+            </div>
+
+            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-2">
+              카드로 송금하다
+            </h1>
+            <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-6">
+              PLIC
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+          >
+            <p className="text-lg lg:text-xl text-gray-600 mb-4 leading-relaxed">
+              거래대금, 사업장 월세, 인건비, 자재비 등<br />
+              현금 지출이 필요한 모든 사업 비용을 카드로.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-10">
+              {['거래대금', '사업장 월세', '인건비', '자재비', '장비 대여료'].map((tag) => (
+                <span key={tag} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+          >
+            <Link href="https://www.plic.kr/" data-track="landing_cta_hero" className="inline-flex items-center gap-2 px-8 py-4 bg-[#2563EB] text-white rounded-full font-semibold text-lg hover:bg-[#1d4ed8] transition-all duration-300 shadow-lg shadow-blue-500/25">
+              무료로 시작하기
+              <ArrowRight size={20} />
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* 우측: 영상 */}
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1, delay: 0.5 }}
+          className="flex-shrink-0"
+        >
+          <div className="relative">
+            {/* 우측하단 드롭쉐도우 */}
+            <div className="absolute -bottom-6 -right-6 w-full h-full bg-gradient-to-br from-blue-200/40 to-indigo-300/30 rounded-[2.5rem] blur-2xl" />
+            <div className="relative bg-gray-900 rounded-[2.5rem] overflow-hidden border-[6px] border-gray-800" style={{ width: '300px', boxShadow: '12px 16px 40px rgba(37, 99, 235, 0.18), 6px 8px 20px rgba(0, 0, 0, 0.08)' }}>
+              {/* 상단 노치 */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-900 rounded-b-2xl z-10" />
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full"
+              >
+                <source src="/images/landing/plic-demo.mp4" type="video/mp4" />
+              </video>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Mobile: 중앙 정렬 */}
+      <div className="md:hidden px-6 pt-24 pb-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
+          className="text-center"
         >
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-gray-900 leading-tight">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
+            <Briefcase size={14} />
+            <span>사업자 전용 서비스</span>
+          </div>
+
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-2">
             카드로 송금하다
           </h1>
-          <p className="text-4xl md:text-5xl lg:text-7xl font-black text-[#2563EB] tracking-tight mb-6 lg:mb-8">
+          <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-4">
             PLIC
           </p>
+          <p className="text-base text-gray-600 mb-3 leading-relaxed">
+            거래대금, 월세, 인건비 등<br />
+            사업 비용을 카드로 결제하세요.
+          </p>
+          <div className="flex flex-wrap justify-center gap-1.5 mb-8">
+            {['거래대금', '월세', '인건비', '자재비'].map((tag) => (
+              <span key={tag} className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                {tag}
+              </span>
+            ))}
+          </div>
         </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-base md:text-lg lg:text-xl text-gray-600 mb-8 lg:mb-12 max-w-2xl mx-auto leading-relaxed"
-        >
-          현금이나 계좌이체로 지불해야 하는 금액.<br />
-          카드로 편하게 결제하세요.
-        </motion.p>
-
+        {/* 모바일 영상 */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="hidden md:block"
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="flex justify-center"
         >
-          <Link href="https://www.plic.kr/" data-track="landing_cta_hero" className="inline-flex items-center gap-2 px-8 py-4 bg-[#2563EB] text-white rounded-full font-semibold text-lg hover:bg-[#1d4ed8] transition-all duration-300 shadow-lg shadow-blue-500/25">
-            무료로 시작하기
-            <ArrowRight size={20} />
-          </Link>
+          <div className="relative">
+            <div className="absolute -bottom-4 -right-4 w-full h-full bg-gradient-to-br from-blue-200/30 to-indigo-300/20 rounded-[2rem] blur-xl" />
+            <div className="relative bg-gray-900 rounded-[2rem] overflow-hidden border-[5px] border-gray-800" style={{ width: '220px', boxShadow: '8px 12px 30px rgba(37, 99, 235, 0.15)' }}>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-gray-900 rounded-b-xl z-10" />
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full"
+              >
+                <source src="/images/landing/plic-demo.mp4" type="video/mp4" />
+              </video>
+            </div>
+          </div>
         </motion.div>
-      </div>
-
-      {/* 폰 목업 - 모바일: 세로 폰 1개 중앙 */}
-      <div className="md:hidden flex justify-center px-6 pb-4">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-        >
-          <img
-            src="/landing/test2.png"
-            alt="PLIC 거래 유형 선택"
-            className="w-[220px] drop-shadow-2xl mx-auto"
-          />
-        </motion.div>
-      </div>
-
-      {/* 폰 목업 - 데스크톱: 2개 나란히 */}
-      <div className="hidden md:flex justify-center px-6 pb-2 lg:pb-4">
-        <div className="relative flex items-center justify-center" style={{ maxWidth: '1000px', width: '100%' }}>
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="relative z-10 flex-shrink-0"
-          >
-            <img
-              src="/landing/test2.png"
-              alt="PLIC 거래 유형 선택"
-              className="w-[286px] lg:w-[338px] drop-shadow-2xl"
-            />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="relative z-0 ml-4 lg:ml-6 flex-shrink-0"
-          >
-            <img
-              src="/landing/test.png"
-              alt="PLIC 메인 화면"
-              className="w-[700px] lg:w-[832px] drop-shadow-2xl"
-            />
-          </motion.div>
-        </div>
       </div>
     </section>
   );
@@ -182,16 +366,8 @@ function Hero() {
 // ==================== CardBanner ====================
 function CardBanner() {
   const cardCompanies = [
-    'Samsung Card',
-    'Shinhan Card',
-    'KB Card',
-    'Hyundai Card',
-    'Lotte Card',
-    'Woori Card',
-    'Hana Card',
-    'NH Card',
-    'BC Card',
-    'Citi Card',
+    'Samsung Card', 'Shinhan Card', 'KB Card', 'Hyundai Card', 'Lotte Card',
+    'Woori Card', 'Hana Card', 'NH Card', 'BC Card', 'Citi Card',
   ];
 
   return (
@@ -201,12 +377,8 @@ function CardBanner() {
     >
       <style jsx>{`
         @keyframes cardScroll {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-33.333%);
-          }
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.333%); }
         }
         .card-scroll-container {
           display: inline-flex;
@@ -227,6 +399,178 @@ function CardBanner() {
               <span className="font-bold whitespace-nowrap" style={{ color: '#C5CED9', fontSize: '20px' }}>{card}</span>
             </span>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== iMessage Q&A ====================
+function MessageQA() {
+  const conversations = [
+    {
+      q: '이거 돈 세탁 아닌가요!?',
+      a: '아닙니다! 플릭은 정식 PG사와 연계하는 합법적인 결제 대행 서비스입니다!',
+    },
+    {
+      q: '수취인의 동의가 필요한가요?',
+      a: "아닙니다. 수취인의 동의 없이 지정된 '송금자'명으로 수취인에게 이체됩니다!",
+    },
+    {
+      q: '카드 할부도 되나요?',
+      a: '네! 카드사에서 지원하는 무이자 기간 그대로 적용 가능합니다!',
+    },
+    {
+      q: '카드 혜택도 적용되나요!?',
+      a: '네! 포인트/항공마일리지 적립, 결제 할인 등 그대로 적용됩니다!',
+    },
+    {
+      q: '단기 대출을 받는게 낫지 않나요?',
+      a: '대출은 신용도 하락의 문제가 있고, 대출 이자보다 수수료도 저렴합니다!',
+    },
+  ];
+
+  return (
+    <section data-section="message-qa" className="py-20 md:py-28 px-6 bg-gradient-to-b from-white to-gray-50">
+      <div className="max-w-3xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-14"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-bold mb-6">
+            <MessageCircle size={16} />
+            <span>자주 하시는 질문</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4">
+            이런 점이 궁금하셨죠?
+          </h2>
+          <p className="text-base md:text-lg text-gray-500">
+            PLIC 서비스에 대해 가장 많이 물어보시는 질문들
+          </p>
+        </motion.div>
+
+        {/* iMessage 스타일 대화 */}
+        <div className="max-w-lg mx-auto space-y-6">
+          {conversations.map((conv, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.12 }}
+            >
+              {/* Question (left - gray bubble) */}
+              <div className="flex justify-start mb-2">
+                <div className="relative max-w-[80%]">
+                  <div className="bg-[#E9E9EB] text-gray-900 px-4 py-2.5 rounded-2xl rounded-bl-md text-[15px] leading-relaxed font-medium">
+                    {conv.q}
+                  </div>
+                </div>
+              </div>
+
+              {/* Answer (right - blue bubble) */}
+              <div className="flex justify-end">
+                <div className="relative max-w-[80%]">
+                  <div className="bg-[#007AFF] text-white px-4 py-2.5 rounded-2xl rounded-br-md text-[15px] leading-relaxed">
+                    {conv.a}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== Trust / Legal PG Section ====================
+function TrustSection() {
+  const trustPoints = [
+    {
+      icon: FileCheck,
+      title: '정식 허가 PG사 연계',
+      description: 'PLIC은 금융위원회에 등록된 정식 PG사를 통해 결제를 처리합니다. 모든 거래는 합법적인 절차를 따릅니다.',
+    },
+    {
+      icon: Scale,
+      title: '합법적인 결제 대행',
+      description: '카드 결제 대행은 여신전문금융업법에 따른 합법적 서비스입니다. 불법 현금융통(카드깡)과는 전혀 다릅니다.',
+    },
+    {
+      icon: Shield,
+      title: '철저한 거래 검수',
+      description: '모든 거래는 운영팀의 검수를 거칩니다. 불법 거래가 의심되는 건은 즉시 차단하여 서비스 건전성을 유지합니다.',
+    },
+    {
+      icon: Lock,
+      title: '개인정보 보호',
+      description: '카드 정보는 PG사 보안 시스템에서만 처리되며, PLIC 서버에 저장되지 않습니다. AWS KMS로 민감 정보를 암호화합니다.',
+    },
+  ];
+
+  return (
+    <section data-section="trust" className="py-20 md:py-28 px-6 bg-white overflow-hidden">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          {/* 좌측: 2.5D 그래픽 */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="flex-shrink-0"
+          >
+            <LegalDocGraphic className="w-48 h-48 md:w-64 md:h-64" />
+          </motion.div>
+
+          {/* 우측: 콘텐츠 */}
+          <div className="flex-1">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="mb-10"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-bold mb-6">
+                <BadgeCheck size={16} />
+                <span>합법 · 안전 · 투명</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-4">
+                정식 허가 PG사와 함께하는<br />
+                <span className="text-[#2563EB]">합법적인</span> 서비스
+              </h2>
+              <p className="text-base md:text-lg text-gray-500 leading-relaxed">
+                PLIC은 법적 테두리 안에서 안전하게 운영됩니다.
+              </p>
+            </motion.div>
+
+            <div className="grid sm:grid-cols-2 gap-5">
+              {trustPoints.map((point, index) => {
+                const Icon = point.icon;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="p-5 rounded-2xl bg-gray-50 hover:bg-blue-50/50 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm mb-3 text-[#2563EB]">
+                      <Icon size={20} />
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-1.5 text-sm">{point.title}</h3>
+                    <p className="text-gray-500 text-xs leading-relaxed">{point.description}</p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -271,23 +615,31 @@ function Features() {
   return (
     <section id="service-intro" data-section="features" className="py-24 px-6 bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-6xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-            왜 PLIC인가요?
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            PLIC은 카드 결제의 편리함과<br className="md:hidden" />
-            계좌 송금의 범용성을 결합한<br className="md:hidden" />
-            새로운 금융 서비스입니다.<br />
-            급한 송금도 부담 없이 가능합니다.
-          </p>
-        </motion.div>
+        <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16 mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center lg:text-left flex-1"
+          >
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              왜 PLIC인가요?
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl leading-relaxed">
+              PLIC은 카드 결제의 편리함과 계좌 송금의 범용성을 결합한 새로운 금융 서비스입니다.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="flex-shrink-0"
+          >
+            <CardFlowGraphic className="w-40 h-32 md:w-52 md:h-40" />
+          </motion.div>
+        </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => {
@@ -356,21 +708,31 @@ function HowItWorks() {
   return (
     <section id="how-it-works" data-section="how-it-works" className="py-24 px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-            간단하게 송금하세요
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            복잡한 절차 없이, 카드 하나로<br className="md:hidden" />
-            누구에게나 송금할 수 있습니다.
-          </p>
-        </motion.div>
+        <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16 mb-16">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="flex-shrink-0 order-2 lg:order-1"
+          >
+            <MoneyFlowGraphic className="w-48 h-36 md:w-60 md:h-44" />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center lg:text-left flex-1 order-1 lg:order-2"
+          >
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              간단하게 송금하세요
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl leading-relaxed">
+              복잡한 절차 없이, 카드 하나로 누구에게나 송금할 수 있습니다.
+            </p>
+          </motion.div>
+        </div>
 
         <div className="relative">
           <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-200 to-transparent -translate-y-1/2"></div>
@@ -437,27 +799,37 @@ function Security() {
   return (
     <section id="security" data-section="security" className="py-32 px-6 bg-white overflow-hidden">
       <div className="max-w-6xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-20"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
-            <Shield size={16} />
-            <span>Security First</span>
-          </div>
+        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16 mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+            className="text-center lg:text-left flex-1"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
+              <Shield size={16} />
+              <span>Security First</span>
+            </div>
 
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            표준 보안 체계로<br />
-            <span className="text-[#2563EB]">안전하게</span> 지켜드립니다
-          </h2>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            PLIC은 보안 표준을 준수하며,<br />
-            고객님의 소중한 정보를 철저하게 보호합니다.
-          </p>
-        </motion.div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              표준 보안 체계로<br />
+              <span className="text-[#2563EB]">안전하게</span> 지켜드립니다
+            </h2>
+            <p className="text-lg text-gray-500 max-w-2xl leading-relaxed">
+              PLIC은 보안 표준을 준수하며, 고객님의 소중한 정보를 철저하게 보호합니다.
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="flex-shrink-0"
+          >
+            <ShieldGraphic className="w-40 h-40 md:w-52 md:h-52" />
+          </motion.div>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {securityFeatures.map((feature, index) => {
@@ -494,7 +866,7 @@ function Security() {
   );
 }
 
-// ==================== Reviews ====================
+// ==================== Reviews (슬라이드-정지 모션) ====================
 function Reviews() {
   const reviews = [
     {
@@ -547,26 +919,20 @@ function Reviews() {
     },
   ];
 
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const totalCards = reviews.length;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % totalCards);
+    }, 3000); // 3초 정지 후 다음 카드
+
+    return () => clearInterval(interval);
+  }, [totalCards]);
+
   return (
     <section id="reviews" data-section="reviews" className="py-24 overflow-hidden" style={{ backgroundColor: '#f8fafc' }}>
-      <style jsx>{`
-        @keyframes reviewScroll {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-        .reviews-scroll-container {
-          display: flex;
-          animation: reviewScroll 10s linear infinite;
-        }
-        .reviews-scroll-container:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
-
       <div className="max-w-7xl mx-auto px-6 mb-16 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -584,19 +950,32 @@ function Reviews() {
           </h2>
           <p className="text-lg text-gray-500">
             인건비, 계약금, 월세까지.<br />
-            사업에 필요한 모든 자금,<br />
-            PLIC으로 해결하세요.
+            사업에 필요한 모든 자금, PLIC으로 해결하세요.
           </p>
         </motion.div>
       </div>
 
-      <div className="overflow-hidden">
-        <div className="reviews-scroll-container">
-          {[...reviews, ...reviews].map((review, index) => {
+      {/* 슬라이드-정지 캐러셀 */}
+      <div className="overflow-hidden" ref={containerRef}>
+        <div
+          className="flex transition-transform duration-700 ease-in-out"
+          style={{
+            transform: `translateX(calc(-${currentIndex * 406}px + max(0px, (100vw - 406px) / 2)))`,
+          }}
+        >
+          {reviews.map((review, index) => {
             const Icon = review.icon;
+            const isActive = index === currentIndex;
             return (
-              <div key={index} className="flex-shrink-0 w-[400px] px-3">
-                <div className="bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full flex flex-col justify-between" style={{ minHeight: '340px' }}>
+              <div
+                key={index}
+                className={`flex-shrink-0 w-[400px] px-3 transition-all duration-700 ${
+                  isActive ? 'opacity-100 scale-100' : 'opacity-60 scale-[0.96]'
+                }`}
+              >
+                <div className={`bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border h-full flex flex-col justify-between ${
+                  isActive ? 'border-blue-200 shadow-lg' : 'border-gray-100'
+                }`} style={{ minHeight: '340px' }}>
                   <div>
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-3">
@@ -630,6 +1009,21 @@ function Reviews() {
               </div>
             );
           })}
+        </div>
+
+        {/* 인디케이터 */}
+        <div className="flex justify-center gap-2 mt-8">
+          {reviews.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`rounded-full transition-all duration-300 ${
+                index === currentIndex
+                  ? 'w-8 h-2.5 bg-[#2563EB]'
+                  : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
+              }`}
+            />
+          ))}
         </div>
       </div>
     </section>
@@ -935,14 +1329,14 @@ function Footer() {
 
 // ==================== Main Page ====================
 export default function LandingPage() {
-  // pageview는 TrackingProvider가 자동 수집 (중복 방지)
-
   return (
     <TrackingProvider>
       <div className="min-h-screen bg-white overflow-x-hidden">
         <Navigation />
         <Hero />
         <CardBanner />
+        <MessageQA />
+        <TrustSection />
         <Features />
         <HowItWorks />
         <Security />
