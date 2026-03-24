@@ -615,12 +615,16 @@ function SignupContent() {
                 updatedAt: rawUser.updatedAt || new Date().toISOString(),
               });
             }
+            tracking.signupFunnel.complete();
+            tracking.flush();
             setShowWelcomeModal(true);
             return;
           }
         } else {
           // 직접 가입: 일반 로그인
           await useUserStore.getState().login(email, password);
+          tracking.signupFunnel.complete();
+          tracking.flush();
           setShowWelcomeModal(true);
           return;
         }
@@ -629,6 +633,8 @@ function SignupContent() {
       }
 
       // 자동 로그인 실패 시 fallback: 기존 완료 화면
+      tracking.signupFunnel.complete();
+      tracking.flush();
       setStepState('complete');
     } catch (err: unknown) {
       setError(getErrorMessage(err) || '회원가입 중 오류가 발생했습니다.');
