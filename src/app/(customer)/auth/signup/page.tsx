@@ -62,10 +62,20 @@ function SignupContent() {
     if (newStep !== 'complete') {
       sessionStorage.setItem('signup_step', newStep);
     }
-    // 가입 퍼널 트래킹
-    if (newStep === 'agreement') tracking.signupFunnel.start();
-    else if (newStep === 'complete') tracking.signupFunnel.complete();
-    else tracking.signupFunnel.step(newStep);
+    // 가입 퍼널 트래킹 (카카오 경유 시에도 start 보장)
+    if (newStep === 'agreement') {
+      tracking.signupFunnel.start();
+    } else if (newStep === 'complete') {
+      tracking.signupFunnel.complete();
+      tracking.flush(); // 완료 이벤트 즉시 전송
+    } else {
+      // 카카오 경유로 agreement를 건너뛴 경우, 첫 step에서 start도 함께 발생
+      if (!sessionStorage.getItem('plic_signup_started')) {
+        tracking.signupFunnel.start();
+      }
+      tracking.signupFunnel.step(newStep);
+    }
+    sessionStorage.setItem('plic_signup_started', 'true');
   };
 
   // 초기화 완료 여부

@@ -8,7 +8,6 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const EVENTS_TABLE = process.env.EVENTS_TABLE || 'plic-events';
-const TTL_DAYS = 30;
 
 // CORS 헤더
 const corsHeaders = {
@@ -25,12 +24,27 @@ const response = (statusCode: number, body: Record<string, unknown>) => ({
 
 const generateEventId = () => `EVT${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
 
+// 이벤트 검증
+const VALID_EVENT_TYPES = ['pageview', 'click', 'funnel', 'error', 'performance', 'custom'];
+
+const validateEvent = (evt: TrackingEvent): boolean => {
+  if (!evt.eventType || !VALID_EVENT_TYPES.includes(evt.eventType)) return false;
+  if (!evt.sessionId || typeof evt.sessionId !== 'string') return false;
+  if (!evt.anonymousId || typeof evt.anonymousId !== 'string') return false;
+  if (!evt.timestamp || typeof evt.timestamp !== 'string') return false;
+  // 문자열 길이 제한
+  if (evt.sessionId.length > 100 || evt.anonymousId.length > 100) return false;
+  if (evt.userId && typeof evt.userId === 'string' && evt.userId.length > 100) return false;
+  return true;
+};
+
 interface TrackingEvent {
-  eventType: string; // pageview, click, funnel, error, performance
+  eventType: string;
   eventName?: string;
   sessionId: string;
   anonymousId: string;
   userId?: string;
+  userRole?: string;
   timestamp: string;
   page?: {
     path: string;
@@ -86,12 +100,22 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       return response(400, { success: false, error: '이벤트가 없습니다.' });
     }
 
+    // 최대 100건 제한 (남용 방지)
+    if (events.length > 100) {
+      return response(400, { success: false, error: '최대 100건까지 전송 가능합니다.' });
+    }
+
+    // 유효한 이벤트만 필터
+    const validEvents = events.filter(validateEvent);
+    if (validEvents.length === 0) {
+      return response(400, { success: false, error: '유효한 이벤트가 없습니다.' });
+    }
+
     // 최대 25개씩 배치 처리 (DynamoDB 제한)
-    const ttl = Math.floor(Date.now() / 1000) + (TTL_DAYS * 24 * 60 * 60);
     const batches: any[][] = [];
 
-    for (let i = 0; i < events.length; i += 25) {
-      const batch = events.slice(i, i + 25).map((evt) => ({
+    for (let i = 0; i < validEvents.length; i += 25) {
+      const batch = validEvents.slice(i, i + 25).map((evt) => ({
         PutRequest: {
           Item: {
             eventId: generateEventId(),
@@ -100,6 +124,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             sessionId: evt.sessionId,
             anonymousId: evt.anonymousId,
             userId: evt.userId || null,
+            userRole: evt.userRole || 'user',
             timestamp: evt.timestamp || new Date().toISOString(),
             page: evt.page || null,
             device: evt.device || null,
@@ -109,7 +134,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             error: evt.error || null,
             performance: evt.performance || null,
             custom: evt.custom || null,
-            ttl,
             createdAt: new Date().toISOString(),
           },
         },
@@ -128,7 +152,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return response(200, {
       success: true,
-      processed: events.length,
+      processed: validEvents.length,
+      skipped: events.length - validEvents.length,
     });
 
   } catch (error: any) {

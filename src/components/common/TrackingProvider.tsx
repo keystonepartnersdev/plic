@@ -34,7 +34,7 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
   // ── 1. identify + pageview ──
   useEffect(() => {
     if (isLoggedIn && currentUser?.uid) {
-      tracking.identify(currentUser.uid);
+      tracking.identify(currentUser.uid, 'user');
     }
 
     if (pathname && pathname !== prevPathRef.current) {

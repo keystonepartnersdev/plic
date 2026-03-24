@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw, Eye, Monitor, Smartphone, Tablet, ArrowDown,
-  Users, Activity, Globe, Download, MousePointer, Clock,
+  Users, Activity, Globe, Download, Clock, Calendar, Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -16,12 +16,18 @@ interface JourneyData {
     tabHidden: number;
     tabVisible: number;
   };
+  filters: {
+    startDate: string | null;
+    endDate: string | null;
+    excludeAdmin: boolean;
+  };
   eventTypeCounts: Record<string, number>;
   topPages: Array<{ path: string; count: number }>;
   scrollDepths: Record<number, number>;
   sessionMilestones: Record<string, number>;
   sectionViews: Record<string, number>;
   topClicks: Array<{ element: string; count: number }>;
+  landingTopClicks: Array<{ element: string; count: number }>;
   signupFunnel: Array<{ step: string; name: string; count: number }>;
   loginFunnel: Array<{ step: string; name: string; count: number }>;
   transferFunnel: Array<{ step: string; name: string; count: number }>;
@@ -65,13 +71,14 @@ const EVENT_TYPE_KR: Record<string, string> = {
 
 // 엑셀(CSV) 다운로드
 function downloadCSV(events: Array<Record<string, unknown>>) {
-  const headers = ['시간(KST)', '이벤트유형', '이벤트명', '페이지', '유저구분', '세션ID', '익명ID'];
+  const headers = ['시간(KST)', '이벤트유형', '이벤트명', '페이지', '유저구분', '역할', '세션ID', '익명ID'];
   const rows = events.map(e => [
     toKST(e.timestamp as string),
     EVENT_TYPE_KR[(e.eventType as string)] || (e.eventType as string),
     (e.eventName as string) || (e.funnel as Record<string, string>)?.name || '',
     (e.page as Record<string, string>)?.path || '',
     e.userId ? '가입자' : '미가입',
+    (e.userRole as string) || 'user',
     (e.sessionId as string) || '',
     (e.anonymousId as string) || '',
   ]);
@@ -88,6 +95,42 @@ function downloadCSV(events: Array<Record<string, unknown>>) {
   a.download = `PLIC_트래킹_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// 기간 프리셋 계산
+function getDatePreset(preset: string): { startDate: string; endDate: string } {
+  const now = new Date();
+  const end = now.toISOString().slice(0, 10);
+  let start = end;
+
+  switch (preset) {
+    case '1d':
+      start = end;
+      break;
+    case '7d': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      start = d.toISOString().slice(0, 10);
+      break;
+    }
+    case '30d': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 30);
+      start = d.toISOString().slice(0, 10);
+      break;
+    }
+    case '1y': {
+      const d = new Date(now);
+      d.setFullYear(d.getFullYear() - 1);
+      start = d.toISOString().slice(0, 10);
+      break;
+    }
+    case 'all':
+      start = '';
+      break;
+  }
+
+  return { startDate: start, endDate: preset === 'all' ? '' : end };
 }
 
 // 퍼널 차트
@@ -149,12 +192,24 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 export function UserJourneyTab() {
   const [data, setData] = useState<JourneyData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'funnel' | 'behavior' | 'events'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'funnel' | 'landing' | 'events'>('overview');
 
-  const fetchData = async () => {
+  // 필터 상태
+  const [excludeAdmin, setExcludeAdmin] = useState(true);
+  const [datePreset, setDatePreset] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showCustomDate, setShowCustomDate] = useState(false);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/user-journey');
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      params.set('excludeAdmin', String(excludeAdmin));
+
+      const res = await fetch(`/api/admin/user-journey?${params.toString()}`);
       const json = await res.json();
       if (json.success) setData(json.data);
     } catch (e) {
@@ -162,9 +217,22 @@ export function UserJourneyTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, excludeAdmin]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // 기간 프리셋 변경
+  const handlePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    if (preset === 'custom') {
+      setShowCustomDate(true);
+      return;
+    }
+    setShowCustomDate(false);
+    const { startDate: s, endDate: e } = getDatePreset(preset);
+    setStartDate(s);
+    setEndDate(e);
+  };
 
   if (loading) {
     return (
@@ -182,23 +250,65 @@ export function UserJourneyTab() {
   const tabs = [
     { key: 'overview' as const, label: '전체 요약' },
     { key: 'funnel' as const, label: '퍼널 분석' },
-    { key: 'behavior' as const, label: '행동 분석' },
+    { key: 'landing' as const, label: '랜딩 행동 분석' },
     { key: 'events' as const, label: '이벤트 기록' },
   ];
 
   return (
     <div>
-      {/* 헤더 */}
-      <div className="flex justify-between items-center mb-4">
-        <div />
-        <div className="flex gap-2">
+      {/* 필터 영역 */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* 기간 프리셋 */}
+          <div className="flex items-center gap-1">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            {[
+              { key: 'all', label: '전체' },
+              { key: '1d', label: '오늘' },
+              { key: '7d', label: '1주일' },
+              { key: '30d', label: '1개월' },
+              { key: '1y', label: '1년' },
+              { key: 'custom', label: '직접 설정' },
+            ].map(p => (
+              <button key={p.key} onClick={() => handlePresetChange(p.key)}
+                className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                  datePreset === p.key ? 'bg-primary-400 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100')}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 사용자 지정 기간 */}
+          {showCustomDate && (
+            <div className="flex items-center gap-2">
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="px-2 py-1 border rounded-lg text-xs" />
+              <span className="text-gray-400">~</span>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="px-2 py-1 border rounded-lg text-xs" />
+            </div>
+          )}
+
+          <div className="h-6 w-px bg-gray-200" />
+
+          {/* Admin 제외 토글 */}
+          <button onClick={() => setExcludeAdmin(!excludeAdmin)}
+            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+              excludeAdmin ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-gray-50 text-gray-600 border border-gray-200')}>
+            <Filter className="w-3.5 h-3.5" />
+            {excludeAdmin ? '운영 데이터 제외 중' : '운영 데이터 포함'}
+          </button>
+
+          <div className="flex-1" />
+
+          {/* 다운로드 + 새로고침 */}
           <button onClick={() => downloadCSV(data.recentEvents)}
-            className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border hover:bg-gray-50 text-sm">
-            <Download className="w-4 h-4" /> 엑셀 다운로드
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border hover:bg-gray-100 text-xs">
+            <Download className="w-3.5 h-3.5" /> CSV
           </button>
           <button onClick={fetchData}
-            className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border hover:bg-gray-50 text-sm">
-            <RefreshCw className="w-4 h-4" /> 새로고침
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg border hover:bg-gray-100 text-xs">
+            <RefreshCw className="w-3.5 h-3.5" /> 새로고침
           </button>
         </div>
       </div>
@@ -322,7 +432,7 @@ export function UserJourneyTab() {
           {/* 일별 추이 */}
           {data.dailyTrends.length > 0 && (
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-900 mb-4">일별 이벤트 추이 (최근 30일)</h3>
+              <h3 className="font-bold text-gray-900 mb-4">일별 이벤트 추이</h3>
               <div className="overflow-x-auto">
                 <div className="flex gap-1 items-end h-36 min-w-[600px]">
                   {data.dailyTrends.map(d => {
@@ -355,13 +465,20 @@ export function UserJourneyTab() {
         </div>
       )}
 
-      {/* 행동 분석 */}
-      {activeTab === 'behavior' && (
+      {/* 랜딩 행동 분석 */}
+      {activeTab === 'landing' && (
         <div className="space-y-5">
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <p className="text-sm text-blue-700">
+              <span className="font-semibold">랜딩 페이지(/landing) 전용 행동 데이터</span>입니다.
+              스크롤 깊이, 섹션 노출, CTA 클릭은 랜딩 페이지에서 발생한 것만 집계됩니다.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 스크롤 깊이 */}
+            {/* 스크롤 깊이 (랜딩 전용) */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-900 mb-4">스크롤 깊이 분포</h3>
+              <h3 className="font-bold text-gray-900 mb-4">랜딩 스크롤 깊이</h3>
               <div className="space-y-4">
                 {[25, 50, 75, 100].map(depth => {
                   const count = data.scrollDepths[depth] || 0;
@@ -413,7 +530,7 @@ export function UserJourneyTab() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 랜딩 섹션 노출 */}
+            {/* 랜딩 섹션 노출 (랜딩 전용) */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
               <h3 className="font-bold text-gray-900 mb-4">랜딩 섹션 노출</h3>
               <div className="space-y-2">
@@ -427,11 +544,11 @@ export function UserJourneyTab() {
               </div>
             </div>
 
-            {/* 클릭 현황 */}
+            {/* 랜딩 CTA 클릭 (랜딩 전용) */}
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-900 mb-4">클릭 현황</h3>
+              <h3 className="font-bold text-gray-900 mb-4">랜딩 CTA 클릭</h3>
               <div className="space-y-2">
-                {data.topClicks.map((c, i) => (
+                {(data.landingTopClicks || []).map((c, i) => (
                   <div key={c.element} className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-2">
                     <span className="text-sm text-gray-700">
                       <span className="text-gray-400 mr-2">{i + 1}.</span>{c.element}
@@ -439,8 +556,24 @@ export function UserJourneyTab() {
                     <span className="text-sm font-bold text-purple-600">{c.count}회</span>
                   </div>
                 ))}
-                {data.topClicks.length === 0 && <p className="text-gray-400 text-sm">데이터 없음</p>}
+                {(!data.landingTopClicks || data.landingTopClicks.length === 0) && <p className="text-gray-400 text-sm">데이터 없음</p>}
               </div>
+            </div>
+          </div>
+
+          {/* 전체 클릭 현황 */}
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-4">전체 클릭 현황</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {data.topClicks.map((c, i) => (
+                <div key={c.element} className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-2">
+                  <span className="text-sm text-gray-700">
+                    <span className="text-gray-400 mr-2">{i + 1}.</span>{c.element}
+                  </span>
+                  <span className="text-sm font-bold text-purple-600">{c.count}회</span>
+                </div>
+              ))}
+              {data.topClicks.length === 0 && <p className="text-gray-400 text-sm">데이터 없음</p>}
             </div>
           </div>
 
@@ -508,9 +641,11 @@ export function UserJourneyTab() {
                       {(e.page as Record<string, string>)?.path || '-'}
                     </td>
                     <td className="py-2 px-2 text-xs">
-                      {e.userId
-                        ? <span className="text-green-600 font-medium">가입자</span>
-                        : <span className="text-orange-500">미가입</span>
+                      {e.userRole === 'admin'
+                        ? <span className="text-red-500 font-medium">운영</span>
+                        : e.userId
+                          ? <span className="text-green-600 font-medium">가입자</span>
+                          : <span className="text-orange-500">미가입</span>
                       }
                     </td>
                   </tr>

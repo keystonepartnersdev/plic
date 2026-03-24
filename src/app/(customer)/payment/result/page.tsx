@@ -36,9 +36,11 @@ function PaymentResultContent() {
     const amt = Number(searchParams.get('amount') || 0);
     if (success) {
       tracking.paymentFunnel.success(did || undefined, amt);
+      tracking.transferFunnel.paymentComplete(did || undefined);
     } else {
       tracking.paymentFunnel.fail(did || undefined, error || '결제 실패');
     }
+    tracking.flush(); // 결제 결과 즉시 전송
   }, [mounted, success]); // eslint-disable-line react-hooks/exhaustive-deps
   const trxId = searchParams.get('trxId');
   const trackId = searchParams.get('trackId');

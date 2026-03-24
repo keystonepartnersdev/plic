@@ -80,6 +80,8 @@ export default function PaymentPage() {
       dealsAPI.get(did).then(response => {
         if (response.deal && !response.deal.isPaid) {
           setDeal(response.deal);
+          // 결제 페이지 진입 트래킹
+          tracking.paymentFunnel.start(response.deal.did);
         } else {
           router.replace('/deals');
         }

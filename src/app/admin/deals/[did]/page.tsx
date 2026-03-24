@@ -172,9 +172,11 @@ export default function AdminDealDetailPage() {
     setIsProcessing(true);
     try {
       await adminAPI.updateDealStatus(deal.did, newStatus);
-      // 어드민 승인 완료 시 송금완료 트래킹
+      // 어드민 승인 완료 시 송금완료 트래킹 (admin으로 태깅)
       if (newStatus === 'completed') {
+        tracking.identify('admin', 'admin');
         tracking.transferFunnel.complete();
+        tracking.flush();
       }
       await fetchDeal(); // 데이터 다시 로드
     } catch (err: unknown) {

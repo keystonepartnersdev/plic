@@ -940,10 +940,7 @@ function Footer() {
 
 // ==================== Main Page ====================
 export default function LandingPage() {
-  // 랜딩 페이지 트래킹 (Customer Layout 밖이므로 직접 호출)
-  useEffect(() => {
-    tracking.pageview({ page: 'landing' });
-  }, []);
+  // pageview는 TrackingProvider가 자동 수집 (중복 방지)
 
   return (
     <TrackingProvider>
