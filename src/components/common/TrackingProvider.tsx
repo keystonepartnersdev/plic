@@ -33,6 +33,11 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
 
   // ── 1. identify + pageview ──
   useEffect(() => {
+    // /admin 경로 접근 시 localStorage에 운영진 마킹
+    if (pathname?.startsWith('/admin')) {
+      try { localStorage.setItem('plic_is_admin', 'true'); } catch {}
+    }
+
     if (isLoggedIn && currentUser?.uid) {
       tracking.identify(currentUser.uid, 'user');
     }

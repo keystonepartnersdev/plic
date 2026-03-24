@@ -239,12 +239,30 @@ const bufferEvent = (event: TrackingEvent) => {
 let currentUserId: string | undefined;
 let currentUserRole: 'user' | 'admin' | undefined;
 
+// /admin 경로 접근 시 localStorage에 마킹 (기기 단위 운영진 식별)
+const ADMIN_MARKER_KEY = 'plic_is_admin';
+
+const checkAdminMarker = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(ADMIN_MARKER_KEY) === 'true';
+};
+
+const setAdminMarker = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ADMIN_MARKER_KEY, 'true');
+};
+
+// 현재 페이지가 /admin이면 자동 마킹
+if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+  setAdminMarker();
+}
+
 // 공통 이벤트 베이스 생성
 const createBaseEvent = () => ({
   sessionId: getSessionId(),
   anonymousId: getAnonymousId(),
   userId: currentUserId,
-  userRole: currentUserRole,
+  userRole: currentUserRole || (checkAdminMarker() ? 'admin' : 'user'),
   timestamp: new Date().toISOString(),
 });
 

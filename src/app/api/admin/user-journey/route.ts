@@ -8,6 +8,15 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const EVENTS_TABLE = process.env.EVENTS_TABLE || 'plic-events';
 
+// 운영진 UID 목록 (세션 단위 필터용)
+const ADMIN_UIDS = new Set([
+  '10c12e9f-41c3-4d8a-ad58-3567adf69574', // 조장환(Aiden)
+  'ab5863fe-71b3-4b98-b777-55ef5b362d79', // 조장환
+  'fdd2e4b6-8dce-4a2b-8564-f8ab56619ecd', // 조장환(aiden)T - 탈퇴
+  '24e5496e-9246-487c-846f-89b761852763', // 이태규
+  'd8e4ef3a-4d99-4ec2-bff7-dba6687d9d56', // 방성민
+]);
+
 export async function GET(request: NextRequest) {
   try {
     // === 쿼리 파라미터: 기간 필터 + admin 필터 ===
@@ -32,9 +41,35 @@ export async function GET(request: NextRequest) {
     // === 필터 적용 ===
     let events = allItems;
 
-    // admin 이벤트 제외
+    // 운영진 세션 통째로 제외 (UID + /admin 경로 + userRole 기반)
     if (excludeAdmin) {
-      events = events.filter(e => (e.userRole as string) !== 'admin');
+      // 1단계: 운영진 세션 ID 수집
+      const adminSessionIds = new Set<string>();
+      for (const e of events) {
+        const sessionId = e.sessionId as string;
+        if (!sessionId) continue;
+
+        // 조건1: 운영진 UID로 로그인한 세션
+        if (e.userId && ADMIN_UIDS.has(e.userId as string)) {
+          adminSessionIds.add(sessionId);
+          continue;
+        }
+        // 조건2: /admin 경로에 접근한 세션
+        if (e.page) {
+          const path = (e.page as Record<string, string>).path || '';
+          if (path.startsWith('/admin')) {
+            adminSessionIds.add(sessionId);
+            continue;
+          }
+        }
+        // 조건3: userRole이 admin으로 태깅된 세션
+        if ((e.userRole as string) === 'admin') {
+          adminSessionIds.add(sessionId);
+        }
+      }
+
+      // 2단계: 운영진 세션의 모든 이벤트 제외
+      events = events.filter(e => !adminSessionIds.has(e.sessionId as string));
     }
 
     // 기간 필터
