@@ -159,14 +159,20 @@ export async function GET(request: NextRequest) {
       .slice(0, 20)
       .map(([element, count]) => ({ element, count }));
 
-    // === 8. 퍼널 분석 ===
-    const funnelCounts: Record<string, number> = {};
+    // === 8. 퍼널 분석 (유니크 세션 기준) ===
+    // 같은 세션에서 동일 스텝을 여러 번 밟아도 1건으로 카운트
+    const funnelSessionSets: Record<string, Set<string>> = {};
     for (const e of events) {
       if (e.eventType === 'funnel' && e.funnel) {
         const step = (e.funnel as Record<string, string>).step || 'unknown';
-        funnelCounts[step] = (funnelCounts[step] || 0) + 1;
+        const sid = e.sessionId as string;
+        if (!funnelSessionSets[step]) funnelSessionSets[step] = new Set();
+        funnelSessionSets[step].add(sid);
       }
     }
+    const funnelCounts = Object.fromEntries(
+      Object.entries(funnelSessionSets).map(([step, sessions]) => [step, sessions.size])
+    );
 
     // 가입 퍼널
     const signupFunnel = [
@@ -179,30 +185,33 @@ export async function GET(request: NextRequest) {
 
     // 로그인 퍼널
     const loginFunnel = [
-      { step: 'login_attempt', name: '로그인 시도', count: funnelCounts['login_attempt'] || 0 },
       { step: 'login_success', name: '로그인 성공', count: funnelCounts['login_success'] || 0 },
       { step: 'login_fail', name: '로그인 실패', count: funnelCounts['login_fail'] || 0 },
     ];
 
-    // 거래생성 퍼널 (송금시작 → 정보입력 → 수취인 → 증빙업로드 → 거래생성)
-    // transfer_confirm + transfer_submitted를 "거래 생성"으로 통합 (큰 값 사용)
-    const dealCreateCount = Math.max(
-      funnelCounts['transfer_confirm'] || 0,
-      funnelCounts['transfer_submitted'] || 0
-    );
+    // 거래생성 퍼널
+    // transfer_confirm + transfer_submitted 유니크 세션 합집합 = "거래 생성"
+    const dealCreateSessions = new Set([
+      ...(funnelSessionSets['transfer_confirm'] || []),
+      ...(funnelSessionSets['transfer_submitted'] || []),
+    ]);
     const transferFunnel = [
       { step: 'transfer_start', name: '송금 시작', count: funnelCounts['transfer_start'] || 0 },
       { step: 'transfer_info', name: '정보 입력', count: funnelCounts['transfer_info'] || 0 },
       { step: 'transfer_recipient', name: '수취인 입력', count: funnelCounts['transfer_recipient'] || 0 },
       { step: 'transfer_attachment', name: '증빙 업로드', count: funnelCounts['transfer_attachment'] || 0 },
-      { step: 'transfer_submitted', name: '거래 생성', count: dealCreateCount },
+      { step: 'transfer_submitted', name: '거래 생성', count: dealCreateSessions.size },
     ];
 
-    // 결제 퍼널 (결제진입 → 결제시도 → 결제성공 → 송금완료(승인))
+    // 결제 퍼널
+    const paymentSuccessSessions = new Set([
+      ...(funnelSessionSets['payment_success'] || []),
+      ...(funnelSessionSets['transfer_payment_complete'] || []),
+    ]);
     const paymentFunnel = [
       { step: 'payment_start', name: '결제 진입', count: funnelCounts['payment_start'] || 0 },
       { step: 'payment_attempt', name: '결제 시도', count: funnelCounts['payment_attempt'] || 0 },
-      { step: 'payment_success', name: '결제 성공', count: (funnelCounts['payment_success'] || 0) + (funnelCounts['transfer_payment_complete'] || 0) },
+      { step: 'payment_success', name: '결제 성공', count: paymentSuccessSessions.size },
       { step: 'payment_fail', name: '결제 실패', count: funnelCounts['payment_fail'] || 0 },
       { step: 'transfer_complete', name: '송금 완료(승인)', count: funnelCounts['transfer_complete'] || 0 },
     ];
