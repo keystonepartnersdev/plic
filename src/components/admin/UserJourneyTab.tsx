@@ -458,7 +458,7 @@ export function UserJourneyTab() {
       {/* 퍼널 분석 */}
       {activeTab === 'funnel' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <FunnelChart title="회원가입 퍼널" steps={data.signupFunnel} color="bg-blue-400" />
+          <FunnelChart title="회원가입 퍼널 (2026.03.24~)" steps={data.signupFunnel} color="bg-blue-400" />
           <FunnelChart title="로그인" steps={data.loginFunnel} color="bg-green-400" />
           <FunnelChart title="거래생성 퍼널" steps={data.transferFunnel} color="bg-purple-400" />
           <FunnelChart title="결제 퍼널" steps={data.paymentFunnel} color="bg-orange-400" />
