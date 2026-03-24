@@ -137,19 +137,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 세션별 체류시간(초) 계산 → 구간별 카운트
-    const durationBuckets = { '10초 이하': 0, '10~30초': 0, '30초~1분': 0, '1~3분': 0, '3~5분': 0, '5~10분': 0, '10분 이상': 0 };
+    // 세션별 체류시간(초) 계산 → 누적 방식 (30초 이상은 1분 이상 포함)
+    const durations: number[] = [];
     for (const { first, last } of Object.values(sessionTimestamps)) {
-      const sec = (new Date(last).getTime() - new Date(first).getTime()) / 1000;
-      if (sec <= 10) durationBuckets['10초 이하']++;
-      else if (sec < 30) durationBuckets['10~30초']++;
-      else if (sec < 60) durationBuckets['30초~1분']++;
-      else if (sec < 180) durationBuckets['1~3분']++;
-      else if (sec < 300) durationBuckets['3~5분']++;
-      else if (sec < 600) durationBuckets['5~10분']++;
-      else durationBuckets['10분 이상']++;
+      durations.push((new Date(last).getTime() - new Date(first).getTime()) / 1000);
     }
-    const sessionMilestones: Record<string, number> = { ...durationBuckets };
+    const sessionMilestones: Record<string, number> = {
+      '10초 미만': durations.filter(s => s < 10).length,
+      '10~30초': durations.filter(s => s >= 10 && s < 30).length,
+      '30초 이상': durations.filter(s => s >= 30).length,
+      '1분 이상': durations.filter(s => s >= 60).length,
+      '3분 이상': durations.filter(s => s >= 180).length,
+      '5분 이상': durations.filter(s => s >= 300).length,
+      '10분 이상': durations.filter(s => s >= 600).length,
+    };
 
     // === 6. 섹션 노출 현황 (랜딩 페이지만) ===
     const sectionViews: Record<string, number> = {};

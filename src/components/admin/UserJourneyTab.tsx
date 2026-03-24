@@ -506,7 +506,7 @@ export function UserJourneyTab() {
               <div className="space-y-4">
                 {Object.entries(data.sessionMilestones)
                   .sort((a, b) => {
-                    const order = ['10초 이하', '10~30초', '30초~1분', '1~3분', '3~5분', '5~10분', '10분 이상'];
+                    const order = ['10초 미만', '10~30초', '30초 이상', '1분 이상', '3분 이상', '5분 이상', '10분 이상'];
                     return order.indexOf(a[0]) - order.indexOf(b[0]);
                   })
                   .map(([label, count]) => {
