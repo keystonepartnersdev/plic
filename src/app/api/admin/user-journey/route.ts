@@ -123,8 +123,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // === 5. 체류 시간 분포 ===
-    // 5-1. 세션별 첫/마지막 이벤트 시간으로 10초 이하 이탈 계산
+    // === 5. 체류 시간 분포 (서버사이드 타임스탬프 기준 통일) ===
     const sessionTimestamps: Record<string, { first: string; last: string }> = {};
     for (const e of events) {
       const sid = e.sessionId as string;
@@ -137,24 +136,20 @@ export async function GET(request: NextRequest) {
         if (ts > sessionTimestamps[sid].last) sessionTimestamps[sid].last = ts;
       }
     }
-    let bounceSessions = 0;
-    let midSessions = 0;
-    for (const { first, last } of Object.values(sessionTimestamps)) {
-      const duration = new Date(last).getTime() - new Date(first).getTime();
-      if (duration <= 10000) bounceSessions++;
-      else if (duration < 30000) midSessions++;
-    }
 
-    // 5-2. 기존 마일스톤 집계
-    const sessionMilestones: Record<string, number> = {};
-    sessionMilestones['10초 이하'] = bounceSessions;
-    sessionMilestones['10~30초'] = midSessions;
-    for (const e of events) {
-      if (e.eventName === 'session_milestone' && e.custom) {
-        const label = (e.custom as Record<string, string>).label || 'unknown';
-        sessionMilestones[label] = (sessionMilestones[label] || 0) + 1;
-      }
+    // 세션별 체류시간(초) 계산 → 구간별 카운트
+    const durationBuckets = { '10초 이하': 0, '10~30초': 0, '30초~1분': 0, '1~3분': 0, '3~5분': 0, '5~10분': 0, '10분 이상': 0 };
+    for (const { first, last } of Object.values(sessionTimestamps)) {
+      const sec = (new Date(last).getTime() - new Date(first).getTime()) / 1000;
+      if (sec <= 10) durationBuckets['10초 이하']++;
+      else if (sec < 30) durationBuckets['10~30초']++;
+      else if (sec < 60) durationBuckets['30초~1분']++;
+      else if (sec < 180) durationBuckets['1~3분']++;
+      else if (sec < 300) durationBuckets['3~5분']++;
+      else if (sec < 600) durationBuckets['5~10분']++;
+      else durationBuckets['10분 이상']++;
     }
+    const sessionMilestones: Record<string, number> = { ...durationBuckets };
 
     // === 6. 섹션 노출 현황 (랜딩 페이지만) ===
     const sectionViews: Record<string, number> = {};
