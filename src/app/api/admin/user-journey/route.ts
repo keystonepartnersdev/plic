@@ -138,14 +138,17 @@ export async function GET(request: NextRequest) {
       }
     }
     let bounceSessions = 0;
+    let midSessions = 0;
     for (const { first, last } of Object.values(sessionTimestamps)) {
       const duration = new Date(last).getTime() - new Date(first).getTime();
       if (duration <= 10000) bounceSessions++;
+      else if (duration < 30000) midSessions++;
     }
 
     // 5-2. 기존 마일스톤 집계
     const sessionMilestones: Record<string, number> = {};
     sessionMilestones['10초 이하'] = bounceSessions;
+    sessionMilestones['10~30초'] = midSessions;
     for (const e of events) {
       if (e.eventName === 'session_milestone' && e.custom) {
         const label = (e.custom as Record<string, string>).label || 'unknown';
