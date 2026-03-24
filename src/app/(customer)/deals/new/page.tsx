@@ -259,8 +259,13 @@ function NewDealContent() {
     setStep(newStep);
     setCurrentStep(newStep as TDealStep);
 
-    // 스텝 전환 시 스크롤 최상단으로 리셋
-    window.scrollTo(0, 0);
+    // 스텝 전환 시 스크롤 최상단으로 리셋 (모바일 프레임 내부 스크롤 컨테이너)
+    const scrollContainer = document.getElementById('scroll-container');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    } else {
+      window.scrollTo(0, 0);
+    }
 
     // 송금 퍼널 트래킹
     const funnelMap: Record<Step, () => void> = {
