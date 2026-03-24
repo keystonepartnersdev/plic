@@ -1565,9 +1565,9 @@ test.describe("TC-3.4.1 사용자상태동기화", () => {
     });
     // 로그인 상태이고 currentUser가 설정되어 있어야 함
     expect(storageData).toBeTruthy();
-    expect(storageData.currentUser).toBeTruthy();
+    expect(storageData!.currentUser).toBeTruthy();
     // users 배열이 정의되어 있어야 함 (빈 배열이라도)
-    expect(Array.isArray(storageData.users)).toBeTruthy();
+    expect(Array.isArray(storageData!.users)).toBeTruthy();
   });
 
   // --- 어드민변경반영 (2개) ---

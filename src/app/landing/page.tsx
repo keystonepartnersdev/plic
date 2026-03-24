@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import tracking from '@/lib/tracking';
 import { TrackingProvider } from '@/components/common';
 import {
-  Menu, X, ArrowRight, Sparkles, CreditCard,
+  Menu, X, ArrowRight, CreditCard,
   Clock, BadgeCheck, Zap, Building2, Gift, BarChart3,
   UserCheck, Send, CheckCircle, Shield, Lock, AlertTriangle,
   Star, Quote, TrendingUp, Users, ShoppingBag,
@@ -102,15 +102,9 @@ function Hero() {
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-gray-900 leading-tight">
             카드로 송금하다
           </h1>
-          <div className="flex items-center justify-center gap-3 mb-6 lg:mb-8">
-            <p className="text-4xl md:text-5xl lg:text-7xl font-black text-[#2563EB] tracking-tight">
-              PLIC
-            </p>
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold">
-              <Sparkles size={14} />
-              Beta
-            </span>
-          </div>
+          <p className="text-4xl md:text-5xl lg:text-7xl font-black text-[#2563EB] tracking-tight mb-6 lg:mb-8">
+            PLIC
+          </p>
         </motion.div>
 
         <motion.p
@@ -127,8 +121,9 @@ function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
+          className="hidden md:block"
         >
-          <Link href="https://plic.kr" data-track="landing_cta_hero" className="inline-flex items-center gap-2 px-8 py-4 bg-[#2563EB] text-white rounded-full font-semibold text-lg hover:bg-[#1d4ed8] transition-all duration-300 shadow-lg shadow-blue-500/25">
+          <Link href="https://www.plic.kr/" data-track="landing_cta_hero" className="inline-flex items-center gap-2 px-8 py-4 bg-[#2563EB] text-white rounded-full font-semibold text-lg hover:bg-[#1d4ed8] transition-all duration-300 shadow-lg shadow-blue-500/25">
             무료로 시작하기
             <ArrowRight size={20} />
           </Link>
@@ -812,8 +807,8 @@ function CTA() {
             카드로 송금하는 새로운 경험을 시작해보세요!
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <Link href="https://plic.kr" data-track="landing_cta_bottom" className="group w-full sm:w-auto px-10 py-5 bg-white text-[#2563EB] rounded-full font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-3 shadow-2xl">
+          <div className="hidden md:flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+            <Link href="https://www.plic.kr/" data-track="landing_cta_bottom" className="group w-full sm:w-auto px-10 py-5 bg-white text-[#2563EB] rounded-full font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-3 shadow-2xl">
               무료로 시작하기
               <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -873,7 +868,7 @@ function Footer() {
   ];
 
   return (
-    <footer className="bg-gray-50">
+    <footer className="bg-gray-50 pb-20 md:pb-0">
       <div className="max-w-6xl mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12 pb-12 border-b border-gray-200">
           <div>
@@ -955,6 +950,18 @@ export default function LandingPage() {
         <FAQ />
         <CTA />
         <Footer />
+
+        {/* 모바일 하단 고정 플로팅 CTA 버튼 */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[99998] bg-white/95 backdrop-blur-md border-t border-gray-100 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <Link
+            href="https://www.plic.kr/"
+            data-track="landing_cta_mobile_fixed"
+            className="flex items-center justify-center gap-2 w-full h-14 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white rounded-full font-bold text-lg shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all duration-300"
+          >
+            무료로 시작하기
+            <ArrowRight size={20} />
+          </Link>
+        </div>
       </div>
     </TrackingProvider>
   );

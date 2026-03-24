@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronRight, ChevronDown, Sparkles, Shield, Clock, CreditCard, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import { useUserStore, useContentStore, useDealDraftStore, useDealStore } from '@/stores';
-import { DealHelper, ContentHelper } from '@/classes';
+import { ContentHelper } from '@/classes';
 import { BannerSlider, Modal } from '@/components/common';
 import { cn } from '@/lib/utils';
 import tracking from '@/lib/tracking';
@@ -73,8 +73,6 @@ export default function HomePage() {
   };
 
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
-  const feeRate = currentUser?.feeRate || 4.5;
-  const { feeAmount, totalAmount } = DealHelper.calculateTotal(numericAmount, feeRate);
 
   // useCallback으로 핸들러 최적화
   const getCategoryName = useCallback((categoryId?: string) => {
@@ -198,19 +196,6 @@ export default function HomePage() {
             />
             <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400 font-medium">원</span>
           </div>
-
-          {numericAmount > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex justify-between text-sm text-gray-500 mb-1">
-                <span className="font-medium">수수료 ({feeRate}%)</span>
-                <span className="font-semibold">{feeAmount.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between font-bold text-gray-900">
-                <span>총 결제금액</span>
-                <span className="text-[#2563EB] text-lg font-black">{totalAmount.toLocaleString()}원</span>
-              </div>
-            </div>
-          )}
 
           {isLoggedIn ? (
             <button
