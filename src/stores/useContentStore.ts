@@ -227,6 +227,9 @@ export const useContentStore = create(
     {
       name: 'plic-content-storage',
       storage: createJSONStorage(() => localStorage),
+      // FAQ, 배너 등 콘텐츠 데이터는 persist 제외 (항상 API에서 최신 데이터 fetch)
+      // 캐싱하면 어드민 수정이 사용자 화면에 즉시 반영되지 않는 문제 발생
+      partialize: () => ({}) as unknown as IContentState,
     }
   )
 );

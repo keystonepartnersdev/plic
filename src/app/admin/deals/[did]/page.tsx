@@ -325,8 +325,8 @@ export default function AdminDealDetailPage() {
                 <span className="font-medium text-gray-900">{deal.amount.toLocaleString()}원</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">수수료 ({deal.feeRate}%)</span>
-                <span className="font-medium text-gray-900">{deal.feeAmount.toLocaleString()}원</span>
+                <span className="text-gray-500">수수료 ({Math.round(deal.feeRate * 1.1 * 10) / 10}%, 부가세 포함)</span>
+                <span className="font-medium text-gray-900">{Math.floor(Math.floor(deal.amount * deal.feeRate / 100) * 1.1).toLocaleString()}원</span>
               </div>
               <div className="flex justify-between font-semibold border-t border-gray-100 pt-3">
                 <span className="text-gray-900">소계</span>

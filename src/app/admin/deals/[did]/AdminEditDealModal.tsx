@@ -219,10 +219,10 @@ export function AdminEditDealModal({ isOpen, onClose, deal, onUpdate, editType }
                 step={100}
               />
               <p className="mt-2 text-sm text-gray-500">
-                수수료 ({deal.feeRate}%): {Math.ceil(amount * deal.feeRate / 100).toLocaleString()}원
+                수수료 ({Math.round(deal.feeRate * 1.1 * 10) / 10}%, 부가세 포함): {Math.floor(Math.floor(amount * deal.feeRate / 100) * 1.1).toLocaleString()}원
               </p>
               <p className="text-sm font-medium text-primary-400">
-                총 결제금액: {(amount + Math.ceil(amount * deal.feeRate / 100)).toLocaleString()}원
+                총 결제금액: {(amount + Math.floor(Math.floor(amount * deal.feeRate / 100) * 1.1)).toLocaleString()}원
               </p>
             </div>
           )}
