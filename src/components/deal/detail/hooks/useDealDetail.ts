@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 import { dealsAPI } from '@/lib/api';
 import { useUserStore, useDealStore, useDiscountStore } from '@/stores';
 import { IDeal, IDiscount } from '@/types';
-import { DealHelper } from '@/classes';
 import { getErrorMessage } from '@/lib/utils';
 import { AttachmentPreview, RevisionRecipient } from '../types';
 
@@ -52,17 +51,11 @@ export function useDealDetail(did: string) {
   const availableDiscountCodes = getActiveCodes() || [];
   const availableCoupons = getActiveCoupons() || [];
 
-  // 부가세 포함 수수료/총액 재계산 (DB에 부가세 미포함으로 저장된 기존 거래 대응)
-  const corrected = useMemo(() => {
-    if (!deal) return { feeAmount: 0, totalAmount: 0, finalAmount: 0 };
-    return DealHelper.calculateTotal(deal.amount, deal.feeRate, deal.discountAmount || 0);
-  }, [deal?.amount, deal?.feeRate, deal?.discountAmount]);
-
-  // 전체 할인 금액 계산 (부가세 포함 수수료 기준)
+  // 전체 할인 금액 계산 (DB 값 직접 사용 - 부가세 포함 저장됨)
   const { total: totalDiscountAmount, details: discountDetails } = useMemo(() => {
     if (!deal) return { total: 0, details: new Map<string, number>() };
 
-    const feeAmount = corrected.feeAmount;
+    const feeAmount = deal.feeAmount;
     const details = new Map<string, number>();
     let remainingFee = feeAmount;
 
@@ -96,9 +89,9 @@ export function useDealDetail(did: string) {
 
     const totalDiscount = feeAmount - remainingFee;
     return { total: totalDiscount, details };
-  }, [corrected.feeAmount, appliedDiscounts]);
+  }, [deal?.feeAmount, appliedDiscounts]);
 
-  const calculatedFinalAmount = deal ? corrected.totalAmount - totalDiscountAmount : 0;
+  const calculatedFinalAmount = deal ? deal.totalAmount - totalDiscountAmount : 0;
 
   // 개별 할인 금액 조회
   const getDiscountAmount = (discountId: string): number => {
@@ -188,7 +181,7 @@ export function useDealDetail(did: string) {
     if (new Date(discount.expiry) < new Date()) {
       return { canApply: false, reason: '유효기간이 만료된 할인입니다.' };
     }
-    const remainingFee = corrected.feeAmount - totalDiscountAmount;
+    const remainingFee = (deal?.feeAmount || 0) - totalDiscountAmount;
     if (remainingFee === 0) {
       return { canApply: false, reason: '수수료가 이미 전액 할인되어 추가 할인을 적용할 수 없습니다.' };
     }
@@ -205,11 +198,11 @@ export function useDealDetail(did: string) {
     return { canApply: true };
   };
 
-  // 거래 정보 업데이트 (할인 적용 시) - 부가세 포함 수수료 기준
+  // 거래 정보 업데이트 (할인 적용 시) - DB 값 직접 사용
   const updateDealWithDiscounts = (newAppliedDiscounts: IDiscount[]) => {
     if (!deal) return;
 
-    const feeAmount = corrected.feeAmount;
+    const feeAmount = deal.feeAmount;
     let remainingFee = feeAmount;
     let discountTotal = 0;
 
@@ -234,7 +227,7 @@ export function useDealDetail(did: string) {
       }
     });
 
-    const newFinalAmount = corrected.totalAmount - discountTotal;
+    const newFinalAmount = deal.totalAmount - discountTotal;
 
     const allDiscountNames = [
       ...newAppliedDiscounts.filter(d => d.type === 'code').map(d => d.name || d.id),

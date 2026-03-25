@@ -5,7 +5,6 @@
 
 import { Check, Tag, Ticket } from 'lucide-react';
 import { IDeal, IDiscount } from '@/types';
-import { DealHelper } from '@/classes';
 
 interface AmountCardProps {
   deal: IDeal;
@@ -22,9 +21,6 @@ export function AmountCard({
   getDiscountAmount,
   calculatedFinalAmount,
 }: AmountCardProps) {
-  // 부가세 포함 수수료 재계산 (DB에 부가세 미포함으로 저장된 기존 거래 대응)
-  const { feeAmount: correctedFee, totalAmount: correctedTotal, finalAmount: correctedFinal } =
-    DealHelper.calculateTotal(deal.amount, deal.feeRate, deal.discountAmount || 0);
   const feeRateWithVat = Math.round(deal.feeRate * 1.1 * 10) / 10;
 
   return (
@@ -37,7 +33,7 @@ export function AmountCard({
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">수수료 ({feeRateWithVat}%, 부가세 포함)</span>
-          <span className="font-medium">{correctedFee.toLocaleString()}원</span>
+          <span className="font-medium">{deal.feeAmount.toLocaleString()}원</span>
         </div>
 
         {/* 적용된 할인 상세 표시 */}
@@ -71,11 +67,11 @@ export function AmountCard({
           <div className="text-right">
             {appliedDiscounts.length > 0 && (
               <span className="text-sm text-gray-400 line-through mr-2">
-                {correctedTotal.toLocaleString()}원
+                {deal.totalAmount.toLocaleString()}원
               </span>
             )}
             <span className="font-bold text-primary-400">
-              {(appliedDiscounts.length > 0 ? calculatedFinalAmount : correctedFinal).toLocaleString()}원
+              {(appliedDiscounts.length > 0 ? calculatedFinalAmount : deal.finalAmount).toLocaleString()}원
             </span>
           </div>
         </div>
