@@ -1,7 +1,6 @@
 // src/stores/useContentStore.ts
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { IHomeBanner, INotice, IFAQ } from '@/types';
 import { contentAPI } from '@/lib/api';
 import { getErrorMessage } from '@/lib/utils';
@@ -42,8 +41,7 @@ interface IContentState {
   clearApiError: () => void;
 }
 
-export const useContentStore = create(
-  persist<IContentState>(
+export const useContentStore = create<IContentState>(
     (set, get) => ({
       banners: [],
       notices: [],
@@ -223,13 +221,5 @@ export const useContentStore = create(
         }
         return get().faqs.filter((f) => f.isVisible && f.category === category);
       },
-    }),
-    {
-      name: 'plic-content-storage',
-      storage: createJSONStorage(() => localStorage),
-      // FAQ, 배너 등 콘텐츠 데이터는 persist 제외 (항상 API에서 최신 데이터 fetch)
-      // 캐싱하면 어드민 수정이 사용자 화면에 즉시 반영되지 않는 문제 발생
-      partialize: () => ({}) as unknown as IContentState,
-    }
-  )
+    })
 );

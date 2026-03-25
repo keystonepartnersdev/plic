@@ -59,7 +59,9 @@ export default function HomePage() {
 
   const banners = getVisibleBanners();
   const storeFaqs = useContentStore((state) => state.faqs);
-  const faqs = useMemo(() => getHomeFeaturedFAQs().slice(0, 5), [storeFaqs, getHomeFeaturedFAQs]);
+  // storeFaqs가 변경될 때마다 재계산 (fetchFaqs 완료 시 트리거)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const faqs = useMemo(() => getHomeFeaturedFAQs().slice(0, 5), [storeFaqs]);
 
   const formatAmount = (value: string) => {
     const numericValue = value.replace(/[^\d]/g, '');
