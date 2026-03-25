@@ -794,7 +794,7 @@ function NewDealContent() {
               {numericAmount > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span>수수료 ({currentUser?.feeRate || 0}%, 부가세 포함)</span>
+                    <span>수수료 ({Math.round((currentUser?.feeRate || 0) * 1.1 * 10) / 10}%, 부가세 포함)</span>
                     <span>{feeAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-900">
@@ -1379,7 +1379,7 @@ function NewDealContent() {
                     <span className="font-medium">{numericAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">수수료 ({currentUser?.feeRate || 0}%, 부가세 포함)</span>
+                    <span className="text-gray-600">수수료 ({Math.round((currentUser?.feeRate || 0) * 1.1 * 10) / 10}%, 부가세 포함)</span>
                     <span className="font-medium">{feeAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
