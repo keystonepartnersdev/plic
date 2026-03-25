@@ -1,0 +1,486 @@
+# PLIC 베타 현황 문서 v1.0
+
+> 최종 업데이트: 2026-03-24
+> 상태: **Beta**
+> 서비스 URL: https://plic.kr (Vercel)
+> API Gateway: https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod
+
+---
+
+## 1. 서비스 개요
+
+PLIC은 **B2B 신용카드 → 계좌이체 서비스**입니다.
+등록된 사업자가 신용카드로 결제하면, 지정 계좌로 현금을 송금해주는 핀테크 서비스.
+
+### 기술 스택
+
+| 영역 | 기술 |
+|------|------|
+| 프론트엔드 | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4 |
+| 상태관리 | Zustand 5 (persist middleware) |
+| 백엔드 | AWS Lambda (Node.js 20.x), API Gateway |
+| DB | DynamoDB (14 테이블) |
+| 인증 | AWS Cognito (사용자), HMAC 세션토큰 (관리자) |
+| 결제 | Softpayment (신용카드) |
+| 외부연동 | Popbill (계좌/사업자 검증), Kakao (소셜로그인/본인인증) |
+| 파일저장 | S3 (presigned URL) |
+| 배포 | Vercel (프론트), AWS SAM (백엔드) |
+| IaC | AWS SAM (template.yaml) |
+
+### AWS 계정
+
+| 프로필 | 계정 ID | 용도 |
+|--------|---------|------|
+| `plic` | 805694794688 | PLIC 서비스 |
+| `companyweb` | 340197286566 | 키스톤파트너스 웹 |
+| `phomistone` | 586769868382 | 포미스톤 |
+
+---
+
+## 2. 구현 완료 기능
+
+### 2-1. 프론트엔드 (Vercel 배포 완료)
+
+#### 고객 페이지 (18개)
+
+| 페이지 | 경로 | 상태 |
+|--------|------|------|
+| 홈 | `/` | ✅ 완료 (배너, 거래요약, FAQ) |
+| 로그인 | `/auth/login` | ✅ 완료 |
+| 회원가입 | `/auth/signup` | ✅ 완료 (5단계: 약관→**카카오인증**→정보→사업자→완료) |
+| 거래 목록 | `/deals` | ✅ 완료 |
+| 거래 상세 | `/deals/[did]` | ✅ 완료 |
+| 새 송금 | `/deals/new` | ✅ 완료 (5단계 위저드) |
+| 결제 | `/payment/[did]` | ✅ 완료 |
+| 결제 결과 | `/payment/result` | ✅ 완료 |
+| 마이페이지 | `/mypage` | ✅ 완료 |
+| 프로필 수정 | `/mypage/edit` | ✅ 완료 |
+| 등급 정보 | `/mypage/grade` | ✅ 완료 |
+| 계좌 관리 | `/mypage/accounts` | ✅ 완료 |
+| 카드 관리 | `/mypage/cards` | ✅ 완료 |
+| 공지사항 | `/mypage/notices` | ✅ 완료 |
+| 설정 | `/mypage/settings` | ✅ 완료 |
+| 공지사항 (별도) | `/notices` | ✅ 완료 |
+| 이용가이드 | `/guide` | ✅ 완료 |
+| 약관 | `/terms/[type]` | ✅ 완료 |
+
+#### 관리자 페이지 (16개)
+
+| 페이지 | 경로 | 상태 |
+|--------|------|------|
+| 대시보드 | `/admin` | ✅ 완료 |
+| 관리자 로그인 | `/admin/login` | ✅ 완료 |
+| 사용자 목록 | `/admin/users` | ✅ 완료 |
+| 사용자 상세 | `/admin/users/[uid]` | ✅ 완료 |
+| 거래 목록 | `/admin/deals` | ✅ 완료 |
+| 거래 상세 | `/admin/deals/[did]` | ✅ 완료 |
+| 통계/분석 | `/admin/analytics` | ✅ 완료 |
+| 관리자 관리 | `/admin/admins` | ✅ 완료 |
+| 할인코드 관리 | `/admin/codes` | ✅ 완료 |
+| 시스템 설정 | `/admin/settings` | ✅ 완료 |
+| API 로그 | `/admin/api-logs` | ✅ 완료 |
+| 콘텐츠 허브 | `/admin/contents` | ✅ 완료 |
+| 배너 관리 | `/admin/contents/banners` | ✅ 완료 |
+| FAQ 관리 | `/admin/contents/faqs` | ✅ 완료 |
+| 공지 관리 | `/admin/contents/notices` | ✅ 완료 |
+| 약관 관리 | `/admin/contents/terms` | ✅ 완료 |
+
+#### 랜딩 페이지
+
+| 페이지 | 경로 | 상태 |
+|--------|------|------|
+| 마케팅 랜딩 | `/landing` | ✅ 완료 |
+
+#### 컴포넌트 (34개)
+
+- **공통 (9개)**: MobileLayout, Header, BottomNav, Modal, LeftPanel, BannerSlider, Footer, ErrorBoundary, RevisionBanner
+- **회원가입 (5개)**: AgreementStep, UserInfoStep, BusinessInfoStep, KakaoVerifyStep, CompleteStep
+- **거래 생성 (6개)**: TypeStep, AmountStep, RecipientStep, DocsStep, ConfirmStep, StepProgress
+- **거래 상세 (14개)**: StatusCard, AmountCard, RecipientCard, AttachmentsCard, DiscountSection, DealHistory, 각종 모달
+
+#### Zustand 스토어 (9개)
+
+| 스토어 | localStorage 키 | 용도 |
+|--------|-----------------|------|
+| `useUserStore` | `plic-user-storage` | 사용자 인증/프로필 |
+| `useDealStore` | `plic-deal-storage` | 거래 목록 |
+| `useDealDraftStore` | `plic-deal-draft-storage` | 거래 임시저장 |
+| `usePaymentStore` | `plic-payment-storage` | 결제 |
+| `useAdminStore` | `plic-admin-storage` | 관리자 세션 |
+| `useAdminUserStore` | `plic-admin-user-storage` | 관리자용 사용자 목록 |
+| `useContentStore` | `plic-content-storage` | 배너/공지/FAQ |
+| `useDiscountStore` | `plic-discount-storage` | 할인/쿠폰 |
+| `useSettingsStore` | `plic-settings` | 시스템 설정 |
+
+#### Next.js API Routes (BFF 프록시, 50개)
+
+프론트엔드 → Lambda 중간 프록시 역할. httpOnly 쿠키 기반 JWT 인증 처리.
+주요 그룹: auth(7), users(6), deals(3), payments(7), content(6), discounts(2), kakao(4), popbill(2), uploads(2), tracking(2), webhooks(1), health(1), admin(22)
+
+---
+
+### 2-2. 백엔드 Lambda (AWS 배포 완료, 29개)
+
+| # | 함수명 | 엔드포인트 | 역할 |
+|---|--------|-----------|------|
+| 1 | `SignupFunction` | POST /auth/signup | 회원가입 |
+| 2 | `ConfirmFunction` | POST /auth/confirm | 이메일 인증 |
+| 3 | `LoginFunction` | POST /auth/login | 로그인 |
+| 4 | `RefreshFunction` | POST /auth/refresh | 토큰 갱신 |
+| 5 | `LogoutFunction` | POST /auth/logout | 로그아웃 |
+| 6 | `GetMeFunction` | GET /users/me | 프로필 조회 |
+| 7 | `UpdateMeFunction` | PUT /users/me | 프로필 수정 |
+| 8 | `WithdrawFunction` | DELETE /users/me | 회원 탈퇴 |
+| 9 | `GetGradeFunction` | GET /users/me/grade | 등급 조회 |
+| 10 | `ListDealsFunction` | GET /deals | 거래 목록 |
+| 11 | `GetDealFunction` | GET /deals/{did} | 거래 상세 |
+| 12 | `CreateDealFunction` | POST /deals | 거래 생성 |
+| 13 | `UpdateDealFunction` | PUT /deals/{did} | 거래 수정 |
+| 14 | `CancelDealFunction` | DELETE /deals/{did} | 거래 취소 |
+| 15 | `ValidateDiscountFunction` | POST /discounts/validate | 할인코드 검증 |
+| 16 | `GetCouponsFunction` | GET /discounts/coupons | 쿠폰 목록 |
+| 17 | `ApplyDiscountFunction` | POST /deals/{did}/discount | 할인 적용 |
+| 18 | `GetBannersFunction` | GET /content/banners | 배너 조회 |
+| 19 | `GetNoticesFunction` | GET /content/notices | 공지 목록 |
+| 20 | `GetNoticeDetailFunction` | GET /content/notices/{id} | 공지 상세 |
+| 21 | `GetFaqsFunction` | GET /content/faqs | FAQ 목록 |
+| 22 | `AdminLoginFunction` | POST /admin/auth/login | 관리자 로그인 |
+| 23 | `AdminUsersListFunction` | GET /admin/users | 사용자 목록 |
+| 24 | `AdminUsersGetFunction` | GET /admin/users/{uid} | 사용자 상세 |
+| 25 | `AdminUsersStatusFunction` | PUT /admin/users/{uid}/status | 상태 변경 |
+| 26 | `AdminUsersGradeFunction` | PUT /admin/users/{uid}/grade | 등급 변경 |
+| 27 | `AdminDealsListFunction` | GET /admin/deals | 거래 목록 |
+| 28 | `AdminDealsGetFunction` | GET /admin/deals/{did} | 거래 상세 |
+| 29 | `AdminDealsStatusFunction` | PUT /admin/deals/{did}/status | 거래 상태 변경 (취소 시 사용자 통계 자동 차감) |
+
+### 2-3. DynamoDB 테이블 (14개)
+
+| 테이블 | PK | GSI | 용도 |
+|--------|----|-----|------|
+| `plic-users` | uid | email-index, phone-index | 사용자 |
+| `plic-deals` | did | uid-index, status-index | 거래 |
+| `plic-admins` | adminId | email-index | 관리자 |
+| `plic-contents` | pk + sk | — | 배너/공지/FAQ/약관 |
+| `plic-withdrawn-users` | uid | — | 탈퇴 보관 (5년) |
+| `plic-withdrawn-deals` | wdid | uid-index | 탈퇴 거래 보관 |
+| `plic-discounts` | — | — | 할인코드/쿠폰 |
+| `plic-events` | eventId | — | 트래킹 이벤트 (영구 보관, userRole 필드 추가) |
+| `plic-api-logs` | — | — | API 로그 (TTL 30일) |
+| `plic-drafts` | — | — | 임시저장 |
+| `plic-payments` | — | — | 결제 기록 |
+| `plic-settings` | — | — | 시스템 설정 |
+| `plic-kakao-verifications` | — | — | 카카오 인증키 |
+
+> 참고: `plic-users`, `plic-deals`, `plic-admins`, `plic-contents`, `plic-withdrawn-users`, `plic-withdrawn-deals`만 SAM 템플릿에 정의됨. 나머지는 수동 생성.
+
+### 2-4. 외부 연동
+
+| 서비스 | 용도 | 연동 방식 | 상태 |
+|--------|------|----------|------|
+| Softpayment | 신용카드 결제 | Next.js API Route → 외부 API | ✅ 완료 |
+| Popbill | 계좌 실명 확인 | Next.js API Route → 외부 API | ✅ 완료 |
+| Popbill | 사업자 등록 확인 | Next.js API Route → 외부 API | ✅ 완료 |
+| Kakao | 소셜 로그인 / 본인인증 / 2차 인증 | Next.js API Route → Kakao OAuth (세션 초기화 + prompt=login) | ✅ 완료 |
+| AWS Cognito | 사용자 인증 (JWT) | Lambda → Cognito | ✅ 완료 |
+| AWS S3 | 파일 업로드 | Presigned URL | ✅ 완료 |
+| Slack | 신규 회원가입/결제 완료 알림 | Webhook (DynamoDB 설정 기반, 5분 캐시) | ✅ 완료 |
+
+---
+
+## 3. 코드 존재하지만 미배포 (Lambda 소스 → AWS 미반영)
+
+### 3-1. SAM 템플릿에 정의되었지만 미배포 (11개)
+
+| 함수명 | 엔드포인트 | 소스 파일 |
+|--------|-----------|----------|
+| `KakaoLoginFunction` | POST /auth/kakao-login | `functions/auth/kakao-login.ts` |
+| `GetTermsFunction` | GET /content/terms | `functions/content/terms.ts` |
+| `UserBusinessResubmitFunction` | PUT /users/me/business | `functions/users/` |
+| `AdminUsersSettingsFunction` | PUT /admin/users/{uid}/settings | `functions/admin/` |
+| `AdminBusinessVerifyFunction` | PUT /admin/users/{uid}/business | `functions/admin/business-verify.ts` |
+| `AdminDealsUpdateFunction` | PUT /admin/deals/{did}/update | `functions/admin/` |
+| `AdminFaqsManageFunction` | CRUD /admin/faqs | `functions/admin/faqs-manage.ts` |
+| `AdminFaqsSeedFunction` | POST /admin/faqs/seed | `functions/admin/faqs-seed.ts` |
+| `AdminTermsManageFunction` | GET/PUT /admin/terms | `functions/admin/terms-manage.ts` |
+| `TrackingApiLogFunction` | POST /tracking/api-log | `functions/tracking/log-api.ts` |
+| `AdminBusinessAnalyticsFunction` | GET /admin/business-analytics | `functions/tracking/business-analytics.ts` |
+
+### 3-2. 소스만 존재, SAM 템플릿에도 미등록 (11개)
+
+| 소스 파일 | 예상 엔드포인트 | 기능 |
+|----------|---------------|------|
+| `admin/admins-manage.ts` | CRUD /admin/admins | 관리자 계정 CRUD |
+| `admin/discounts-manage.ts` | CRUD /admin/discounts | 할인코드/쿠폰 CRUD |
+| `admin/system-settings.ts` | GET/PUT /admin/settings | 시스템 설정 |
+| `tracking/analytics.ts` | GET /admin/analytics | 트래킹 대시보드 |
+| `tracking/api-logs.ts` | GET /admin/api-logs | API 로그 조회 |
+| `tracking/events.ts` | POST /tracking/events | 이벤트 수집 |
+| `uploads/presigned-url.ts` | POST /uploads/presigned-url | S3 presigned URL |
+| `users/drafts.ts` | CRUD /users/me/drafts | 임시저장 |
+| `users/payments.ts` | CRUD /users/me/payments | 결제 기록 |
+| `users/settings.ts` | GET/PUT /users/me/settings | 사용자 설정 |
+
+> **현재 이 22개 기능은 프론트엔드 API Route(BFF)에서 직접 DynamoDB를 호출하는 방식으로 동작 중.**
+> Lambda 배포 시 BFF → Lambda 전환 필요.
+
+---
+
+## 4. 미구현 / 계획만 있는 기능
+
+### 4-1. 향후 구현 예정
+
+| 기능 | 설명 | 우선순위 | 비고 |
+|------|------|----------|------|
+| **카카오 알림톡** | 회원가입 완료 / 결제 완료(검수중 안내) / 송금 완료 3종 카카오톡 알림 발송. 이메일보다 도달률 높고 한국 사용자 100% 커버. 카카오 비즈니스 채널 + 알림톡 템플릿 심사 필요 (건당 8~15원) | 🔴 높음 | 카카오 비즈니스 채널 개설 후 구현 가능 |
+| **배치 작업 (정산/대사)** | 월별 거래 데이터 집계, 카드사/은행 데이터와 대조(대사), 정산 금액 산출. 현재 수동으로 엑셀 처리 중 | 🟡 중간 | `PLIC_BATCH_AND_JOBS_v1.1.md` DRAFT |
+| **정산/대사 시스템** | 자동화된 정산/대사 대시보드. 카드사 매출전표 vs DB 거래 건 자동 비교, 불일치 건 알림 | 🟡 중간 | `PLIC_RECONCILIATION_SETTLEMENT_v1.2.md` 설계 완료 |
+| **어드민 페이지네이션** | 현재 회원목록/거래목록이 DynamoDB 전체 Scan. 수천 건 이상 시 성능 저하. LastEvaluatedKey 기반 커서 페이지네이션 필요 | 🟡 중간 | 베타 규모(수백 건)에서는 문제 없음 |
+| **자동 등급 승급** | 거래량/금액 기준으로 basic → platinum → B2B 자동 승급. 현재 어드민에서 수동 변경 중 | 🟢 낮음 | 등급 기준 정책 확정 후 구현 |
+| **SMS 알림** | 문자 메시지 발송. 카카오 알림톡으로 대체 가능하여 우선순위 낮음 | 🟢 낮음 | 이메일 + 카카오 알림톡으로 충분 |
+| **성능 최적화** | 번들 사이즈 최적화, 이미지 lazy loading, API 응답 캐싱 등 | 🟢 낮음 | `performance-optimization.plan.md` |
+
+### 4-2. 구현 완료
+
+| 기능 | 완료일 | 내용 |
+|------|--------|------|
+| ~~이메일 알림~~ | 2026-03-19 | ✅ SES 연동 3종: 이메일 인증코드 / 비밀번호 재설정 링크 / 송금 완료 통보 |
+| ~~전체 유저 여정 트래킹~~ | 2026-03-24 | ✅ 미가입/가입자 전체 추적: pageview(자동, 중복제거), 스크롤 깊이(25/50/75/100%), 체류시간(30s~10m), 탭전환, 이탈감지, CTA 클릭(data-track), 섹션 노출(data-section), 가입 퍼널(5단계), 로그인 퍼널(성공/실패), 거래생성 퍼널(5단계), 결제 퍼널(진입/시도/성공/실패/승인), UTM 파라미터, 익명ID 기반 미가입자 여정 추적. **v2 개선**: 세션 30분 타임아웃, 유니크 세션 기준 퍼널 카운트, 운영진 필터(UID+/admin경로+localStorage 이중방식), 기간별 조회(오늘/1주/1개월/1년/직접설정), 이벤트 스키마 검증, 버퍼 크기 제한, 랜딩 행동 분석 탭 분리, 이벤트 영구 보관(TTL 제거) |
+
+---
+
+## 5. 주요 트러블슈팅 / 주의사항
+
+### 카카오 인증 (상세: `docs/KAKAO_AUTH_ARCHITECTURE.md`)
+
+| 주의사항 | 설명 |
+|----------|------|
+| **카카오 세션 3계층** | 액세스 토큰, 브라우저 세션 쿠키(kauth.kakao.com), 로그인 폼 캐시 — 3개 모두 처리해야 2차 인증이 매번 동작함 |
+| **auth/auth-start 분리 필수** | `/api/kakao/auth`(세션 로그아웃) → `/api/kakao/auth-start`(OAuth 시작). 합치면 2차 인증 자동 스킵됨 |
+| **로그아웃 리다이렉트 URI** | 카카오 개발자 콘솔 → 카카오 로그인 → 고급 → `https://www.plic.kr/api/kakao/auth-start` 등록 필수 (KOE007) |
+| **prompt=cert 사용 불가** | 카카오 인증서 서비스 별도 사업 제휴 필요. 미설정 시 KOE216 에러 |
+| **prompt=login** | 공식 지원 파라미터. 매번 로그인 폼 강제 표시 |
+
+### 결제 (Softpayment)
+
+| 주의사항 | 설명 |
+|----------|------|
+| **1회 결제 한도** | 소프트먼트 측 설정: 송금액+수수료 합산 50만원. S002/S003/S004 에러 시 한도 초과 모달 표시 |
+| **환경변수** | `SOFTPAYMENT_PAY_KEY`, `SOFTPAYMENT_API_URL` Vercel Production에 등록 필수 |
+| **에러 응답 형식** | `{ success: false, error: { code, message, details } }` — `error.message`를 추출해서 표시해야 함 ([object Object] 방지) |
+
+### Popbill
+
+| 주의사항 | 설명 |
+|----------|------|
+| **POPBILL_IS_TEST** | 환경변수 값에 공백/개행이 포함될 수 있음 → `trim()` 처리 필수 |
+| **운영/테스트 전환** | `POPBILL_IS_TEST=false`가 운영, `true`가 테스트. Vercel 환경변수에서 관리 |
+
+### Vercel 환경변수 (Production)
+
+| 변수명 | 용도 |
+|--------|------|
+| `NEXT_PUBLIC_BASE_URL` | `https://www.plic.kr` |
+| `KAKAO_REST_API_KEY` | 카카오 REST API 키 |
+| `KAKAO_CLIENT_SECRET` | 카카오 클라이언트 시크릿 |
+| `SOFTPAYMENT_PAY_KEY` | 소프트먼트 결제 키 |
+| `SOFTPAYMENT_API_URL` | `https://papi.softment.co.kr` |
+| `AWS_ACCESS_KEY_ID` | DynamoDB 접근용 |
+| `AWS_SECRET_ACCESS_KEY` | DynamoDB 접근용 |
+| `AWS_REGION` | `ap-northeast-2` |
+
+---
+
+## 6. 알려진 제한사항 / 기술부채
+
+### 보안
+
+| 항목 | 현재 상태 | 위험도 |
+|------|----------|--------|
+| 관리자 비밀번호 | DynamoDB 평문 저장 (bcrypt 미사용) | 🔴 높음 |
+| admin@plic.kr 강제 언락 | 코드에 하드코딩 | 🔴 높음 |
+| KAKAO_AUTH_SECRET | SAM 템플릿에 평문 하드코딩 | 🟡 중간 |
+| Admin API 인가 | API Gateway 레벨 인가 없음 (앱 레벨만) | 🟡 중간 |
+
+### 아키텍처
+
+| 항목 | 현재 상태 | 영향 |
+|------|----------|------|
+| BFF → DynamoDB 직접 접근 | Lambda 미배포 22개 기능은 Next.js에서 직접 DB 접근 | 보안/분리 미흡 |
+| AdminUsersList 전체 Scan | 페이지네이션 없음 | 사용자 증가 시 성능 저하 |
+| AdminDealsList 전체 Scan | 페이지네이션 없음 | 거래 증가 시 성능 저하 |
+| DynamoDB 테이블 일부 수동 생성 | SAM 템플릿에 8개 테이블 미정의 | IaC 불완전 |
+| 통계/한도 계산 | 실제 거래 데이터에서 프론트엔드 계산 (DB 저장값 미사용). Lambda recentDeals limit:20 우회를 위해 어드민 회원상세에서 전체 deals API 병렬 조회 | 거래 증가 시 최적화 필요 |
+
+### 코드 품질
+
+| 항목 | 수치 |
+|------|------|
+| TypeScript strict mode | ✅ 활성 |
+| 남은 `any` 타입 | 3개 (의도적) |
+| ESLint 경고 | 0 |
+| E2E 테스트 | 189개 (Playwright) |
+| 테스트 케이스 문서 | 1,008개 |
+
+---
+
+## 7. 프로젝트 구조
+
+```
+PLIC/
+├── src/
+│   ├── app/
+│   │   ├── (customer)/          # 고객 페이지 (18개)
+│   │   ├── admin/               # 관리자 페이지 (16개)
+│   │   ├── landing/             # 랜딩 페이지
+│   │   └── api/                 # BFF 프록시 (50개 라우트)
+│   ├── components/
+│   │   ├── common/              # 공통 (9개)
+│   │   ├── auth/signup/         # 회원가입 (5개)
+│   │   └── deal/                # 거래 (20개)
+│   ├── stores/                  # Zustand 스토어 (9개)
+│   ├── types/                   # TypeScript 타입 (7개)
+│   ├── classes/                 # Helper 클래스 (5개)
+│   └── lib/                     # 유틸리티
+├── backend/
+│   ├── plic/
+│   │   ├── template.yaml        # SAM 템플릿 (소스)
+│   │   └── functions/           # Lambda 소스 (.ts)
+│   ├── lambda/                  # 배포된 Lambda (.js, 29개)
+│   ├── template.yaml            # 빌드된 템플릿
+│   └── samconfig.toml           # SAM 배포 설정
+├── docs/                        # 문서
+├── tests/                       # E2E 테스트
+├── CLAUDE.md                    # 개발 규칙
+├── HANDOVER.md                  # 인수인계 문서
+└── FAQ_CONTENT.md               # 서비스 FAQ
+```
+
+---
+
+## 8. 배포 방법
+
+### 프론트엔드 (자동)
+```
+코드 수정 → git push → Vercel 자동 배포 → plic.kr 반영
+```
+
+### 백엔드 Lambda (수동)
+```bash
+cd backend/plic
+sam build
+sam deploy --profile plic
+```
+
+### 단일 함수 빠른 배포
+```bash
+aws lambda update-function-code \
+  --function-name {함수명} \
+  --zip-file fileb://function.zip \
+  --profile plic
+```
+
+---
+
+## 9. 주요 참고 문서 (현행)
+
+| 문서 | 경로 | 용도 |
+|------|------|------|
+| 개발 규칙 | `CLAUDE.md` | 코딩 규칙, 모바일 프레임 레이아웃 |
+| 인수인계 | `HANDOVER.md` | 인프라 정보, 접속 정보 |
+| PRD | `docs/1.Design&Policy_PLIC_PRD_v1.4.md` | 요구사항 정의 |
+| API 스펙 | `docs/1.Design&Policy_PLIC_API_SPEC_v1.2.md` | API 설계 |
+| 상태머신 | `docs/1.Design&Policy_PLIC_STATE_MACHINES_v1.2.md` | 거래/사용자 상태 전이 |
+| 아키텍처 | `docs/core/ARCHITECTURE.md` | 시스템 구조 |
+| 거래 유형 | `docs/core/DEAL-TYPES.md` | 12가지 거래 유형 정의 |
+| 코드 레지스트리 | `docs/core/REGISTRY.md` | 네이밍 규칙, 코드 위치 |
+| 카카오 인증 | `docs/KAKAO_AUTH_ARCHITECTURE.md` | 카카오 OAuth 플로우, 세션 관리, 트러블슈팅 |
+| 로드맵 | `docs/ROADMAP.md` | 개발 계획 |
+| 테스트 케이스 | `docs/testing/PLIC_QA_TESTCASE_v1.0.md` | 1,008개 QA 시나리오 |
+| DB 보정 스크립트 | `scripts/fix-user-stats.js` | 사용자 통계(usedAmount/totalDealCount/totalPaymentAmount) 재계산. `--dry-run` 지원 |
+
+---
+
+## 10. 변경 이력
+
+### 2026-03-09 ~ 2026-03-10
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **Popbill 계좌 검증 수정** | SDK 기반 3가지 근본 원인 해결, 계좌조회 응답에서 API 반환값 사용, `POPBILL_IS_TEST` 환경변수 trim 처리 |
+| **비밀번호 변경 기능** | Lambda + BFF + 프론트엔드 전체 구현 (마이페이지 → 설정 → 비밀번호 변경) |
+| **카카오 5개 커밋 롤백** | KOE101/KOE205 에러 유발 커밋 5개 일괄 revert (1f5c2f2 버전 복원) |
+| **탈퇴 회원 감지** | signup/kakao-login Lambda에서 DynamoDB 없음 + Cognito 존재 시 "탈퇴한 회원입니다" 반환 |
+| **결제 에러 수정** | Softpayment 환경변수 Vercel 등록, `[object Object]` 에러 메시지 표시 수정 |
+| **결제 한도 초과 모달** | S002/S003/S004 에러 시 전용 모달 + 카카오톡 상담 버튼 (http://pf.kakao.com/_xnQKhX) |
+| **EditDealModal 월 한도 검증** | 거래 수정 시 월 사용한도 초과 검증 + 프로그레스 바 UI |
+| **버튼 키컬러 변경** | 결제하기, 거래 신청하기 버튼 primary-400 → primary-600 |
+| **Vercel 빌드 캐시** | generateBuildId 추가, vercel.json 설정으로 빌드 캐시 강제 무효화 |
+
+### 2026-03-11
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **카카오 2차 인증 복원** | 카카오 인증 전 계정 로그아웃(세션 초기화) → prompt=login → 카카오톡 앱 2차 인증 정상 동작. `/api/kakao/auth` 2단계 분리 (`auth` → `auth-start`) |
+| **직접 회원가입 카카오 인증 스텝 복원** | `kakaoVerify` 스텝 추가 (약관→카카오인증→회원정보→사업자→완료). KakaoVerifyStep 컴포넌트 연결 |
+| **카카오 콜백 세션 무효화** | 콜백에서 `kakaoLogout()` 호출하여 액세스 토큰 즉시 무효화, `kakao_had_session` 쿠키로 재인증 시 세션 초기화 |
+| **결제 한도 초과 모달** | S002/S003/S004 에러 시 "1회당 결제 가능 금액 초과" 전용 모달 + 카카오톡 상담 버튼 |
+| **결제/거래 버튼 키컬러** | 결제하기, 거래 신청하기 버튼 primary-400 → primary-600 변경 |
+| **EditDealModal 월 한도 검증** | 거래 수정 시 월 사용한도 초과 검증 + 프로그레스 바 UI |
+| **탈퇴 회원 감지** | DynamoDB 없음 + Cognito 존재 시 "탈퇴한 회원입니다" 반환 (signup, kakao-login Lambda) |
+| **어드민 대시보드 통계 개선** | 총 거래(전체), 완료, 대기(draft+awaiting_payment), 취소, 결제금액 6개 카드 표시 |
+| **어드민 거래정보 탭 재배치** | 전체 거래 → 완료된 거래 → 대기중 거래(결제대기) → 취소 거래 순서로 변경 |
+| **어드민 회원 목록 거래 통계** | deals API에서 실제 completed 거래만 집계하여 표시 (DB 저장값 의존 제거) |
+| **거래 취소 시 사용자 통계 차감** | `AdminDealsStatusFunction` Lambda 수정: 결제 완료 거래 취소 시 `totalDealCount`, `totalPaymentAmount`, `usedAmount` 자동 차감 (SAM 배포 완료) |
+| **기존 취소 건 DB 보정** | `scripts/fix-user-stats.js` 보정 스크립트로 전체 사용자 통계 재계산 (실제 completed 거래 기준). 이태규 계정 등 보정 완료 |
+| **통계/한도 실제 거래 데이터 계산** | 어드민 회원상세: 전체 deals API 병렬 조회 (Lambda recentDeals limit:20 우회), `dealStats`로 거래 통계/한도 현황 계산. 고객 마이페이지/송금/거래상세: deals store에서 이번 달 completed 거래 합산으로 usedAmount 계산. DB 값 의존 제거로 취소 건 누락 방지 |
+| **거래취소/결제취소 상태 구분** | `DealHelper.getStatusConfig(status, isPaid)` 수정: `cancelled` + `isPaid=true` → "결제취소"(빨강), `cancelled` + `isPaid=false` → "거래취소"(회색). 어드민 거래정보, 어드민 회원상세, 어드민 대시보드, 고객 거래목록/상세 등 전체 7개 호출부 반영 |
+| **어드민 거래정보 uid 필터** | 회원상세 "전체보기" 링크(`/admin/deals?uid=xxx`) 작동. Lambda `AdminDealsListFunction`이 uid 파라미터 미지원하므로 전체 조회 후 프론트에서 필터링. 필터 시 "(회원 필터)" 표시 + "전체 보기" 해제 링크. 거래 상세 링크 동일 작동 |
+
+### 2026-03-17
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **PG 결제 정보 전체 저장** | 결제 성공 시 카드사/카드번호/승인번호/할부/결제수단 등 PG 상세 정보를 DynamoDB에 저장 (`pgCardIssuer`, `pgCardNo`, `pgAuthCd` 등) |
+| **어드민 PG 정보 항상 표시** | 거래 상세 PG 결제 정보 섹션을 결제 여부와 무관하게 항상 표시 (미결제 시 안내 문구) |
+| **어드민 거래목록 헤더 개선** | 거래정보 열에 PLIC거래번호/소프트먼트거래번호/승인번호 서브라벨 추가 |
+| **계좌인증 버그 수정** | `CreateDealFunction` Lambda에서 `isVerified: false` 강제 설정 제거 + 기존 15건 DynamoDB 일괄 보정 |
+| **EditDealModal 계좌확인 개선** | '확인'→'계좌확인', 예금주 불일치 시 자동수정 옵션, 인증 완료 전 저장 불가 (RecipientStep과 동일 동작) |
+| **Slack 알림 연동** | 신규 회원가입(🎉 가입일/이름/연락처/이메일/사업자정보) + 결제 완료(🔔 거래번호/승인번호/금액/수수료/수취인/발송인/회원정보) Slack 웹훅 알림. DynamoDB 설정 기반 5분 캐시 |
+| **등급 표시명 변경** | 어드민 회원목록 등급 열: '회원' → 베이직/플래티넘/B2B/임직원 |
+
+### 2026-03-18
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **회원가입 자동 로그인** | 카카오/직접 회원가입 완료 후 자동 로그인 처리 + 환영 모달 표시 → 홈 이동. 자동 로그인 실패 시 기존 완료 화면 fallback |
+| **1회 결제 한도 200만원** | 신규 가입자 1회 결제 한도 기본값 100만원 → 200만원으로 변경. 프론트엔드 상수, Lambda signup, 어드민 UI, API fallback 등 12개 파일 일괄 변경. 기존 가입자는 DB 값 유지 |
+| **어드민 사업자 정보 수정** | 어드민 > 회원상세 > 사업자인증 탭에서 상호/사업자등록번호/대표자명 직접 수정 가능. PATCH API 추가 (`/api/admin/users/{uid}/business`). 변경 시 히스토리 자동 기록 |
+| **Google Sheets 수수료율 추가** | 결제 완료 시 Google Sheets 전송 데이터에 거래 수수료율(feeRate) 필드 추가. 일반 결제 콜백, 빌링키 결제, 어드민 일괄 전송 3곳 반영 |
+| **미사용 DynamoDB 테이블 삭제** | `mokkoji-fcm-tokens` 테이블 삭제 (PLIC 무관, 데이터 0건) |
+| **대시보드 대기 목록 이전** | 애널리틱스의 '사업자 인증 대기' / '거래 검수 대기' 섹션을 대시보드로 이전. 통계 카드와 최근 거래 테이블 사이에 배치. 건수 뱃지, 전체보기 링크, 개별 클릭 시 상세 이동 |
+
+### 2026-03-19
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **SES 이메일 공통 유틸** | `src/lib/ses.ts` 신규 생성. 이메일 인증코드/임시 비밀번호/송금 완료 알림 3종 SES 발송 함수 통합. 기존 `send-email-code` API도 공통 유틸 사용하도록 리팩토링 |
+| **비밀번호 재설정** | `/api/auth/reset-password` API 신규. 이메일 입력 → 가입 확인 → Cognito 임시 비밀번호 설정 → SES 발송. 카카오 계정은 비밀번호 재설정 불가 처리. `/auth/reset-password` 페이지 + 로그인 페이지에 '비밀번호를 잊으셨나요?' 링크 추가 |
+| **송금 완료 이메일 통보** | 어드민에서 거래 상태를 `completed`로 변경 시 사용자에게 송금 완료 안내 이메일 자동 발송. 거래번호/결제금액/수수료/송금금액/수취 계좌 정보 포함 |
+| **회원 탈퇴 시스템 통합 개선** | 어드민/회원 직접 탈퇴 로직 통일. (1) 마스킹 제거 → 원본 데이터 그대로 법적 보관 (2) Cognito 유지 → 동일 계정 재가입 차단 (3) 어드민 탈퇴 시 진행 중 거래 체크 + 분리 보관 + 원본 삭제 (4) 어드민 회원목록에 탈퇴 회원 통합 표시 (plic-withdrawn-users 조회) (5) 탈퇴 회원 상세 읽기전용 처리 (6) 마이페이지 재가입 불가 안내 문구 변경 |
+
+### 2026-03-20
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **거래 상태 '검수완료' 추가** | `approved` 상태값 신규 추가. TDealStatus 타입, 상수(라벨/색상), DealHelper STATUS_CONFIG, API 유효성 검증, 사용자 거래목록 탭, StatusCard 아이콘, 어드민 상태 변경 버튼 전체 반영 |
+| **거래 상태 변경 히스토리** | `plic-deals` 테이블에 `statusHistory` 배열 필드 추가. 상태 변경 시마다 prevStatus/newStatus/changedAt/changedBy/reason 기록. 어드민 상태 변경, 결제 콜백(reviewing), 사용자 보완 제출(서류/수취인) 4곳에 히스토리 저장 로직 적용 |
+| **어드민 처리이력 UI 개선** | 어드민 거래상세 '처리이력' 섹션에 statusHistory 타임라인 표시. 이전상태→새상태 뱃지, 변경자(운영팀/사용자/시스템), 사유/메모, 일시 표시. 기존 history(사용자 활동)도 하단에 분리 표시 |
+
+### 2026-03-20
+
+| 항목 | 변경 내용 |
+|------|----------|
+| **Signup Lambda 200만원 재배포** | esbuild 재빌드 → Lambda 업로드. 소스는 200만원이었으나 빌드된 JS가 구버전(100만원)이었던 문제 해결 |
+| **Modal 버튼 잘림 수정** | Modal 컴포넌트 flex-col/flex-1 구조 제거 → overflow-y-auto로 변경. 내용이 길어도 확인 버튼 항상 표시 |
+| **환영 모달 간결화** | 회원가입 완료 환영 모달 내용 컴팩트하게 정리. 중복 확인 버튼 제거 |
+| **SEO 최적화** | 메타태그 전면 개선 (title template, OG, Twitter Card, keywords 확장), robots.ts (크롤링 제어), sitemap.ts (주요 5페이지), opengraph-image.tsx (동적 OG 이미지 1200x630). 네이버/구글 사이트 인증 환경변수 준비 완료 |

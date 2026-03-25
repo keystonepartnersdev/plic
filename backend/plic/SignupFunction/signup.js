@@ -17,7 +17,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// functions/auth/signup.ts
+// signup.ts
 var signup_exports = {};
 __export(signup_exports, {
   handler: () => handler
@@ -27,7 +27,7 @@ var import_client_cognito_identity_provider = require("@aws-sdk/client-cognito-i
 var import_client_dynamodb = require("@aws-sdk/client-dynamodb");
 var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
 
-// functions/auth/node_modules/uuid/dist-node/stringify.js
+// node_modules/uuid/dist-node/stringify.js
 var byteToHex = [];
 for (let i = 0; i < 256; ++i) {
   byteToHex.push((i + 256).toString(16).slice(1));
@@ -36,7 +36,7 @@ function unsafeStringify(arr, offset = 0) {
   return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
 }
 
-// functions/auth/node_modules/uuid/dist-node/rng.js
+// node_modules/uuid/dist-node/rng.js
 var import_node_crypto = require("node:crypto");
 var rnds8Pool = new Uint8Array(256);
 var poolPtr = rnds8Pool.length;
@@ -48,11 +48,11 @@ function rng() {
   return rnds8Pool.slice(poolPtr, poolPtr += 16);
 }
 
-// functions/auth/node_modules/uuid/dist-node/native.js
+// node_modules/uuid/dist-node/native.js
 var import_node_crypto2 = require("node:crypto");
 var native_default = { randomUUID: import_node_crypto2.randomUUID };
 
-// functions/auth/node_modules/uuid/dist-node/v4.js
+// node_modules/uuid/dist-node/v4.js
 function _v4(options, buf, offset) {
   options = options || {};
   const rnds = options.random ?? options.rng?.() ?? rng();
@@ -81,7 +81,7 @@ function v4(options, buf, offset) {
 }
 var v4_default = v4;
 
-// functions/auth/signup.ts
+// signup.ts
 var CONTENTS_TABLE = process.env.CONTENTS_TABLE || "plic-contents";
 var cognitoClient = new import_client_cognito_identity_provider.CognitoIdentityProviderClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
 var dynamoClient = new import_client_dynamodb.DynamoDBClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
@@ -312,7 +312,7 @@ var handler = async (event) => {
       feeRate: 4,
       isGradeManual: false,
       monthlyLimit: 2e7,
-      perTransactionLimit: 1e6,
+      perTransactionLimit: 2e6,
       usedAmount: 0,
       agreements: {
         service: agreements.service,
