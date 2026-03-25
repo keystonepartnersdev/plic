@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw, Database } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw, Database, Home } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { ContentHelper } from '@/classes';
 import { IFAQ } from '@/types';
@@ -130,6 +130,19 @@ export default function AdminFAQsPage() {
     } catch (err: unknown) {
       console.error('FAQ 상태 변경 실패:', err);
       alert(getErrorMessage(err) || 'FAQ 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleHomeFeatured = async (faq: IFAQ) => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updateFaq(faq.faqId, { isHomeFeatured: !faq.isHomeFeatured });
+      await fetchFaqs();
+    } catch (err: unknown) {
+      console.error('홈 노출 변경 실패:', err);
+      alert(getErrorMessage(err) || '홈 노출 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -362,6 +375,11 @@ export default function AdminFAQsPage() {
                       )}>
                         {getCategoryName(faq.category)}
                       </span>
+                      {faq.isHomeFeatured && (
+                        <span className="inline-flex px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                          🏠 홈 노출
+                        </span>
+                      )}
                       {!faq.isVisible && (
                         <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-medium rounded">
                           숨김
@@ -371,6 +389,19 @@ export default function AdminFAQsPage() {
                     <p className="font-medium text-gray-900">{faq.question}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleHomeFeatured(faq)}
+                      disabled={isSaving}
+                      title={faq.isHomeFeatured ? '홈 노출 해제' : '홈 노출 설정'}
+                      className={cn(
+                        'p-2 rounded-lg transition-colors disabled:opacity-50',
+                        faq.isHomeFeatured
+                          ? 'text-amber-600 bg-amber-50'
+                          : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50'
+                      )}
+                    >
+                      <Home className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleToggleVisibility(faq)}
                       className={cn(
