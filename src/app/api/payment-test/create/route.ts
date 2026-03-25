@@ -33,7 +33,15 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-    console.log('[Payment Test] 거래등록 요청 (개발키):', { trackId, amount, goodsName, device });
+    // 디버그: 실제 전송되는 키 확인
+    console.log('[Payment Test] DEBUG:', {
+      keyLength: TEST_PAY_KEY.length,
+      keyPrefix: TEST_PAY_KEY.substring(0, 7),
+      keySuffix: TEST_PAY_KEY.substring(TEST_PAY_KEY.length - 5),
+      keyHasWhitespace: TEST_PAY_KEY !== TEST_PAY_KEY.trim(),
+      apiUrl: TEST_API_URL,
+      trackId, amount, goodsName, device,
+    });
 
     const response = await fetch(`${TEST_API_URL}/api/webpay/create`, {
       method: 'POST',
