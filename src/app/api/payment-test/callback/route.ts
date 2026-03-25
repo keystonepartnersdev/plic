@@ -9,8 +9,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const TEST_API_URL = process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr';
-const TEST_PAY_KEY = process.env.SOFTPAYMENT_TEST_PAY_KEY || '';
+const TEST_API_URL = (process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr').trim();
+const TEST_PAY_KEY = (process.env.SOFTPAYMENT_TEST_PAY_KEY || '').trim();
 
 export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
