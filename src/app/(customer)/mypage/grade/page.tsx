@@ -66,7 +66,7 @@ export default function GradePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500">수수료율</p>
-                  <p className="font-semibold text-gray-900 text-lg">{feeRate}%</p>
+                  <p className="font-semibold text-gray-900 text-lg">{feeRate}%<span className="text-xs text-gray-500 ml-1">(부가세별도)</span></p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">월 한도</p>

@@ -38,7 +38,8 @@ export function AmountStep({
   };
 
   const numericAmount = parseInt(amount.replace(/,/g, ''), 10) || 0;
-  const feeAmount = Math.floor(numericAmount * (feeRate / 100));
+  const feeAmountBase = Math.floor(numericAmount * (feeRate / 100));
+  const feeAmount = Math.floor(feeAmountBase * 1.1); // 부가세 10% 포함
   const totalAmount = numericAmount + feeAmount;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const wouldExceedLimit = numericAmount > remainingLimit;
@@ -80,7 +81,7 @@ export function AmountStep({
         {numericAmount > 0 && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex justify-between text-sm text-gray-500 mb-1">
-              <span>수수료 ({feeRate}%)</span>
+              <span>수수료 ({feeRate}%, 부가세 포함)</span>
               <span>{feeAmount.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between font-semibold text-gray-900">

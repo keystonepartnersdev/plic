@@ -30,7 +30,7 @@ export function AmountCard({
           <span className="font-medium">{deal.amount.toLocaleString()}원</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">수수료 ({deal.feeRate}%)</span>
+          <span className="text-gray-500">수수료 ({deal.feeRate}%, 부가세 포함)</span>
           <span className="font-medium">{deal.feeAmount.toLocaleString()}원</span>
         </div>
 

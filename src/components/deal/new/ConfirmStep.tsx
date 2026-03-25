@@ -27,7 +27,8 @@ export function ConfirmStep({
   onSubmit,
 }: ConfirmStepProps) {
   const typeConfig = DealHelper.getDealTypeConfig(dealType);
-  const feeAmount = Math.floor(amount * (feeRate / 100));
+  const feeAmountBase = Math.floor(amount * (feeRate / 100));
+  const feeAmount = Math.floor(feeAmountBase * 1.1); // 부가세 10% 포함
   const totalAmount = amount + feeAmount;
 
   return (
@@ -52,7 +53,7 @@ export function ConfirmStep({
               <span className="font-medium">{amount.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">수수료 ({feeRate}%)</span>
+              <span className="text-gray-600">수수료 ({feeRate}%, 부가세 포함)</span>
               <span className="font-medium">{feeAmount.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
