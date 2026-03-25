@@ -380,8 +380,8 @@ function Hero() {
               거래대금, 사업장 월세, 인건비, 자재비 등<br />
               현금 지출이 필요한 모든 사업 비용을 카드로.
             </p>
-            <div className="flex flex-wrap gap-2 mb-10">
-              {['거래대금', '사업장 월세', '인건비', '자재비', '장비 대여료'].map((tag) => (
+            <div className="flex flex-wrap gap-2 mb-20">
+              {['거래대금', '사업장월세', '인건비', '자재비', '장비 대여료'].map((tag) => (
                 <span key={tag} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
                   {tag}
                 </span>
@@ -410,7 +410,7 @@ function Hero() {
         >
           <div className="relative">
             <div className="absolute -bottom-8 -right-8 w-full h-full bg-gradient-to-br from-blue-200/40 to-indigo-300/30 rounded-[2.5rem] blur-2xl" />
-            <div className="relative bg-gray-900 rounded-[2.5rem] overflow-hidden border-[6px] border-gray-800" style={{ width: '340px', boxShadow: '14px 18px 44px rgba(37, 99, 235, 0.2), 6px 8px 20px rgba(0, 0, 0, 0.08)' }}>
+            <div className="relative bg-gray-900 rounded-[2.5rem] overflow-hidden border-[6px] border-gray-800" style={{ width: '408px', boxShadow: '14px 18px 44px rgba(37, 99, 235, 0.2), 6px 8px 20px rgba(0, 0, 0, 0.08)' }}>
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-gray-900 rounded-b-2xl z-10" />
               <video autoPlay muted loop playsInline className="w-full">
                 <source src="/images/landing/plic-demo.mp4" type="video/mp4" />
@@ -443,8 +443,8 @@ function Hero() {
             거래대금, 월세, 인건비 등<br />
             사업 비용을 카드로 결제하세요.
           </p>
-          <div className="flex flex-wrap justify-center gap-1.5 mb-8">
-            {['거래대금', '월세', '인건비', '자재비'].map((tag) => (
+          <div className="flex flex-wrap justify-center gap-1.5 mb-16">
+            {['거래대금', '사업장월세', '인건비', '자재비'].map((tag) => (
               <span key={tag} className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
                 {tag}
               </span>
@@ -460,7 +460,7 @@ function Hero() {
         >
           <div className="relative">
             <div className="absolute -bottom-5 -right-5 w-full h-full bg-gradient-to-br from-blue-200/30 to-indigo-300/20 rounded-[2.5rem] blur-xl" />
-            <div className="relative bg-gray-900 rounded-[2.5rem] overflow-hidden border-[5px] border-gray-800" style={{ width: '260px', boxShadow: '10px 14px 34px rgba(37, 99, 235, 0.18)' }}>
+            <div className="relative bg-gray-900 rounded-[2.5rem] overflow-hidden border-[5px] border-gray-800" style={{ width: '312px', boxShadow: '10px 14px 34px rgba(37, 99, 235, 0.18)' }}>
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-gray-900 rounded-b-xl z-10" />
               <video autoPlay muted loop playsInline className="w-full">
                 <source src="/images/landing/plic-demo.mp4" type="video/mp4" />
@@ -635,11 +635,11 @@ function TrustSection() {
                 <BadgeCheck size={16} />
                 <span>합법 · 안전 · 투명</span>
               </div>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 mb-4">
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
                 정식 허가 PG사와 함께하는<br />
                 <span className="text-[#2563EB]">합법적인</span> 서비스
               </h2>
-              <p className="text-base md:text-lg text-gray-500 leading-relaxed">
+              <p className="text-lg text-gray-600 max-w-2xl leading-relaxed">
                 PLIC은 법적 테두리 안에서 안전하게 운영됩니다.
               </p>
             </motion.div>
@@ -659,8 +659,8 @@ function TrustSection() {
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm mb-3 text-[#2563EB]">
                       <Icon size={20} />
                     </div>
-                    <h3 className="font-bold text-gray-900 mb-1.5 text-sm">{point.title}</h3>
-                    <p className="text-gray-500 text-xs leading-relaxed">{point.description}</p>
+                    <h3 className="font-bold text-gray-900 mb-1.5">{point.title}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{point.description}</p>
                   </motion.div>
                 );
               })}
@@ -745,7 +745,7 @@ function HowItWorks() {
     { number: 1, icon: UserCheck, title: '회원가입', description: '간편하게 사업자 정보로 가입하세요.\n1분이면 충분합니다.' },
     { number: 2, icon: CreditCard, title: '거래 등록', description: '거래 유형, 금액, 수취인 정보, 증빙을\n등록합니다.' },
     { number: 3, icon: Send, title: '카드결제', description: '본인 명의의 카드로 결제해주세요.' },
-    { number: 4, icon: CheckCircle, title: '송금완료', description: '결제가 완료되면 운영팀 검수 후\n수취인에게 원금이 즉시 송금됩니다.' },
+    { number: 4, icon: CheckCircle, title: '송금완료', description: '결제가 완료되면 운영팀 검수 후\n수취인에게 원금이 송금됩니다.' },
   ];
 
   return (
@@ -758,7 +758,7 @@ function HowItWorks() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">간단하게 송금하세요</h2>
+          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">간편하게 송금하세요</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
             복잡한 절차 없이, 카드 하나로 누구에게나 송금할 수 있습니다.
           </p>
@@ -1233,9 +1233,9 @@ export default function LandingPage() {
         <Hero />
         <CardBanner />
         <MessageQA />
-        <TrustSection />
         <Features />
         <HowItWorks />
+        <TrustSection />
         <Security />
         <Reviews />
         <FAQ />

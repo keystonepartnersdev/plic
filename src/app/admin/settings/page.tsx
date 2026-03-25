@@ -13,7 +13,9 @@ import {
   Check,
   TrendingUp,
   Lock,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, useAdminUserStore, defaultSettings } from '@/stores';
 import { TUserGrade, IUserHistory } from '@/types';
@@ -289,6 +291,22 @@ export default function AdminSettingsPage() {
         {activeTab === 'security' && (
           <SecuritySettings localSettings={localSettings} setLocalSettings={setLocalSettings} />
         )}
+      </div>
+
+      {/* 결제 테스트 */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">결제 테스트</h3>
+        <p className="text-sm text-gray-500 mb-4">개발키를 사용한 결제 테스트 페이지입니다. 프로덕션 결제에 영향을 주지 않습니다.</p>
+        <div className="flex gap-3">
+          <Link
+            href="/admin/payment-test"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            <CreditCard className="w-4 h-4" />
+            비인증결제 TEST
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );
