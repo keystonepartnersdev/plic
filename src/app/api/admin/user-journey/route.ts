@@ -13,6 +13,7 @@ const ADMIN_UIDS = new Set([
   '10c12e9f-41c3-4d8a-ad58-3567adf69574', // 조장환(Aiden)
   'ab5863fe-71b3-4b98-b777-55ef5b362d79', // 조장환
   'fdd2e4b6-8dce-4a2b-8564-f8ab56619ecd', // 조장환(aiden)T - 탈퇴
+  '3709d1d7-a3a7-4d90-a057-d61649edf126', // 운영진
   '24e5496e-9246-487c-846f-89b761852763', // 이태규
   'd8e4ef3a-4d99-4ec2-bff7-dba6687d9d56', // 방성민
 ]);
