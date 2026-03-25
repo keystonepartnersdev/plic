@@ -2,12 +2,15 @@
  * 결제 테스트 - 인증 콜백
  * POST /api/payment-test/callback
  *
- * 소프트먼트 결제창에서 인증 완료 후 호출됨.
+ * 프로덕션 키와 완전 분리.
+ * SOFTPAYMENT_TEST_PAY_KEY 환경변수 사용 (개발키).
  * DB 저장 없이 승인만 진행하고 결과 페이지로 리다이렉트.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { softpayment } from '@/lib/softpayment';
+
+const TEST_API_URL = process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr';
+const TEST_PAY_KEY = process.env.SOFTPAYMENT_TEST_PAY_KEY || '';
 
 export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -44,20 +47,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 승인 요청
-    console.log('[Payment Test Callback] 승인 요청:', { trxId, amount });
+    // 승인 요청 (개발키로 직접 호출)
+    console.log('[Payment Test Callback] 승인 요청 (개발키):', { trxId, amount });
 
-    const approveResponse = await softpayment.approvePayment({
-      trxId,
-      amount: String(amount),
-      authorizationId,
+    const approveResponse = await fetch(`${TEST_API_URL}/api/approval`, {
+      method: 'POST',
+      headers: {
+        'Authorization': TEST_PAY_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        trxId,
+        amount: String(amount),
+        authorizationId,
+      }),
     });
 
-    console.log('[Payment Test Callback] 승인 응답:', JSON.stringify(approveResponse));
+    const approveData = await approveResponse.json();
+    console.log('[Payment Test Callback] 승인 응답:', JSON.stringify(approveData));
 
-    if (!softpayment.isSuccess(approveResponse.resCode)) {
+    if (!approveData.success || approveData.resCode !== '0000') {
       return NextResponse.redirect(
-        `${resultPage}?error=${encodeURIComponent(softpayment.getResultMessage(approveResponse.resCode))}`,
+        `${resultPage}?error=${encodeURIComponent(approveData.message || '승인 실패')}`,
         { status: 303 }
       );
     }
@@ -65,14 +76,14 @@ export async function POST(request: NextRequest) {
     // 승인 성공
     const params = new URLSearchParams({
       success: 'true',
-      trxId: approveResponse.data?.trxId || trxId,
-      trackId: approveResponse.data?.trackId || '',
-      amount: approveResponse.data?.amount || amount,
-      authCd: approveResponse.data?.payInfo?.authCd || '',
-      cardNo: approveResponse.data?.payInfo?.cardInfo?.cardNo || '',
-      issuer: approveResponse.data?.payInfo?.cardInfo?.issuer || '',
-      cardType: approveResponse.data?.payInfo?.cardInfo?.cardType || '',
-      installment: approveResponse.data?.payInfo?.cardInfo?.installment || '',
+      trxId: approveData.data?.trxId || trxId,
+      trackId: approveData.data?.trackId || '',
+      amount: approveData.data?.amount || amount,
+      authCd: approveData.data?.payInfo?.authCd || '',
+      cardNo: approveData.data?.payInfo?.cardInfo?.cardNo || '',
+      issuer: approveData.data?.payInfo?.cardInfo?.issuer || '',
+      cardType: approveData.data?.payInfo?.cardInfo?.cardType || '',
+      installment: approveData.data?.payInfo?.cardInfo?.installment || '',
     });
 
     return NextResponse.redirect(`${resultPage}?${params.toString()}`, { status: 303 });

@@ -2,15 +2,25 @@
  * 결제 테스트 - 거래등록 API
  * POST /api/payment-test/create
  *
+ * 프로덕션 키와 완전 분리.
+ * SOFTPAYMENT_TEST_PAY_KEY 환경변수 사용 (개발키).
  * DB 저장 없이 소프트먼트 거래등록만 수행.
- * 콜백은 기존 /api/payments/callback 대신 테스트 전용 콜백으로 리다이렉트.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { softpayment } from '@/lib/softpayment';
+
+const TEST_API_URL = process.env.SOFTPAYMENT_API_URL || 'https://papi.softment.co.kr';
+const TEST_PAY_KEY = process.env.SOFTPAYMENT_TEST_PAY_KEY || '';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!TEST_PAY_KEY) {
+      return NextResponse.json({
+        success: false,
+        error: 'SOFTPAYMENT_TEST_PAY_KEY 환경변수가 설정되지 않았습니다.',
+      }, { status: 500 });
+    }
+
     const body = await request.json();
     const { trackId, amount, goodsName, payerName, payerTel, device } = body;
 
@@ -23,32 +33,40 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-    console.log('[Payment Test] 거래등록 요청:', { trackId, amount, goodsName, device });
+    console.log('[Payment Test] 거래등록 요청 (개발키):', { trackId, amount, goodsName, device });
 
-    const response = await softpayment.createPayment({
-      trackId,
-      amount: Number(amount),
-      returnUrl: `${baseUrl}/api/payment-test/callback`,
-      goodsName,
-      payerName: payerName || '',
-      payerEmail: '',
-      payerTel: payerTel || '',
-      device: device === 'mobile' ? 'mobile' : 'pc',
-      shopValueInfo: {
-        value1: 'TEST',
-        value2: '',
-        value3: '',
+    const response = await fetch(`${TEST_API_URL}/api/webpay/create`, {
+      method: 'POST',
+      headers: {
+        'Authorization': TEST_PAY_KEY,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        trackId,
+        amount: String(amount),
+        returnUrl: `${baseUrl}/api/payment-test/callback`,
+        goodsName,
+        payerName: payerName || '',
+        payerEmail: '',
+        payerTel: payerTel || '',
+        device: device === 'mobile' ? 'mobile' : 'pc',
+        shopValueInfo: {
+          value1: 'TEST',
+          value2: '',
+          value3: '',
+        },
+      }),
     });
 
-    console.log('[Payment Test] 거래등록 응답:', JSON.stringify(response));
+    const data = await response.json();
+    console.log('[Payment Test] 거래등록 응답:', JSON.stringify(data));
 
-    if (!softpayment.isSuccess(response.resCode)) {
+    if (!data.success || data.resCode !== '0000') {
       return NextResponse.json({
         success: false,
-        error: softpayment.getResultMessage(response.resCode),
-        resCode: response.resCode,
-        raw: response,
+        error: data.message || '거래등록 실패',
+        resCode: data.resCode,
+        raw: data,
       });
     }
 
@@ -56,9 +74,9 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         trackId,
-        trxId: response.data?.trxId,
-        authPageUrl: response.data?.authPageUrl,
-        approvalUrl: response.data?.approvalUrl,
+        trxId: data.data?.trxId,
+        authPageUrl: data.data?.authPageUrl,
+        approvalUrl: data.data?.approvalUrl,
       },
     });
   } catch (error) {
