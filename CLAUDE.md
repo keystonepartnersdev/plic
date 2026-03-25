@@ -194,6 +194,21 @@ src/
 
 ---
 
+## 💳 PG사 연동 정보 (소프트먼트)
+
+| 구분 | 도메인 | Pay Key (환경변수) |
+|------|--------|-------------------|
+| 운영 | `https://papi.softment.co.kr` | `SOFTPAYMENT_PAY_KEY` |
+| 개발 | `https://devpapi.softment.co.kr` | `SOFTPAYMENT_TEST_PAY_KEY` |
+
+- API 문서: `docs/🌟소프트먼트_신용카드인증결제_API연동가이드_1.0.0.docx`
+- 테스트 페이지: `/admin/payment-test` (개발키 사용, DB 저장 없음)
+- 운영 결제 API: `/api/payments/billing` → `/api/payments/callback`
+- 테스트 결제 API: `/api/payment-test/create` → `/api/payment-test/callback`
+- Authorization 헤더에 Pay Key를 직접 전달 (Bearer 없이)
+
+---
+
 ## ⚠️ 주의사항
 
 ### 1. 계정 상태 체크
