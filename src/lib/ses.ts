@@ -87,7 +87,7 @@ export async function sendTransferCompleteEmail(to: string, data: {
   const formattedDate = new Date(data.transferredAt).toLocaleDateString('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit',
   });
-  const displayTrackId = data.trackId || data.dealId.slice(-8).toUpperCase();
+  const displayTrackId = data.dealId;
 
   const html = wrapEmailHtml('송금 완료 안내', `
     <p style="font-size:16px;color:#333;margin-bottom:24px;">요청하신 거래의 송금이 완료되었습니다.</p>
@@ -101,16 +101,16 @@ export async function sendTransferCompleteEmail(to: string, data: {
           <td style="padding:8px 0;font-size:14px;color:#111;text-align:right;font-weight:600;">${displayTrackId}</td>
         </tr>
         <tr>
-          <td style="padding:8px 0;font-size:14px;color:#64748b;">송금 금액</td>
-          <td style="padding:8px 0;font-size:14px;color:#111;text-align:right;">${formattedAmount}원</td>
+          <td style="padding:12px 0 8px;font-size:15px;color:#111;font-weight:700;">송금 금액</td>
+          <td style="padding:12px 0 8px;font-size:18px;color:#2563EB;text-align:right;font-weight:700;">${formattedAmount}원</td>
         </tr>
         <tr>
           <td style="padding:8px 0;font-size:14px;color:#64748b;">수수료</td>
           <td style="padding:8px 0;font-size:14px;color:#111;text-align:right;">${formattedFee}원</td>
         </tr>
         <tr style="border-top:1px solid #d1fae5;">
-          <td style="padding:12px 0 8px;font-size:15px;color:#111;font-weight:700;">결제 금액</td>
-          <td style="padding:12px 0 8px;font-size:18px;color:#2563EB;text-align:right;font-weight:700;">${formattedFinal}원</td>
+          <td style="padding:8px 0;font-size:14px;color:#64748b;">결제 금액</td>
+          <td style="padding:8px 0;font-size:14px;color:#111;text-align:right;">${formattedFinal}원</td>
         </tr>
         <tr>
           <td style="padding:8px 0;font-size:14px;color:#64748b;">수취 은행</td>
