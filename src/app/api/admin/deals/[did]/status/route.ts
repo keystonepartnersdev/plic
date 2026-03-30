@@ -94,6 +94,7 @@ export async function PUT(
         if (userData?.email) {
           sendTransferCompleteEmail(userData.email, {
             dealId: did,
+            trackId: deal.pgTrackId || '',
             amount: deal.amount || 0,
             feeAmount: deal.feeAmount || 0,
             finalAmount: deal.finalAmount || deal.amount || 0,
