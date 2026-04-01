@@ -347,13 +347,13 @@ function CardFlowGraphic({ className = '' }: { className?: string }) {
 
 // ==================== Hero ====================
 function Hero() {
-  const rollingTexts = ['월세', '거래대금', '계약금', '인건비', '자재비'];
+  const rollingTexts = ['월세를', '거래대금을', '계약금을', '인건비를', '자재비를'];
   const [rollingIndex, setRollingIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setRollingIndex((prev) => (prev + 1) % rollingTexts.length);
-    }, 2500);
+    }, 1500);
     return () => clearInterval(interval);
   }, [rollingTexts.length]);
 
@@ -377,13 +377,13 @@ function Hero() {
               <AnimatePresence mode="wait">
                 <motion.h1
                   key={rollingTexts[rollingIndex]}
-                  initial={{ y: 40, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -40, opacity: 0 }}
-                  transition={{ duration: 0.5 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
                   className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight"
                 >
-                  <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span>을 카드로
+                  <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span> 카드로
                 </motion.h1>
               </AnimatePresence>
             </div>
@@ -458,10 +458,10 @@ function Hero() {
             <AnimatePresence mode="wait">
               <motion.h1
                 key={rollingTexts[rollingIndex]}
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -30, opacity: 0 }}
-                transition={{ duration: 0.5 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
                 className="text-4xl font-bold text-gray-900 leading-tight"
               >
                 <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span>을 카드로
