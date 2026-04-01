@@ -107,8 +107,48 @@ export function StatusCard({ deal, onPaymentBlocked }: StatusCardProps) {
         )
       )}
 
-      {/* 결제완료 상태 */}
-      {deal.isPaid && (
+      {/* 거래 완료 상태 */}
+      {deal.status === 'completed' && (
+        <div className="mt-4">
+          <button
+            disabled
+            className="
+              w-full h-14
+              bg-gray-200
+              text-gray-500 font-semibold
+              rounded-xl
+              flex items-center justify-center gap-2
+              cursor-not-allowed
+            "
+          >
+            <Check className="w-5 h-5" />
+            완료된 거래
+          </button>
+          {deal.isPaid && (
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <Check className="w-4 h-4" />
+                <span>결제 완료</span>
+                {deal.paidAt && (
+                  <span className="text-gray-400 text-xs">{new Date(deal.paidAt).toLocaleDateString('ko-KR')}</span>
+                )}
+              </div>
+              {deal.isTransferred && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <Check className="w-4 h-4" />
+                  <span>송금 완료</span>
+                  {deal.transferredAt && (
+                    <span className="text-gray-400 text-xs">{new Date(deal.transferredAt).toLocaleDateString('ko-KR')}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 결제완료 but 거래 미완료 (검수중 등) */}
+      {deal.isPaid && deal.status !== 'completed' && (
         <div className="mt-4">
           <button
             disabled
