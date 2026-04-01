@@ -130,7 +130,7 @@ export function StatusCard({ deal, onPaymentBlocked }: StatusCardProps) {
                 <Check className="w-4 h-4" />
                 <span>결제 완료</span>
                 {deal.paidAt && (
-                  <span className="text-gray-400 text-xs">{new Date(deal.paidAt).toLocaleDateString('ko-KR')}</span>
+                  <span className="text-gray-400 text-xs">{new Date(deal.paidAt).toLocaleString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                 )}
               </div>
               {deal.isTransferred && (

@@ -88,12 +88,7 @@ export function AmountCard({
         </div>
       )}
 
-      {deal.isPaid && (
-        <div className="mt-3 flex items-center gap-2 text-green-600">
-          <Check className="w-4 h-4" />
-          <span className="text-sm">결제 완료</span>
-        </div>
-      )}
+      {/* 결제완료 표시는 StatusCard에서 통합 관리 */}
     </div>
   );
 }

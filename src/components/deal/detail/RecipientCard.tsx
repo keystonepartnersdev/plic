@@ -34,14 +34,7 @@ export function RecipientCard({ deal, senderName }: RecipientCardProps) {
         </div>
       </div>
 
-      {deal.isTransferred && (
-        <div className="mt-3 flex items-center gap-2 text-green-600">
-          <Check className="w-4 h-4" />
-          <span className="text-sm">
-            송금 완료 ({new Date(deal.transferredAt!).toLocaleDateString('ko-KR')})
-          </span>
-        </div>
-      )}
+      {/* 송금완료 표시는 StatusCard에서 통합 관리 */}
     </div>
   );
 }
