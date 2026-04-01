@@ -12,7 +12,7 @@ import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
 // 계좌 인증 함수
-async function verifyBankAccount(bankName: string, accountNumber: string, accountHolder: string): Promise<{ valid: boolean; isMatch: boolean; accountHolder?: string }> {
+async function verifyBankAccount(bankName: string, accountNumber: string, accountHolder: string): Promise<{ valid: boolean; isMatch: boolean; accountHolder?: string; errorMessage?: string }> {
   try {
     const res = await fetch('/api/popbill/account/verify', {
       method: 'POST',
@@ -23,9 +23,10 @@ async function verifyBankAccount(bankName: string, accountNumber: string, accoun
     if (data.success && data.data?.accountHolder) {
       return { valid: true, isMatch: data.data.isMatch === true, accountHolder: data.data.accountHolder };
     }
-    return { valid: false, isMatch: false };
+    const errMsg = data.error?.message || '계좌 조회에 실패했습니다.';
+    return { valid: false, isMatch: false, errorMessage: errMsg };
   } catch {
-    return { valid: false, isMatch: false };
+    return { valid: false, isMatch: false, errorMessage: '계좌 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' };
   }
 }
 
@@ -109,11 +110,17 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
         );
       } else {
         setVerificationFailed(true);
-        setVerificationError('계좌 정보가 올바르지 않습니다. 다시 확인해주세요.');
+        const errMsg = result.errorMessage || '계좌 조회에 실패했습니다.';
+        const isMaintenanceError = errMsg.includes('점검') || errMsg.includes('maintenance');
+        setVerificationError(
+          isMaintenanceError
+            ? `${errMsg} (보통 23:30~00:30 사이 은행 정기점검이 진행됩니다. 점검 종료 후 다시 시도해주세요.)`
+            : errMsg
+        );
       }
     } catch {
       setVerificationFailed(true);
-      setVerificationError('계좌 확인 중 오류가 발생했습니다.');
+      setVerificationError('계좌 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsVerifying(false);
     }
