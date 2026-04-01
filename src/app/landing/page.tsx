@@ -347,6 +347,16 @@ function CardFlowGraphic({ className = '' }: { className?: string }) {
 
 // ==================== Hero ====================
 function Hero() {
+  const rollingTexts = ['월세', '거래대금', '계약금', '인건비', '자재비'];
+  const [rollingIndex, setRollingIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRollingIndex((prev) => (prev + 1) % rollingTexts.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [rollingTexts.length]);
+
   return (
     <section data-section="hero" className="relative bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
       {/* Desktop: 좌측 텍스트 + 우측 영상 (간격 확대) */}
@@ -363,9 +373,20 @@ function Hero() {
               <span>사업자 전용 서비스</span>
             </div>
 
-            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-2">
-              카드로 송금하다
-            </h1>
+            <div className="h-[72px] lg:h-[84px] xl:h-[96px] overflow-hidden mb-2">
+              <AnimatePresence mode="wait">
+                <motion.h1
+                  key={rollingTexts[rollingIndex]}
+                  initial={{ y: 40, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -40, opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight"
+                >
+                  <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span>을 카드로
+                </motion.h1>
+              </AnimatePresence>
+            </div>
             <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-6">
               PLIC
             </p>
@@ -433,9 +454,20 @@ function Hero() {
             <span>사업자 전용 서비스</span>
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-2">
-            카드로 송금하다
-          </h1>
+          <div className="h-[48px] overflow-hidden mb-2">
+            <AnimatePresence mode="wait">
+              <motion.h1
+                key={rollingTexts[rollingIndex]}
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -30, opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-4xl font-bold text-gray-900 leading-tight"
+              >
+                <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span>을 카드로
+              </motion.h1>
+            </AnimatePresence>
+          </div>
           <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-4">
             PLIC
           </p>
@@ -1255,16 +1287,28 @@ export default function LandingPage() {
         <CTA />
         <Footer />
 
-        {/* 모바일 하단 고정 플로팅 CTA 버튼 */}
+        {/* 모바일 하단 고정: 카카오 상담 + CTA */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-[99998] bg-white/95 backdrop-blur-md border-t border-gray-100 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <Link
-            href="https://www.plic.kr/"
-            data-track="landing_cta_mobile_fixed"
-            className="flex items-center justify-center gap-2 w-full h-14 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white rounded-full font-bold text-lg shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all duration-300"
-          >
-            무료로 시작하기
-            <ArrowRight size={20} />
-          </Link>
+          <div className="flex gap-2">
+            <a
+              href="http://pf.kakao.com/_xnQKhX"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-track="landing_cta_kakao_mobile"
+              className="flex items-center justify-center gap-1.5 flex-1 h-14 bg-[#FEE500] text-[#391B1B] rounded-full font-bold text-base shadow-sm hover:brightness-95 transition-all duration-300"
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current"><path d="M12 3C6.48 3 2 6.58 2 10.9c0 2.78 1.86 5.21 4.65 6.6-.15.53-.54 1.91-.62 2.21-.1.37.14.37.29.27.12-.08 1.86-1.26 2.62-1.77.66.1 1.35.15 2.06.15 5.52 0 10-3.58 10-7.9S17.52 3 12 3z"/></svg>
+              카카오톡 문의
+            </a>
+            <Link
+              href="https://www.plic.kr/"
+              data-track="landing_cta_mobile_fixed"
+              className="flex items-center justify-center gap-1.5 flex-[1.2] h-14 bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white rounded-full font-bold text-base shadow-lg shadow-blue-500/30 hover:shadow-xl transition-all duration-300"
+            >
+              무료로 시작하기
+              <ArrowRight size={18} />
+            </Link>
+          </div>
         </div>
       </div>
     </TrackingProvider>
