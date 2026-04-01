@@ -351,7 +351,7 @@ export const DEFAULT_FAQS: IFAQ[] = [
   {
     faqId: 'default-26',
     question: '송금은 얼마나 걸리나요?',
-    answer: '결제가 완료되면 운영팀 검토 후 D+3일(영업일 기준) 이내에 송금됩니다. 은행 점검 시간(23:30~00:30)에는 점검 종료 후 순차적으로 처리됩니다.',
+    answer: '결제가 완료되면 운영팀 검수 후 수취인에게 원금이 송금됩니다. 은행 점검 시간(23:30~00:30)에는 점검 종료 후 순차적으로 처리됩니다.',
     category: '송금/입금',
     isVisible: true,
     isHomeFeatured: true,

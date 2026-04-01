@@ -28,7 +28,7 @@ import { adminAPI } from '@/lib/api';
 import tracking from '@/lib/tracking';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus, IUser } from '@/types';
-import { cn, getErrorMessage } from '@/lib/utils';
+import { cn, getErrorMessage, formatEstimatedTransferDate } from '@/lib/utils';
 import { AdminEditDealModal } from './AdminEditDealModal';
 
 const statusColors: Record<string, string> = {
@@ -649,6 +649,14 @@ export default function AdminDealDetailPage() {
               {deal.isTransferred && deal.transferredAt && (
                 <div className="text-xs text-gray-500">
                   송금일시: {new Date(deal.transferredAt).toLocaleString('ko-KR')}
+                </div>
+              )}
+              {!deal.isTransferred && deal.status !== 'cancelled' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">송금 예정일</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatEstimatedTransferDate(deal.isPaid && deal.paidAt ? deal.paidAt : undefined)}
+                  </span>
                 </div>
               )}
             </div>

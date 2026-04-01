@@ -19,7 +19,7 @@ export default function LeftPanel() {
           <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
             <Zap className="w-7 h-7 text-[#2563EB]" strokeWidth={2} />
           </div>
-          <span className="text-sm text-gray-700 font-medium">D+3 송금</span>
+          <span className="text-sm text-gray-700 font-medium">빠른 송금</span>
         </div>
         <div className="flex flex-col items-center group">
           <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">

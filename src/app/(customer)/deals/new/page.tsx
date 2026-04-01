@@ -9,7 +9,7 @@ import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
 import { useUserStore, useDealStore, useDealDraftStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
-import { cn, getErrorMessage } from '@/lib/utils';
+import { cn, getErrorMessage, formatEstimatedTransferDate } from '@/lib/utils';
 import tracking from '@/lib/tracking';
 
 type Step = 'type' | 'amount' | 'recipient' | 'docs' | 'confirm';
@@ -1387,6 +1387,15 @@ function NewDealContent() {
                     <span className="font-bold text-primary-400">{totalAmount.toLocaleString()}원</span>
                   </div>
                 </div>
+              </div>
+
+              {/* 송금 예정일 */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">송금 예정일</span>
+                  <span className="font-medium text-gray-900">{formatEstimatedTransferDate()}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">금일 결제 시 기준 (영업일 기준)</p>
               </div>
 
               {/* 수취인 정보 */}

@@ -5,6 +5,7 @@
 
 import { Check, Tag, Ticket } from 'lucide-react';
 import { IDeal, IDiscount } from '@/types';
+import { formatEstimatedTransferDate } from '@/lib/utils';
 
 interface AmountCardProps {
   deal: IDeal;
@@ -76,6 +77,16 @@ export function AmountCard({
           </div>
         </div>
       </div>
+
+      {/* 송금 예정일: 송금완료/취소 상태가 아닌 경우만 표시 */}
+      {deal.status !== 'completed' && deal.status !== 'cancelled' && (
+        <div className="flex justify-between mt-3 pt-3 border-t border-gray-100">
+          <span className="text-gray-500 text-sm">송금 예정일</span>
+          <span className="text-sm font-medium text-gray-900">
+            {formatEstimatedTransferDate(deal.isPaid && deal.paidAt ? deal.paidAt : undefined)}
+          </span>
+        </div>
+      )}
 
       {deal.isPaid && (
         <div className="mt-3 flex items-center gap-2 text-green-600">

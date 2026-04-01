@@ -148,3 +148,64 @@ export function getErrorMessage(error: unknown): string {
   }
   return '알 수 없는 오류가 발생했습니다.';
 }
+
+/**
+ * 한국 공휴일 목록 (MM-DD 형식)
+ * 음력 기반 공휴일(설날/추석/부처님오신날)은 연도별로 다르므로 매년 업데이트 필요
+ */
+const KOREAN_HOLIDAYS: Record<number, string[]> = {
+  // 매년 고정 공휴일
+  0: ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'],
+  // 2025년 음력 기반 공휴일 + 대체공휴일
+  2025: ['01-28', '01-29', '01-30', '05-05', '05-06', '10-05', '10-06', '10-07', '10-08'],
+  // 2026년 음력 기반 공휴일 + 대체공휴일
+  2026: ['02-16', '02-17', '02-18', '05-24', '05-25', '09-24', '09-25', '09-26', '09-28'],
+  // 2027년 음력 기반 공휴일 (추후 확정 시 업데이트)
+  2027: ['02-06', '02-07', '02-08', '05-13', '10-13', '10-14', '10-15'],
+};
+
+function isKoreanHoliday(date: Date): boolean {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const key = `${mm}-${dd}`;
+  const year = date.getFullYear();
+
+  // 고정 공휴일 체크
+  if (KOREAN_HOLIDAYS[0].includes(key)) return true;
+  // 해당 연도 음력 공휴일 체크
+  if (KOREAN_HOLIDAYS[year]?.includes(key)) return true;
+
+  return false;
+}
+
+/**
+ * 기준일로부터 D+3 영업일 후 날짜를 계산
+ * 영업일 = 월~금 (토,일,공휴일 제외)
+ * @param baseDate 기준일 (없으면 오늘)
+ * @returns Date 객체
+ */
+export function getEstimatedTransferDate(baseDate?: Date | string): Date {
+  const date = baseDate ? new Date(baseDate) : new Date();
+  // 한국 시간 기준으로 날짜 설정
+  const kst = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+  const result = new Date(kst);
+
+  let businessDays = 0;
+  while (businessDays < 3) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6 && !isKoreanHoliday(result)) {
+      businessDays++;
+    }
+  }
+  return result;
+}
+
+/**
+ * 송금예정일을 "YYYY년 M월 D일" 형식으로 반환
+ * @param baseDate 기준일 (결제 완료일 또는 오늘)
+ */
+export function formatEstimatedTransferDate(baseDate?: Date | string): string {
+  const date = getEstimatedTransferDate(baseDate);
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}

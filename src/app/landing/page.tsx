@@ -629,17 +629,17 @@ function TrustSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="mb-10"
+              className="mb-10 text-center lg:text-left"
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm font-bold mb-6">
                 <BadgeCheck size={16} />
                 <span>합법 · 안전 · 투명</span>
               </div>
               <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
-                정식 허가 PG사와 함께하는<br />
-                <span className="text-[#2563EB]">합법적인</span> 서비스
+                정식 허가 PG사가<br />
+                연계된 <span className="text-[#2563EB]">합법적인</span> 서비스
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl leading-relaxed">
+              <p className="text-lg text-gray-600 max-w-2xl leading-relaxed mx-auto lg:mx-0">
                 PLIC은 법적 테두리 안에서 안전하게 운영됩니다.
               </p>
             </motion.div>
@@ -677,7 +677,7 @@ function Features() {
   const features = [
     { icon: Clock, title: '결제일까지 여유', description: '현금 여유가 없을 때, 신용카드로 결제가 가능하기에 여유로운 자금흐름을 만들 수 있습니다.' },
     { icon: BadgeCheck, title: '원금 전액 송금 보장', description: '수취인은 송금 원금을 100% 그대로 받습니다. 100만원을 보내면, 100만원이 도착합니다.' },
-    { icon: Zap, title: 'D+3일 이내 송금', description: '결제 완료 즉시 운영팀 검토 후 D+3(영업일 기준)일 이내에 송금됩니다.' },
+    { icon: Zap, title: '빠른 송금 처리', description: '결제가 완료되면 운영팀 검수 후 수취인에게 원금이 송금됩니다.' },
     { icon: Building2, title: '어떤 계좌든 OK', description: '국내 모든 은행 계좌로 송금할 수 있습니다. 수취인이 PLIC 회원이 아니어도 괜찮습니다.' },
     { icon: Gift, title: '카드 혜택 그대로', description: '카드 포인트, 할인, 할부 등 기존 카드 혜택을 그대로 누릴 수 있습니다.' },
     { icon: BarChart3, title: '실시간 거래 내역', description: '모든 거래 상태를 실시간으로 확인할 수 있습니다. 투명한 거래 이력 관리가 가능합니다.' },
@@ -895,11 +895,24 @@ function Reviews() {
 
   // 무한궤도를 위해 리뷰를 3배로 복제
   const tripled = [...reviews, ...reviews, ...reviews];
-  const cardWidth = 406; // 400 + 6px gap
   const totalOriginal = reviews.length;
   const [offset, setOffset] = useState(totalOriginal); // 중간 세트에서 시작
   const [isTransitioning, setIsTransitioning] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [cardWidth, setCardWidth] = useState(406);
+
+  useEffect(() => {
+    const updateCardWidth = () => {
+      if (window.innerWidth < 640) {
+        setCardWidth(window.innerWidth * 0.85 + 16); // 85vw + mx-2(16px)
+      } else {
+        setCardWidth(406); // 400 + 6px gap
+      }
+    };
+    updateCardWidth();
+    window.addEventListener('resize', updateCardWidth);
+    return () => window.removeEventListener('resize', updateCardWidth);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -967,7 +980,7 @@ function Reviews() {
             return (
               <div
                 key={index}
-                className={`flex-shrink-0 w-[400px] mx-[3px] transition-all duration-700 ${
+                className={`flex-shrink-0 w-[85vw] sm:w-[400px] mx-2 sm:mx-[3px] transition-all duration-700 ${
                   isActive ? 'opacity-100 scale-100' : 'opacity-50 scale-[0.95]'
                 }`}
               >
@@ -1029,7 +1042,7 @@ function FAQ() {
     { question: '수취인도 PLIC에 가입해야 하나요?', answer: '아니요, 수취인은 PLIC 회원이 아니어도 됩니다. 국내 모든 은행 계좌로 송금받을 수 있습니다. 수취인은 별도의 앱 설치나 회원가입 없이 계좌로 돈을 받기만 하면 됩니다.' },
     { question: '송금 취소가 가능한가요?', answer: '결제 이후, 송금 이전까지는 수수료 없이 취소가 가능합니다. 이 경우 결제 금액 전액이 결제 취소됩니다. 단, 송금이 이루어진 후에는 취소가 불가하며, 결제 취소를 원하시는 경우에는 고객센터로 문의 부탁드립니다.' },
     { question: '어떤 카드를 사용할 수 있나요?', answer: '본인 명의의 국내 신용카드와 체크카드, 법인 명의의 카드를 사용할 수 있습니다. 해외 발급 카드는 현재 지원하지 않습니다.' },
-    { question: '송금은 얼마나 걸리나요?', answer: '결제가 완료되면 운영팀 검수 후 D+3일(영업일 기준) 이내에 송금됩니다. 은행 점검 시간(23:30~00:30)에는 점검 종료 후 순차적으로 처리됩니다.' },
+    { question: '송금은 얼마나 걸리나요?', answer: '결제가 완료되면 운영팀 검수 후 수취인에게 원금이 송금됩니다. 은행 점검 시간(23:30~00:30)에는 점검 종료 후 순차적으로 처리됩니다.' },
     { question: '환불은 얼마나 걸리나요?', answer: '환불 처리 시 신용카드와 체크카드 모두 3~7 영업일 내에 카드사를 통해 환불됩니다. 환불 시에는 수수료도 함께 환불됩니다.' },
     { question: '제 명의의 통장으로 송금받고 싶어요.', answer: '카드 결제자와 수취인이 동일한 경우는 불법 현금융통(카드깡)인 범죄 행위로 분류됩니다. PLIC은 불법 거래를 근절하기 위하여, 철저한 거래 검수를 진행하고 있습니다.' },
   ];
