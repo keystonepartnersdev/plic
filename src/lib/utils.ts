@@ -174,6 +174,10 @@ function isKoreanHoliday(date: Date): boolean {
   if (KOREAN_HOLIDAYS[0].includes(key)) return true;
   // 해당 연도 음력 공휴일 체크
   if (KOREAN_HOLIDAYS[year]?.includes(key)) return true;
+  // 음력 공휴일 데이터 미등록 연도 경고
+  if (!KOREAN_HOLIDAYS[year]) {
+    console.warn(`[getEstimatedTransferDate] ${year}년 음력 공휴일 데이터 미등록. KOREAN_HOLIDAYS 업데이트 필요.`);
+  }
 
   return false;
 }
@@ -185,10 +189,10 @@ function isKoreanHoliday(date: Date): boolean {
  * @returns Date 객체
  */
 export function getEstimatedTransferDate(baseDate?: Date | string): Date {
-  const date = baseDate ? new Date(baseDate) : new Date();
-  // 한국 시간 기준으로 날짜 설정
-  const kst = new Date(date.getTime() + (9 * 60 * 60 * 1000));
-  const result = new Date(kst);
+  // KST 기준 날짜를 안전하게 추출 (런타임 타임존에 무관)
+  const base = baseDate ? new Date(baseDate) : new Date();
+  const kstStr = base.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // "YYYY-MM-DD"
+  const result = new Date(kstStr + 'T00:00:00+09:00');
 
   let businessDays = 0;
   while (businessDays < 3) {
