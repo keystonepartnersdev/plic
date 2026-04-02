@@ -538,7 +538,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0))) || (editType === 'recipient' && !isVerified)}
+            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0)))}
             className="flex-1 h-12 bg-primary-400 text-white rounded-xl font-medium hover:bg-primary-500 transition-colors disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2"
           >
             {(isSaving || isUploading) ? (

@@ -684,8 +684,7 @@ function NewDealContent() {
   const canProceedRecipient =
     recipient.bank &&
     recipient.accountNumber.length >= 10 &&
-    recipient.accountHolder &&
-    recipient.isVerified;
+    recipient.accountHolder;
   const canProceedDocs = attachments.length > 0 &&
     attachments.every((a) => a.uploadStatus === 'completed') &&
     uploadingCount === 0;
