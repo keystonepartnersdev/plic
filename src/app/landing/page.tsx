@@ -347,7 +347,7 @@ function CardFlowGraphic({ className = '' }: { className?: string }) {
 
 // ==================== Hero ====================
 function Hero() {
-  const rollingTexts = ['월세를', '거래대금을', '계약금을', '인건비를', '자재비를', '장비대여료를'];
+  const rollingTexts = ['월세를', '거래대금을', '계약금을'];
   const [rollingIndex, setRollingIndex] = useState(0);
 
   useEffect(() => {
@@ -373,7 +373,7 @@ function Hero() {
               <span>사업자 전용 서비스</span>
             </div>
 
-            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-6">
+            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-2">
               <AnimatePresence mode="wait">
                 <motion.span
                   key={rollingTexts[rollingIndex]}
@@ -388,6 +388,9 @@ function Hero() {
               </AnimatePresence>
               <br />카드로 결제하다.
             </h1>
+            <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-6">
+              PLIC
+            </p>
           </motion.div>
 
           <motion.div
@@ -452,7 +455,7 @@ function Hero() {
             <span>사업자 전용 서비스</span>
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-4">
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-2">
             <AnimatePresence mode="wait">
               <motion.span
                 key={rollingTexts[rollingIndex]}
@@ -467,6 +470,9 @@ function Hero() {
             </AnimatePresence>
             <br />카드로 결제하다.
           </h1>
+          <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-4">
+            PLIC
+          </p>
           <p className="text-base text-gray-600 mb-3 leading-relaxed">
             월세, 거래대금 등 현금 거래 사업비<br />
             카드로 결제하시면 송금됩니다.
