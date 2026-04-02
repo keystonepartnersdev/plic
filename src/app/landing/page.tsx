@@ -347,7 +347,7 @@ function CardFlowGraphic({ className = '' }: { className?: string }) {
 
 // ==================== Hero ====================
 function Hero() {
-  const rollingTexts = ['월세를', '거래대금을', '계약금을', '인건비를', '자재비를'];
+  const rollingTexts = ['월세를', '거래대금을', '계약금을', '인건비를', '자재비를', '장비대여료를'];
   const [rollingIndex, setRollingIndex] = useState(0);
 
   useEffect(() => {
@@ -373,23 +373,21 @@ function Hero() {
               <span>사업자 전용 서비스</span>
             </div>
 
-            <div className="h-[72px] lg:h-[84px] xl:h-[96px] overflow-hidden mb-2">
+            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-6">
               <AnimatePresence mode="wait">
-                <motion.h1
+                <motion.span
                   key={rollingTexts[rollingIndex]}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight"
+                  className="text-[#2563EB] inline-block"
                 >
-                  <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span> 카드로
-                </motion.h1>
+                  {rollingTexts[rollingIndex]}
+                </motion.span>
               </AnimatePresence>
-            </div>
-            <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-6">
-              PLIC
-            </p>
+              <br />카드로 결제하다.
+            </h1>
           </motion.div>
 
           <motion.div
@@ -398,8 +396,8 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.4 }}
           >
             <p className="text-lg lg:text-xl text-gray-600 mb-4 leading-relaxed">
-              거래대금, 사업장 월세, 인건비, 자재비 등<br />
-              현금 지출이 필요한 모든 사업 비용을 카드로.
+              월세, 거래대금 등 현금 거래 사업비<br />
+              카드로 결제하시면 송금됩니다.
             </p>
             <div className="flex flex-wrap gap-2 mb-20">
               {['거래대금', '사업장월세', '인건비', '자재비', '장비 대여료'].map((tag) => (
@@ -454,26 +452,24 @@ function Hero() {
             <span>사업자 전용 서비스</span>
           </div>
 
-          <div className="h-[48px] overflow-hidden mb-2">
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-4">
             <AnimatePresence mode="wait">
-              <motion.h1
+              <motion.span
                 key={rollingTexts[rollingIndex]}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="text-4xl font-bold text-gray-900 leading-tight"
+                className="text-[#2563EB] inline-block"
               >
-                <span className="text-[#2563EB]">{rollingTexts[rollingIndex]}</span>을 카드로
-              </motion.h1>
+                {rollingTexts[rollingIndex]}
+              </motion.span>
             </AnimatePresence>
-          </div>
-          <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-4">
-            PLIC
-          </p>
+            <br />카드로 결제하다.
+          </h1>
           <p className="text-base text-gray-600 mb-3 leading-relaxed">
-            거래대금, 월세, 인건비 등<br />
-            사업 비용을 카드로 결제하세요.
+            월세, 거래대금 등 현금 거래 사업비<br />
+            카드로 결제하시면 송금됩니다.
           </p>
           <div className="flex flex-wrap justify-center gap-1.5 mb-16">
             {['거래대금', '사업장월세', '인건비', '자재비'].map((tag) => (
