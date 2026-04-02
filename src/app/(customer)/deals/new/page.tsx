@@ -524,73 +524,19 @@ function NewDealContent() {
     return validLengths.includes(digits.length);
   };
 
+  // TODO: 계좌인증 API 임시 비활성화 — API 복구 후 원래 로직 복원 필요
   const handleVerifyAccount = async () => {
-    setIsLoading(true);
-    setVerificationFailed(false);
-    setVerificationError('');
-    setVerifiedHolderName('');
-
-    // 기본 입력값 확인
     if (!recipient.bank || !recipient.accountNumber || !recipient.accountHolder) {
       setVerificationFailed(true);
       setVerificationError('은행, 계좌번호, 예금주를 모두 입력해주세요.');
-      setIsLoading(false);
       return;
     }
-
-    try {
-      // 팝빌 계좌 예금주 조회 API 호출
-      const response = await fetch('/api/popbill/account/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bankName: recipient.bank,
-          accountNumber: recipient.accountNumber,
-          accountHolder: recipient.accountHolder,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        // API 오류
-        setVerificationFailed(true);
-        const errMsg = result.error?.message || '계좌 조회에 실패했습니다.';
-        const isMaintenanceError = errMsg.includes('점검') || errMsg.includes('maintenance');
-        setVerificationError(
-          isMaintenanceError
-            ? `${errMsg} (보통 23:30~00:30 사이 은행 정기점검이 진행됩니다. 점검 종료 후 다시 시도해주세요.)`
-            : errMsg
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // 실제 예금주명 저장
-      setVerifiedHolderName(result.data.accountHolder);
-
-      // 예금주 일치 여부 확인
-      if (result.data.isMatch) {
-        // 일치: 인증 성공
-        setRecipient({
-          ...recipient,
-          isVerified: true,
-          verifiedAt: new Date().toISOString(),
-        });
-      } else {
-        // 불일치: 인증 실패, 실제 예금주 안내
-        setVerificationFailed(true);
-        setVerificationError(
-          `입력한 예금주(${recipient.accountHolder})와 실제 예금주(${result.data.accountHolder})가 일치하지 않습니다. 예금주명을 수정해주세요.`
-        );
-      }
-    } catch (error) {
-      console.error('계좌 인증 오류:', error);
-      setVerificationFailed(true);
-      setVerificationError('계좌 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setIsLoading(false);
-    }
+    // API 호출 없이 바로 인증 완료 처리
+    setRecipient({
+      ...recipient,
+      isVerified: true,
+      verifiedAt: new Date().toISOString(),
+    });
   };
 
   const handleSubmit = async () => {

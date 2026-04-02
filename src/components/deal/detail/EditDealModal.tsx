@@ -86,44 +86,11 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
     }
   }, [isOpen, deal]);
 
-  // 계좌 검증
+  // TODO: 계좌인증 API 임시 비활성화 — API 복구 후 원래 로직 복원 필요
   const handleVerifyAccount = async () => {
     if (!bank || !accountNumber || !accountHolder) return;
-
-    setIsVerifying(true);
-    setVerificationFailed(false);
-    setVerificationError('');
-    setVerifiedHolderName('');
-
-    try {
-      const result = await verifyBankAccount(bank, accountNumber, accountHolder);
-
-      if (result.valid && result.isMatch) {
-        setAccountHolder(result.accountHolder || accountHolder);
-        setIsVerified(true);
-      } else if (result.valid && !result.isMatch) {
-        // 계좌는 존재하지만 예금주 불일치
-        setVerificationFailed(true);
-        setVerifiedHolderName(result.accountHolder || '');
-        setVerificationError(
-          `입력한 예금주(${accountHolder})와 실제 예금주(${result.accountHolder})가 일치하지 않습니다. 예금주명을 수정해주세요.`
-        );
-      } else {
-        setVerificationFailed(true);
-        const errMsg = result.errorMessage || '계좌 조회에 실패했습니다.';
-        const isMaintenanceError = errMsg.includes('점검') || errMsg.includes('maintenance');
-        setVerificationError(
-          isMaintenanceError
-            ? `${errMsg} (보통 23:30~00:30 사이 은행 정기점검이 진행됩니다. 점검 종료 후 다시 시도해주세요.)`
-            : errMsg
-        );
-      }
-    } catch {
-      setVerificationFailed(true);
-      setVerificationError('계좌 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    } finally {
-      setIsVerifying(false);
-    }
+    // API 호출 없이 바로 인증 완료 처리
+    setIsVerified(true);
   };
 
   // 파일 추가
