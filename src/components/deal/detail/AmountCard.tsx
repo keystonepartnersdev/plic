@@ -23,7 +23,7 @@ export function AmountCard({
   calculatedFinalAmount,
 }: AmountCardProps) {
   const feeBase = Math.floor(deal.amount * deal.feeRate / 100);
-  const vatAmt = deal.feeAmount - feeBase;
+  const vatAmt = Math.floor(feeBase * 0.1);
 
   return (
     <div className="bg-white px-5 py-4 mb-2">
