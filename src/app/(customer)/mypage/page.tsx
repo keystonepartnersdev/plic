@@ -8,6 +8,7 @@ import {
   User,
   CreditCard,
   Building2,
+  Ticket,
   Bell,
   HelpCircle,
   FileText,
@@ -155,6 +156,7 @@ export default function MyPage() {
         // 빌링키 API 미지원으로 결제카드 관리 임시 숨김
         // { href: '/mypage/cards', icon: CreditCard, label: '결제카드 관리', badge: registeredCards.length > 0 ? `${registeredCards.length}개` : undefined },
         { href: '/mypage/accounts', icon: Building2, label: '거래 계좌내역' },
+        { href: '/mypage/coupons', icon: Ticket, label: '쿠폰' },
       ],
     },
     {
