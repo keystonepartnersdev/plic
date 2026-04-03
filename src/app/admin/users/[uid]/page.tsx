@@ -104,7 +104,7 @@ export default function AdminUserDetailPage() {
   const [editData, setEditData] = useState({
     grade: 'basic' as TUserGrade,
     status: 'active' as TUserStatus,
-    feeRate: 4.5,
+    feeRate: 3.3,
     monthlyLimit: 20000000,
     perTransactionLimit: 2000000,
   });
@@ -146,7 +146,7 @@ export default function AdminUserDetailPage() {
       setEditData({
         grade: userResponse.user.grade || 'basic',
         status: userResponse.user.status || 'active',
-        feeRate: userResponse.user.feeRate ?? 4.5,
+        feeRate: userResponse.user.feeRate ?? 3.3,
         monthlyLimit: userResponse.user.monthlyLimit ?? 20000000,
         perTransactionLimit: userResponse.user.perTransactionLimit ?? 2000000,
       });
@@ -265,7 +265,7 @@ export default function AdminUserDetailPage() {
     setEditData({
       grade: user.grade,
       status: user.status,
-      feeRate: user.feeRate ?? 4.5,
+      feeRate: user.feeRate ?? 3.3,
       monthlyLimit: user.monthlyLimit ?? 20000000,
       perTransactionLimit: user.perTransactionLimit ?? 2000000,
     });

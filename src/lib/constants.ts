@@ -94,7 +94,7 @@ export const USER_STATUS_LABELS: Record<TUserStatus, string> = {
  * - 등급 제도 폐지, 모든 회원 동일 조건
  */
 export const PLIC_SETTINGS = {
-  FEE_RATE: 4.5,              // 수수료율 4.5%
+  FEE_RATE: 3.3,              // 수수료율 3.3% (부가세 별도)
   MONTHLY_LIMIT: 20000000,    // 월 한도 2천만원
   PER_TRANSACTION_LIMIT: 2000000, // 1회 결제 한도 200만원
 } as const;

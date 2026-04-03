@@ -73,6 +73,7 @@ export interface IDeal {
   feeRate: number;
   feeAmount: number;
   totalAmount: number;
+  feeSource?: string;  // 수수료 적용 근거 (default/deal_type/user_custom/coupon)
 
   // 할인 정보
   discountCode?: string;

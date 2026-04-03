@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { TUserGrade } from '@/types';
+import { TUserGrade, TDealType } from '@/types';
 import { getErrorMessage } from '@/lib/utils';
 
 const API_BASE_URL = '/api';
@@ -21,9 +21,18 @@ export interface IGradeCriteria {
   basicThreshold: number;
 }
 
+// 거래 유형별 수수료 설정
+export interface IFeeSettings {
+  defaultFeeRate: number;                          // 기본 수수료 (%)
+  dealTypeFeeRates: Partial<Record<TDealType, number>>;  // 거래 유형별 수수료 (%)
+}
+
 export interface ISystemSettings {
   // 등급별 수수료/한도 설정
   gradeSettings: Record<TUserGrade, IGradeSettings>;
+
+  // 수수료 설정
+  feeSettings: IFeeSettings;
 
   // 자동 등급 기준 (베이직 ↔ 플래티넘)
   gradeCriteria: IGradeCriteria;
@@ -47,10 +56,16 @@ export interface ISystemSettings {
 
 export const defaultSettings: ISystemSettings = {
   gradeSettings: {
-    basic: { feeRate: 4.5, monthlyLimit: 20000000 },
-    platinum: { feeRate: 3.5, monthlyLimit: 30000000 },
-    b2b: { feeRate: 3.0, monthlyLimit: 100000000 },
+    basic: { feeRate: 3.3, monthlyLimit: 20000000 },
+    platinum: { feeRate: 3.0, monthlyLimit: 30000000 },
+    b2b: { feeRate: 2.5, monthlyLimit: 100000000 },
     employee: { feeRate: 1.0, monthlyLimit: 100000000 },
+  },
+  feeSettings: {
+    defaultFeeRate: 3.3,
+    dealTypeFeeRates: {
+      monthly_rent: 2.9,
+    },
   },
   gradeCriteria: {
     platinumThreshold: 10000000,  // 전월 1천만원 이상 → 플래티넘

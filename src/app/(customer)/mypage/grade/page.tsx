@@ -34,7 +34,7 @@ export default function GradePage() {
   }
 
   // DB값을 Single Source of Truth로 사용 (fallback: 4.5%, 2000만원)
-  const feeRate = currentUser?.feeRate || 4.5;
+  const feeRate = currentUser?.feeRate || 3.3;
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
 
   return (

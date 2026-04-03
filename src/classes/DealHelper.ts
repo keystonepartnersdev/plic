@@ -1,6 +1,8 @@
 // src/classes/DealHelper.ts
 
 import { IDeal, TDealType, TDealStatus } from '@/types/deal';
+import { IFeeSettings } from '@/stores/useSettingsStore';
+import { IUser } from '@/types/user';
 
 interface IDealTypeConfig {
   name: string;
@@ -145,6 +147,38 @@ export class DealHelper {
     const totalAmount = amount + feeAmount;
     const finalAmount = totalAmount - discountAmount;
     return { feeAmount, totalAmount, finalAmount };
+  }
+
+  /**
+   * 수수료율 결정 (우선순위: 거래유형별 < 회원개별 < 기본 → 최저 적용)
+   * 쿠폰(feeOverride)은 별도 레이어로 사용자 수동 적용
+   */
+  static determineFeeRate(
+    user: Pick<IUser, 'feeRate'>,
+    dealType: TDealType,
+    feeSettings?: IFeeSettings
+  ): { feeRate: number; feeSource: string } {
+    const defaultRate = feeSettings?.defaultFeeRate ?? 3.3;
+
+    // 후보 수집
+    const candidates: { rate: number; source: string }[] = [
+      { rate: defaultRate, source: 'default' },
+    ];
+
+    // 거래 유형별 수수료
+    const dealTypeRate = feeSettings?.dealTypeFeeRates?.[dealType];
+    if (dealTypeRate !== undefined) {
+      candidates.push({ rate: dealTypeRate, source: 'deal_type' });
+    }
+
+    // 회원 개별 수수료 (어드민이 설정한 경우)
+    if (user.feeRate !== undefined && user.feeRate !== defaultRate) {
+      candidates.push({ rate: user.feeRate, source: 'user_custom' });
+    }
+
+    // 고객 유리 원칙: 최저 수수료 적용
+    const best = candidates.reduce((a, b) => a.rate <= b.rate ? a : b);
+    return { feeRate: best.rate, feeSource: best.source };
   }
 
   // 히스토리 추가

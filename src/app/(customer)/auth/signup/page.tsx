@@ -600,7 +600,7 @@ function SignupContent() {
                 verifiedAt: rawUser.verifiedAt,
                 status: rawUser.status || 'active',
                 grade: rawUser.grade || 'basic',
-                feeRate: rawUser.feeRate ?? 4.5,
+                feeRate: rawUser.feeRate ?? 3.3,
                 isGradeManual: rawUser.isGradeManual ?? false,
                 monthlyLimit: rawUser.monthlyLimit ?? 20000000,
                 perTransactionLimit: rawUser.perTransactionLimit ?? 2000000,
@@ -1005,61 +1005,17 @@ function SignupContent() {
             {/* 사업자등록번호 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={businessNumber}
-                  onChange={(e) => handleBusinessNumberChange(e.target.value)}
-                  placeholder="000-00-00000"
-                  maxLength={12}
-                  className={cn(
-                    "flex-1 h-14 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-                    businessVerified && (businessState === '01' || businessState === '1')
-                      ? "border-green-300 bg-green-50"
-                      : businessVerified && businessState !== '01'
-                      ? "border-red-300 bg-red-50"
-                      : "border-gray-200"
-                  )}
-                />
-                <button
-                  type="button"
-                  onClick={handleVerifyBusiness}
-                  disabled={!isValidBusinessNumber(businessNumber) || businessVerifying || (businessVerified && (businessState === '01' || businessState === '1'))}
-                  className={cn(
-                    "h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap",
-                    businessVerified && (businessState === '01' || businessState === '1')
-                      ? "bg-green-100 text-green-700 cursor-default"
-                      : "bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
-                  )}
-                >
-                  {businessVerifying ? '확인 중...' : businessVerified && (businessState === '01' || businessState === '1') ? '확인완료' : '사업자 확인'}
-                </button>
-              </div>
+              {/* TODO: 사업자 인증 API 임시 비활성화 — 버튼 숨김, API 복구 후 복원 필요 */}
+              <input
+                type="text"
+                value={businessNumber}
+                onChange={(e) => handleBusinessNumberChange(e.target.value)}
+                placeholder="000-00-00000"
+                maxLength={12}
+                className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+              />
               {businessNumber && !isValidBusinessNumber(businessNumber) && (
                 <p className="text-sm text-red-500 mt-1">사업자등록번호 10자리를 입력해주세요.</p>
-              )}
-              {/* 사업자 상태 표시 */}
-              {businessVerified && (
-                <div className={cn(
-                  "mt-2 p-3 rounded-lg flex items-center gap-2",
-                  (businessState === '01' || businessState === '1') ? "bg-green-50" : "bg-red-50"
-                )}>
-                  {(businessState === '01' || businessState === '1') ? (
-                    <>
-                      <Check className="w-4 h-4 text-green-600" />
-                      <span className="text-sm text-green-700 font-medium">
-                        사업자 상태: {businessStateName}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="w-4 h-4 text-red-600" />
-                      <span className="text-sm text-red-700 font-medium">
-                        사업자 상태: {businessStateName} - 가입 불가
-                      </span>
-                    </>
-                  )}
-                </div>
               )}
             </div>
 

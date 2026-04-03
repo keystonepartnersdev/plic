@@ -109,7 +109,7 @@ export default function MyPage() {
 
   // 실제 거래 데이터에서 계산 (DB 값은 취소 건 미반영 가능성)
   const monthlyLimit = currentUser?.monthlyLimit || 20000000;
-  const feeRate = currentUser?.feeRate || 4.5;
+  const feeRate = currentUser?.feeRate || 3.3;
   const usedAmount = computedUsedAmount;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const usageRate = Math.round((usedAmount / monthlyLimit) * 100);

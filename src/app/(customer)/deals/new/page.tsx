@@ -6,7 +6,7 @@ import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Downl
 import { Header, Modal, ModalPortal } from '@/components/common';
 import { dealsAPI } from '@/lib/api';
 import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
-import { useUserStore, useDealStore, useDealDraftStore } from '@/stores';
+import { useUserStore, useDealStore, useDealDraftStore, useSettingsStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
 import { cn, getErrorMessage, formatEstimatedTransferDate } from '@/lib/utils';
@@ -52,7 +52,7 @@ function NewDealContent() {
   const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
   const { addDeal, deals } = useDealStore();
   const { currentDraft, startNewDraft, updateDraft, setCurrentStep, submitDraft, loadDraft, clearCurrentDraft } = useDealDraftStore();
-  // useAdminUserStore 제거 - currentUser에서 직접 한도 정보 사용
+  const { settings } = useSettingsStore();
 
   const [step, setStep] = useState<Step>('type');
   const [isLoading, setIsLoading] = useState(false);
@@ -338,9 +338,12 @@ function NewDealContent() {
   }
 
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
+  const { feeRate: determinedFeeRate, feeSource } = currentUser && dealType
+    ? DealHelper.determineFeeRate(currentUser, dealType, settings?.feeSettings)
+    : { feeRate: currentUser?.feeRate || 3.3, feeSource: 'default' };
   const { feeAmount, totalAmount, finalAmount } = DealHelper.calculateTotal(
     numericAmount,
-    currentUser?.feeRate || 0,
+    determinedFeeRate,
     0
   );
 
@@ -567,6 +570,8 @@ function NewDealContent() {
         dealName: `${selectedTypeConfig?.name} - ${recipient.accountHolder}`,
         dealType,
         amount: numericAmount,
+        feeRate: determinedFeeRate,
+        feeSource,
         recipient: {
           bank: recipient.bank,
           accountNumber: recipient.accountNumber,
@@ -604,7 +609,7 @@ function NewDealContent() {
         history: response.deal.history || [],
         isPaid: false, // 항상 미결제 상태
         isTransferred: false,
-        feeRate: response.deal.feeRate ?? (currentUser?.feeRate || 0),
+        feeRate: response.deal.feeRate ?? determinedFeeRate,
         feeAmount: response.deal.feeAmount ?? feeAmount,
         totalAmount: response.deal.totalAmount ?? totalAmount,
         finalAmount: response.deal.finalAmount ?? finalAmount,
@@ -739,7 +744,7 @@ function NewDealContent() {
               {numericAmount > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span>수수료 ({Math.round((currentUser?.feeRate || 0) * 1.1 * 10) / 10}%, 부가세 포함)</span>
+                    <span>수수료 ({Math.round(determinedFeeRate * 1.1 * 10) / 10}%, 부가세 포함)</span>
                     <span>{feeAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-900">
@@ -1324,7 +1329,7 @@ function NewDealContent() {
                     <span className="font-medium">{numericAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">수수료 ({Math.round((currentUser?.feeRate || 0) * 1.1 * 10) / 10}%, 부가세 포함)</span>
+                    <span className="text-gray-600">수수료 ({Math.round(determinedFeeRate * 1.1 * 10) / 10}%, 부가세 포함)</span>
                     <span className="font-medium">{feeAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">

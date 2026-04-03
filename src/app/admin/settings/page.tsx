@@ -46,10 +46,10 @@ const GRADE_LABELS: Record<TUserGrade, string> = {
   employee: '임직원',
 };
 
-type TabType = 'grade' | 'operation' | 'notification' | 'security';
+type TabType = 'fee' | 'grade' | 'operation' | 'notification' | 'security';
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('grade');
+  const [activeTab, setActiveTab] = useState<TabType>('fee');
   const { settings, updateSettings, updateGradeSettings, updateGradeCriteria, resetSettings } = useSettingsStore();
   const { users, updateUser } = useAdminUserStore();
 
@@ -200,6 +200,7 @@ export default function AdminSettingsPage() {
   };
 
   const tabs = [
+    { id: 'fee', label: '수수료 설정', icon: Percent },
     { id: 'grade', label: '등급 설정', icon: TrendingUp },
     { id: 'operation', label: '운영 설정', icon: Clock },
     { id: 'notification', label: '알림 설정', icon: Bell },
@@ -279,6 +280,9 @@ export default function AdminSettingsPage() {
 
       {/* 설정 내용 */}
       <div className="bg-white rounded-xl shadow-sm p-6">
+        {activeTab === 'fee' && (
+          <FeeSettings localSettings={localSettings} setLocalSettings={setLocalSettings} />
+        )}
         {activeTab === 'grade' && (
           <GradeSettings localSettings={localSettings} setLocalSettings={setLocalSettings} />
         )}
@@ -307,6 +311,123 @@ export default function AdminSettingsPage() {
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// 거래 유형 라벨
+const DEAL_TYPE_LABELS: Record<string, string> = {
+  product_purchase: '물품매입',
+  labor_cost: '인건비',
+  service_fee: '용역대금',
+  construction: '공사대금',
+  rent: '임대료',
+  monthly_rent: '월세',
+  maintenance: '관리비',
+  deposit: '보증금',
+  advertising: '광고비',
+  shipping: '운송비',
+  rental: '렌트/렌탈',
+  etc: '기타',
+};
+
+// 수수료 설정
+function FeeSettings({
+  localSettings,
+  setLocalSettings,
+}: {
+  localSettings: typeof defaultSettings;
+  setLocalSettings: (s: typeof defaultSettings) => void;
+}) {
+  const feeSettings = localSettings.feeSettings || defaultSettings.feeSettings;
+
+  const handleDefaultFeeChange = (value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    setLocalSettings({
+      ...localSettings,
+      feeSettings: { ...feeSettings, defaultFeeRate: num },
+    });
+  };
+
+  const handleDealTypeFeeChange = (dealType: string, value: string) => {
+    const num = value === '' ? undefined : parseFloat(value);
+    const updated = { ...feeSettings.dealTypeFeeRates };
+    if (num === undefined || isNaN(num)) {
+      delete updated[dealType as keyof typeof updated];
+    } else {
+      (updated as Record<string, number>)[dealType] = num;
+    }
+    setLocalSettings({
+      ...localSettings,
+      feeSettings: { ...feeSettings, dealTypeFeeRates: updated },
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">수수료 설정</h3>
+        <p className="text-sm text-gray-500 mb-4">기본 수수료 및 거래 유형별 수수료를 설정합니다. (부가세 별도)</p>
+      </div>
+
+      {/* 기본 수수료 */}
+      <div className="p-4 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-gray-900">기본 수수료</p>
+            <p className="text-sm text-gray-500">신규 가입자 및 별도 설정 없는 거래에 적용</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              value={feeSettings.defaultFeeRate}
+              onChange={(e) => handleDefaultFeeChange(e.target.value)}
+              className="w-24 h-10 px-3 text-right border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 font-bold text-lg"
+            />
+            <span className="text-gray-500 font-medium">%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 거래 유형별 수수료 */}
+      <div>
+        <h4 className="font-medium text-gray-900 mb-3">거래 유형별 수수료</h4>
+        <p className="text-sm text-gray-500 mb-3">설정하지 않으면 기본 수수료가 적용됩니다. 고객 유리 원칙: 회원 개별 수수료와 유형별 수수료 중 낮은 것이 적용됩니다.</p>
+        <div className="space-y-2">
+          {Object.entries(DEAL_TYPE_LABELS).map(([type, label]) => {
+            const currentRate = feeSettings.dealTypeFeeRates?.[type as keyof typeof feeSettings.dealTypeFeeRates];
+            return (
+              <div key={type} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-700">{label}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={currentRate ?? ''}
+                    placeholder={String(feeSettings.defaultFeeRate)}
+                    onChange={(e) => handleDealTypeFeeChange(type, e.target.value)}
+                    className="w-20 h-9 px-2 text-right border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  />
+                  <span className="text-sm text-gray-400">%</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 안내 */}
+      <div className="p-3 bg-blue-50 rounded-lg">
+        <p className="text-sm text-blue-700">
+          수수료 적용 우선순위: 쿠폰 &gt; 거래유형별 &gt; 회원개별 &gt; 기본 수수료 (최저 적용)
+        </p>
       </div>
     </div>
   );
