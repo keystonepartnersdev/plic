@@ -386,13 +386,12 @@ function SignupContent() {
     }
   };
 
+  // TODO: 사업자 인증 API 임시 비활성화 — API 복구 후 businessVerified 조건 복원 필요
   const canProceedBusinessInfo =
     businessName.length >= 2 &&
     isValidBusinessNumber(businessNumber) &&
     representativeName.length >= 2 &&
-    (businessLicenseKey || businessLicenseFile) &&
-    businessVerified &&
-    ((businessState === '01' || businessState === '1') || businessState === '1'); // 사업중인 경우만 가입 가능
+    (businessLicenseKey || businessLicenseFile);
 
   // 사업자등록증 파일 선택
   const handleLicenseFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -46,71 +46,20 @@ export function BusinessInfoStep({
       {/* 사업자등록번호 */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={businessInfo.businessNumber}
-            onChange={(e) => handleBusinessNumberChange(e.target.value)}
-            placeholder="000-00-00000"
-            maxLength={12}
-            className={cn(
-              "flex-1 h-14 px-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
-              verification.isVerified && isBusinessActive(verification.state)
-                ? "border-green-300 bg-green-50"
-                : verification.isVerified && !isBusinessActive(verification.state)
-                ? "border-red-300 bg-red-50"
-                : "border-gray-200"
-            )}
-          />
-          <button
-            type="button"
-            onClick={onVerifyBusiness}
-            disabled={
-              !isValidBusinessNumber(businessInfo.businessNumber) ||
-              verification.isVerifying ||
-              (verification.isVerified && isBusinessActive(verification.state))
-            }
-            className={cn(
-              "h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap",
-              verification.isVerified && isBusinessActive(verification.state)
-                ? "bg-green-100 text-green-700 cursor-default"
-                : "bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
-            )}
-          >
-            {verification.isVerifying
-              ? '확인 중...'
-              : verification.isVerified && isBusinessActive(verification.state)
-              ? '확인완료'
-              : '사업자 확인'}
-          </button>
-        </div>
+        {/* TODO: 사업자 인증 API 임시 비활성화 — 확인 버튼 숨김, API 복구 후 복원 필요 */}
+        <input
+          type="text"
+          value={businessInfo.businessNumber}
+          onChange={(e) => handleBusinessNumberChange(e.target.value)}
+          placeholder="000-00-00000"
+          maxLength={12}
+          className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+        />
         {businessInfo.businessNumber && !isValidBusinessNumber(businessInfo.businessNumber) && (
           <p className="text-sm text-red-500 mt-1">사업자등록번호 10자리를 입력해주세요.</p>
         )}
 
-        {/* 사업자 상태 표시 */}
-        {verification.isVerified && (
-          <div className={cn(
-            "mt-2 p-3 rounded-lg flex items-center gap-2",
-            isBusinessActive(verification.state) ? "bg-green-50" : "bg-red-50"
-          )}>
-            {isBusinessActive(verification.state) ? (
-              <>
-                <Check className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-700 font-medium">
-                  사업자 상태: {verification.stateName}
-                </span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-4 h-4 text-red-600" />
-                <span className="text-sm text-red-700 font-medium">
-                  사업자 상태: {verification.stateName} - 가입 불가
-                </span>
-              </>
-            )}
-          </div>
-        )}
+        {/* TODO: 사업자 인증 API 임시 비활성화 — 상태 표시 숨김 */}
       </div>
 
       {/* 대표자명 */}
