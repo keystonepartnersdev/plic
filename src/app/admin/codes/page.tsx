@@ -530,9 +530,15 @@ function DiscountModal({
     startDate: discount?.startDate || new Date().toISOString().split('T')[0],
     expiry: discount?.expiry || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     canStack: discount?.canStack || false,
-    isReusable: discount?.isReusable || false,
+    isReusable: discount?.isReusable ?? false,
     description: discount?.description || '',
-    // 등급 및 사용자 설정 - 기본값: 빈 배열 (아무 등급도 선택되지 않음)
+    usageType: discount?.usageType || 'single',
+    maxUsagePerUser: discount?.maxUsagePerUser || 1,
+    issueMethod: discount?.issueMethod || 'manual',
+    autoIssueStartDate: discount?.autoIssueStartDate || new Date().toISOString().split('T')[0],
+    autoIssueEndDate: discount?.autoIssueEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    usageExpiryDays: discount?.usageExpiryDays || 0,
+    applicableDealTypes: discount?.applicableDealTypes || [],
     allowedGrades: discount?.allowedGrades || [],
     targetGrades: discount?.targetGrades || [],
     targetUserIds: discount?.targetUserIds || [],
@@ -707,45 +713,56 @@ function DiscountModal({
           {/* 할인 유형 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">할인 유형</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, discountType: 'amount' })}
-                className={cn(
-                  'flex-1 h-10 px-4 rounded-lg border font-medium transition-colors',
-                  formData.discountType === 'amount'
-                    ? 'bg-primary-400 text-white border-primary-400'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
-                )}
-              >
-                금액 할인
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, discountType: 'feePercent' })}
-                className={cn(
-                  'flex-1 h-10 px-4 rounded-lg border font-medium transition-colors',
-                  formData.discountType === 'feePercent'
-                    ? 'bg-primary-400 text-white border-primary-400'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
-                )}
-              >
-                수수료 % 할인
-              </button>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: 'amount', label: '금액 할인' },
+                { value: 'feePercent', label: '수수료 % 할인' },
+                { value: 'feeOverride', label: '수수료율 대체' },
+                { value: 'feeDiscount', label: '수수료율 차감' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, discountType: opt.value })}
+                  className={cn(
+                    'h-10 px-3 rounded-lg border font-medium text-sm transition-colors',
+                    formData.discountType === opt.value
+                      ? 'bg-primary-400 text-white border-primary-400'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {formData.discountType === 'feeOverride' && '수수료율 자체를 지정한 값으로 대체합니다. (예: 1.8% → 수수료율 1.8%)'}
+              {formData.discountType === 'feeDiscount' && '수수료율에서 지정한 값을 차감합니다. 최소 1%까지만 차감 가능합니다.'}
+              {formData.discountType === 'amount' && '수수료 금액에서 고정 금액을 차감합니다.'}
+              {formData.discountType === 'feePercent' && '수수료 금액의 지정 비율만큼 차감합니다.'}
+            </p>
           </div>
 
           {/* 할인 값 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {formData.discountType === 'amount' ? '할인 금액' : '할인율'} <span className="text-red-500">*</span>
+              {formData.discountType === 'amount' ? '할인 금액'
+                : formData.discountType === 'feeOverride' ? '대체 수수료율'
+                : formData.discountType === 'feeDiscount' ? '차감 수수료율'
+                : '할인율'} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type="number"
+                step={formData.discountType === 'amount' ? '1' : '0.1'}
                 value={formData.discountValue || ''}
-                onChange={(e) => setFormData({ ...formData, discountValue: parseInt(e.target.value) || 0 })}
-                placeholder={formData.discountType === 'amount' ? '5000' : '30'}
+                onChange={(e) => setFormData({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
+                placeholder={
+                  formData.discountType === 'amount' ? '5000'
+                    : formData.discountType === 'feeOverride' ? '1.8'
+                    : formData.discountType === 'feeDiscount' ? '1.0'
+                    : '30'
+                }
                 className={cn(
                   'w-full h-10 px-4 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400',
                   errors.discountValue ? 'border-red-300' : 'border-gray-200'
@@ -844,6 +861,115 @@ function DiscountModal({
               {errors.allowedGrades && <p className="text-xs text-red-500 mt-1">{errors.allowedGrades}</p>}
               <p className="text-xs text-gray-500 mt-1">선택한 등급의 사용자만 이 코드를 사용할 수 있습니다.</p>
             </div>
+          )}
+
+          {/* 쿠폰: 사용 횟수/지급 방식/기한 설정 */}
+          {type === 'coupon' && (
+            <>
+              {/* 사용 횟수 유형 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용 횟수</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'single', label: '1회용' },
+                    { value: 'period', label: '기간 무제한' },
+                    { value: 'limited', label: 'N회 제한' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, usageType: opt.value })}
+                      className={cn(
+                        'flex-1 h-10 px-3 rounded-lg border text-sm font-medium transition-colors',
+                        formData.usageType === opt.value
+                          ? 'bg-primary-400 text-white border-primary-400'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {formData.usageType === 'limited' && (
+                  <div className="mt-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.maxUsagePerUser || 1}
+                      onChange={(e) => setFormData({ ...formData, maxUsagePerUser: parseInt(e.target.value) || 1 })}
+                      className="w-32 h-9 px-3 border border-gray-200 rounded-lg text-sm"
+                      placeholder="최대 사용 횟수"
+                    />
+                    <span className="text-sm text-gray-500 ml-2">회</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 사용 기한 (지급일 기준) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용 기한 (지급일 기준)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.usageExpiryDays || 0}
+                    onChange={(e) => setFormData({ ...formData, usageExpiryDays: parseInt(e.target.value) || 0 })}
+                    className="w-24 h-10 px-3 border border-gray-200 rounded-lg text-sm"
+                  />
+                  <span className="text-sm text-gray-500">일 (0 = 쿠폰 종료일 기준)</span>
+                </div>
+              </div>
+
+              {/* 지급 방식 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">지급 방식</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: 'manual', label: '수동 지급' },
+                    { value: 'grade', label: '등급별 지급' },
+                    { value: 'all', label: '전체 지급' },
+                    { value: 'signup_auto', label: '가입 시 자동' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, issueMethod: opt.value })}
+                      className={cn(
+                        'h-10 px-3 rounded-lg border text-sm font-medium transition-colors',
+                        formData.issueMethod === opt.value
+                          ? 'bg-primary-400 text-white border-primary-400'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 가입 시 자동 지급 기간 */}
+              {formData.issueMethod === 'signup_auto' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">자동 지급 기간</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={formData.autoIssueStartDate || ''}
+                      onChange={(e) => setFormData({ ...formData, autoIssueStartDate: e.target.value })}
+                      className="h-10 px-3 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <span className="text-gray-400">~</span>
+                    <input
+                      type="date"
+                      value={formData.autoIssueEndDate || ''}
+                      onChange={(e) => setFormData({ ...formData, autoIssueEndDate: e.target.value })}
+                      className="h-10 px-3 border border-gray-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">이 기간 내 가입하는 사용자에게 자동으로 쿠폰이 지급됩니다.</p>
+                </div>
+              )}
+            </>
           )}
 
           {/* 쿠폰: 지급 대상 설정 */}

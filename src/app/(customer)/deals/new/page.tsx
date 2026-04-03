@@ -92,6 +92,10 @@ function NewDealContent() {
   }
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [attachmentsRestored, setAttachmentsRestored] = useState(false);
+
+  // 쿠폰
+  const [userCoupons, setUserCoupons] = useState<{ id: string; discountSnapshot: { name: string; discountType: string; discountValue: number; applicableDealTypes?: string[] } }[]>([]);
+  const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<AttachmentFile | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
 
@@ -276,6 +280,23 @@ function NewDealContent() {
       confirm: tracking.transferFunnel.confirm,
     };
     funnelMap[newStep]?.();
+
+    // confirm 스텝 진입 시 보유 쿠폰 조회
+    if (newStep === 'confirm' && currentUser?.uid) {
+      fetch(`/api/users/me/coupons?uid=${currentUser.uid}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // 현재 거래 유형에 적용 가능한 쿠폰만 필터
+            const applicable = (data.data.available || []).filter((c: { discountSnapshot: { applicableDealTypes?: string[] } }) => {
+              const types = c.discountSnapshot.applicableDealTypes || [];
+              return types.length === 0 || (dealType && types.includes(dealType));
+            });
+            setUserCoupons(applicable);
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   // 데이터 변경 시 Draft에 저장 (디바운스)
@@ -585,6 +606,19 @@ function NewDealContent() {
       console.log('[NewDeal] Creating deal with data:', JSON.stringify(dealData, null, 2));
       const response = await dealsAPI.create(dealData);
       console.log('[NewDeal] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
+
+      // 선택된 쿠폰이 있으면 거래에 적용
+      if (selectedCouponId && response.deal?.did) {
+        try {
+          await fetch(`/api/deals/${response.deal.did}/coupon`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userCouponId: selectedCouponId }),
+          });
+        } catch (couponErr) {
+          console.error('[NewDeal] 쿠폰 적용 실패 (거래는 생성됨):', couponErr);
+        }
+      }
 
       // 거래 생성 완료 트래킹 (송금 완료는 어드민 승인 시 기록)
       tracking.transferFunnel.submitted();
@@ -1347,6 +1381,44 @@ function NewDealContent() {
                 </div>
                 <p className="text-xs text-gray-400 mt-1">금일 결제 시 기준 (영업일 기준)</p>
               </div>
+
+              {/* 쿠폰 적용 */}
+              {userCoupons.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm text-gray-500 mb-2">쿠폰 적용</p>
+                  <div className="space-y-2">
+                    {userCoupons.map((coupon) => (
+                      <button
+                        key={coupon.id}
+                        type="button"
+                        onClick={() => setSelectedCouponId(selectedCouponId === coupon.id ? null : coupon.id)}
+                        className={cn(
+                          'w-full p-3 rounded-lg border text-left transition-colors',
+                          selectedCouponId === coupon.id
+                            ? 'border-primary-400 bg-primary-50'
+                            : 'border-gray-200 hover:border-primary-300'
+                        )}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-900">{coupon.discountSnapshot.name}</span>
+                          <span className="text-xs text-primary-500 font-bold">
+                            {coupon.discountSnapshot.discountType === 'feeOverride'
+                              ? `수수료 ${coupon.discountSnapshot.discountValue}%`
+                              : coupon.discountSnapshot.discountType === 'feeDiscount'
+                              ? `수수료 ${coupon.discountSnapshot.discountValue}% 차감`
+                              : coupon.discountSnapshot.discountType === 'amount'
+                              ? `${coupon.discountSnapshot.discountValue.toLocaleString()}원 할인`
+                              : `수수료 ${coupon.discountSnapshot.discountValue}% 할인`}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {selectedCouponId && (
+                    <p className="text-xs text-primary-500 mt-2">쿠폰이 선택되었습니다. 거래 신청 후 자동 적용됩니다.</p>
+                  )}
+                </div>
+              )}
 
               {/* 수취인 정보 */}
               <div className="bg-gray-50 rounded-xl p-4">
