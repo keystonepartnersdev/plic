@@ -22,8 +22,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, code, type, discountType, discountValue, minAmount, startDate, expiry, isActive } = body;
-    if (!name || !code) {
-      return NextResponse.json({ success: false, error: '이름과 코드는 필수입니다.' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ success: false, error: '이름은 필수입니다.' }, { status: 400 });
+    }
+    if (type === 'code' && !code) {
+      return NextResponse.json({ success: false, error: '할인코드를 입력해주세요.' }, { status: 400 });
     }
     const id = `DC${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
