@@ -598,13 +598,19 @@ function DiscountModal({
       newErrors.allowedGrades = '최소 1개 등급을 선택해주세요.';
     }
 
-    // 쿠폰: 등급 또는 사용자 중 하나는 선택 필요
+    // 쿠폰: 지급 방식에 따른 검증
     if (type === 'coupon') {
-      const hasGrades = formData.targetGrades && formData.targetGrades.length > 0;
-      const hasUsers = formData.targetUserIds && formData.targetUserIds.length > 0;
-      if (!hasGrades && !hasUsers) {
-        newErrors.target = '지급 대상 등급 또는 사용자를 선택해주세요.';
+      const method = formData.issueMethod || 'manual';
+      if (method === 'manual') {
+        if (!formData.targetUserIds || formData.targetUserIds.length === 0) {
+          newErrors.target = '지급 대상 사용자를 선택해주세요.';
+        }
+      } else if (method === 'grade') {
+        if (!formData.targetGrades || formData.targetGrades.length === 0) {
+          newErrors.target = '지급 대상 등급을 선택해주세요.';
+        }
       }
+      // all, signup_auto는 별도 대상 선택 불필요
     }
 
     setErrors(newErrors);
