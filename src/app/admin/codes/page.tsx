@@ -36,7 +36,7 @@ const ALL_GRADES: TUserGrade[] = ['basic', 'platinum', 'b2b', 'employee'];
 type TabType = 'code' | 'coupon';
 
 export default function AdminCodesPage() {
-  const { users, searchUsers } = useAdminUserStore();
+  const { users, searchUsers, setUsers } = useAdminUserStore();
 
   // API 데이터 상태
   const [discounts, setDiscounts] = useState<IDiscount[]>([]);
@@ -64,6 +64,15 @@ export default function AdminCodesPage() {
       setLoading(false);
     }
   };
+
+  // 사용자 목록 로드 (쿠폰 개별 지급용)
+  useEffect(() => {
+    if (users.length === 0) {
+      adminAPI.getUsers().then(res => {
+        if (res.users) setUsers(res.users);
+      }).catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchDiscounts();
