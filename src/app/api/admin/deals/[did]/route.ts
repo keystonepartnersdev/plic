@@ -59,8 +59,9 @@ export async function PUT(
     const values: Record<string, unknown> = {};
 
     if (amount !== undefined) {
-      const feeRate = deal.feeRate || 5;
-      const feeAmount = Math.ceil(amount * feeRate / 100);
+      const feeRate = deal.feeRate || 3.3;
+      const feeAmountBase = Math.floor(amount * feeRate / 100);
+      const feeAmount = Math.floor(feeAmountBase * 1.1); // 부가세 10% 포함
       const totalAmount = amount + feeAmount;
       updateExpressions.push('#amount = :amount', '#feeAmount = :feeAmount', '#totalAmount = :totalAmount', '#finalAmount = :finalAmount');
       names['#amount'] = 'amount'; names['#feeAmount'] = 'feeAmount';

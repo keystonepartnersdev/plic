@@ -25,10 +25,14 @@ const response = (statusCode: number, body: Record<string, unknown>) => ({
 // 기본 시스템 설정
 const defaultSettings = {
   gradeSettings: {
-    basic: { feeRate: 4.0, monthlyLimit: 10000000 },
-    platinum: { feeRate: 3.5, monthlyLimit: 30000000 },
-    b2b: { feeRate: 3.0, monthlyLimit: 100000000 },
+    basic: { feeRate: 3.3, monthlyLimit: 20000000 },
+    platinum: { feeRate: 3.0, monthlyLimit: 30000000 },
+    b2b: { feeRate: 2.5, monthlyLimit: 100000000 },
     employee: { feeRate: 1.0, monthlyLimit: 100000000 },
+  },
+  feeSettings: {
+    defaultFeeRate: 3.3,
+    dealTypeFeeRates: { monthly_rent: 2.9 },
   },
   gradeCriteria: {
     platinumThreshold: 10000000,

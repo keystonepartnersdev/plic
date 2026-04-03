@@ -95,7 +95,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // 금액 수정
     if (body.amount !== undefined) {
       const newAmount = body.amount;
-      const feeRate = deal.feeRate || 5;
+      const feeRate = deal.feeRate || 3.3;
       const feeAmountBase = Math.floor(newAmount * feeRate / 100);
       const feeAmount = Math.floor(feeAmountBase * 1.1); // 부가세 10% 포함
       const totalAmount = newAmount + feeAmount;

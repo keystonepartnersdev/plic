@@ -99,25 +99,6 @@ export const PLIC_SETTINGS = {
   PER_TRANSACTION_LIMIT: 2000000, // 1회 결제 한도 200만원
 } as const;
 
-/**
- * @deprecated 등급별 수수료율 - 단일 등급으로 전환됨. PLIC_SETTINGS.FEE_RATE 사용
- */
-export const DEFAULT_FEE_RATES: Record<TUserGrade, number> = {
-  basic: 4.5,
-  platinum: 4.5,
-  b2b: 4.5,
-  employee: 4.5,
-} as const;
-
-/**
- * @deprecated 등급별 월 한도 - 단일 등급으로 전환됨. PLIC_SETTINGS.MONTHLY_LIMIT 사용
- */
-export const DEFAULT_MONTHLY_LIMITS: Record<TUserGrade, number> = {
-  basic: 20000000,      // 2천만원
-  platinum: 20000000,   // 2천만원
-  b2b: 20000000,        // 2천만원
-  employee: 20000000,   // 2천만원
-} as const;
 
 /**
  * @deprecated 등급 제도 폐지됨

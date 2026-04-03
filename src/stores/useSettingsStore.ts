@@ -117,6 +117,11 @@ export const useSettingsStore = create<SettingsStore>()(
               ...(state.settings?.gradeSettings || {}),
               ...(newSettings.gradeSettings || {}),
             },
+            feeSettings: {
+              ...defaultSettings.feeSettings,
+              ...(state.settings?.feeSettings || {}),
+              ...(newSettings.feeSettings || {}),
+            },
           },
         })),
 
@@ -174,6 +179,10 @@ export const useSettingsStore = create<SettingsStore>()(
                 gradeSettings: {
                   ...defaultSettings.gradeSettings,
                   ...(data.data.settings?.gradeSettings || {}),
+                },
+                feeSettings: {
+                  ...defaultSettings.feeSettings,
+                  ...(data.data.settings?.feeSettings || {}),
                 },
               },
               isLoading: false,
