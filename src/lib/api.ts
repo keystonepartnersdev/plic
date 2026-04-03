@@ -2,7 +2,7 @@
 // Phase 2.1: 환경 설정 중앙화 - API_BASE_URL을 config에서 가져옴
 
 import { API_CONFIG } from './config';
-import { IUser, IDeal, IHomeBanner, INotice, IFAQ, IDiscount, IAdmin } from '@/types';
+import { IUser, IDeal, IHomeBanner, INotice, IFAQ, IDiscount, IDiscountCreateInput, IAdmin } from '@/types';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
@@ -936,42 +936,13 @@ export const adminAPI = {
   getDiscount: (discountId: string) =>
     requestWithAdminToken<{ discount: IDiscount }>(`/admin/discounts/${discountId}`),
 
-  createDiscount: (data: {
-    name: string;
-    code?: string;
-    type: 'code' | 'coupon';
-    discountType: 'amount' | 'feePercent';
-    discountValue: number;
-    minAmount?: number;
-    startDate?: string;
-    expiry?: string;
-    canStack?: boolean;
-    isReusable?: boolean;
-    description?: string;
-    allowedGrades?: string[];
-    targetGrades?: string[];
-    targetUserIds?: string[];
-  }) => requestWithAdminToken<{ message: string; discount: IDiscount }>('/admin/discounts', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  createDiscount: (data: IDiscountCreateInput) =>
+    requestWithAdminToken<{ message: string; discount: IDiscount }>('/admin/discounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
-  updateDiscount: (discountId: string, data: Partial<{
-    name: string;
-    code: string;
-    discountType: 'amount' | 'feePercent';
-    discountValue: number;
-    minAmount: number;
-    startDate: string;
-    expiry: string;
-    canStack: boolean;
-    isReusable: boolean;
-    isActive: boolean;
-    description: string;
-    allowedGrades: string[];
-    targetGrades: string[];
-    targetUserIds: string[];
-  }>) => requestWithAdminToken<{ message: string; discount: IDiscount }>(`/admin/discounts/${discountId}`, {
+  updateDiscount: (discountId: string, data: Partial<IDiscountCreateInput & { isActive: boolean }>) => requestWithAdminToken<{ message: string; discount: IDiscount }>(`/admin/discounts/${discountId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),

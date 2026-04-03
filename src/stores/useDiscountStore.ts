@@ -110,6 +110,8 @@ export const useDiscountStore = create(
           isActive: true,
           isUsed: false,
           usageCount: 0,
+          usageType: discount.usageType || 'single',
+          issueMethod: discount.issueMethod || 'manual',
           createdAt: now,
           updatedAt: now,
           allowedGrades: discount.allowedGrades || [],
