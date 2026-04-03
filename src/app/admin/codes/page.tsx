@@ -130,6 +130,32 @@ export default function AdminCodesPage() {
     }
   };
 
+  const handleRevoke = async (discount: IDiscount, revokeAll: boolean) => {
+    const msg = revokeAll
+      ? '이 쿠폰을 전체 회수하시겠습니까? (사용완료 건 제외)'
+      : '선택한 사용자의 쿠폰을 회수하시겠습니까?';
+    if (!confirm(msg)) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/coupons/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discountId: discount.id, revokeAll }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        alert(result.data.message);
+      } else {
+        alert(result.error || '회수 실패');
+      }
+    } catch (err: unknown) {
+      alert(getErrorMessage(err) || '회수 중 오류가 발생했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async (data: IDiscountCreateInput) => {
     setIsSaving(true);
     try {
@@ -309,6 +335,7 @@ export default function AdminCodesPage() {
                     onEdit={() => setEditingDiscount(discount)}
                     onDelete={() => setDeleteTarget(discount)}
                     onToggle={() => handleToggle(discount)}
+                    onRevoke={discount.type === 'coupon' ? () => handleRevoke(discount, true) : undefined}
                   />
                 ))
               ) : (
@@ -363,12 +390,14 @@ function DiscountRow({
   onEdit,
   onDelete,
   onToggle,
+  onRevoke,
 }: {
   discount: IDiscount;
   isSaving: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onRevoke?: () => void;
 }) {
   const isExpired = new Date(discount.expiry) < new Date();
 
@@ -491,6 +520,16 @@ function DiscountRow({
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
+          {onRevoke && (
+            <button
+              onClick={onRevoke}
+              disabled={isSaving}
+              title="전체 회수"
+              className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <UserMinus className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onEdit}
             disabled={isSaving}
