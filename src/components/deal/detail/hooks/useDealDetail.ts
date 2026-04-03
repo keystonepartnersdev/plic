@@ -335,13 +335,16 @@ export function useDealDetail(did: string) {
     }
 
     const couponWithId = coupon as UserCouponAsDiscount;
+    const userCouponId = couponWithId.userCouponId || coupon.id;
+    console.log('[Coupon Apply] Sending:', { dealDid: deal.did, userCouponId, couponName: coupon.name });
     try {
       const res = await fetch(`/api/deals/${deal.did}/coupon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userCouponId: couponWithId.userCouponId || coupon.id }),
+        body: JSON.stringify({ userCouponId }),
       });
       const data = await res.json();
+      console.log('[Coupon Apply] Response:', data);
       if (data.success) {
         // DB 반영 완료 → deal 재조회로 동기화
         const refreshed = await fetchDealDirect(deal.did);
