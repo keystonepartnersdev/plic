@@ -22,7 +22,8 @@ export function AmountCard({
   getDiscountAmount,
   calculatedFinalAmount,
 }: AmountCardProps) {
-  const feeRateWithVat = Math.round(deal.feeRate * 1.1 * 10) / 10;
+  const feeBase = Math.floor(deal.amount * deal.feeRate / 100);
+  const vatAmt = deal.feeAmount - feeBase;
 
   return (
     <div className="bg-white px-5 py-4 mb-2">
@@ -33,8 +34,12 @@ export function AmountCard({
           <span className="font-medium">{deal.amount.toLocaleString()}원</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">수수료 ({feeRateWithVat}%, 부가세 포함)</span>
-          <span className="font-medium">{deal.feeAmount.toLocaleString()}원</span>
+          <span className="text-gray-500">기본수수료 ({deal.feeRate}%)</span>
+          <span className="font-medium">{feeBase.toLocaleString()}원</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">부가세 (10%)</span>
+          <span className="font-medium">{vatAmt.toLocaleString()}원</span>
         </div>
 
         {/* 적용된 할인 상세 표시 */}

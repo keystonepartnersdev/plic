@@ -362,7 +362,7 @@ function NewDealContent() {
   const { feeRate: determinedFeeRate, feeSource } = currentUser && dealType
     ? DealHelper.determineFeeRate(currentUser, dealType, settings?.feeSettings)
     : { feeRate: currentUser?.feeRate || 3.3, feeSource: 'default' };
-  const { feeAmount, totalAmount, finalAmount } = DealHelper.calculateTotal(
+  const { feeAmountBase, vatAmount, feeAmount, totalAmount, finalAmount } = DealHelper.calculateTotal(
     numericAmount,
     determinedFeeRate,
     0
@@ -778,8 +778,12 @@ function NewDealContent() {
               {numericAmount > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span>수수료 ({Math.round(determinedFeeRate * 1.1 * 10) / 10}%, 부가세 포함)</span>
-                    <span>{feeAmount.toLocaleString()}원</span>
+                    <span>기본수수료 ({determinedFeeRate}%)</span>
+                    <span>{feeAmountBase.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-500 mb-1">
+                    <span>부가세 (10%)</span>
+                    <span>{vatAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-900">
                     <span>총 결제금액</span>
@@ -1363,8 +1367,12 @@ function NewDealContent() {
                     <span className="font-medium">{numericAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">수수료 ({Math.round(determinedFeeRate * 1.1 * 10) / 10}%, 부가세 포함)</span>
-                    <span className="font-medium">{feeAmount.toLocaleString()}원</span>
+                    <span className="text-gray-600">기본수수료 ({determinedFeeRate}%)</span>
+                    <span className="font-medium">{feeAmountBase.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">부가세 (10%)</span>
+                    <span className="font-medium">{vatAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
                     <span className="font-semibold">총 결제금액</span>

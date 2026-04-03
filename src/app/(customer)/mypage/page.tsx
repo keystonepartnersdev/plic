@@ -194,7 +194,7 @@ export default function MyPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500 font-medium">
-                수수료 {feeRate}%(부가세별도)
+                수수료 {feeRate}%
               </span>
               <span className="text-sm text-gray-400 mx-1">|</span>
               <span className="text-sm text-gray-500 font-medium">

@@ -142,11 +142,12 @@ export class DealHelper {
 
   // 수수료 및 총액 계산
   static calculateTotal(amount: number, feeRate: number, discountAmount: number = 0) {
-    const feeAmountBase = Math.floor(amount * (feeRate / 100));
-    const feeAmount = Math.floor(feeAmountBase * 1.1); // 부가세 10% 포함
+    const feeAmountBase = Math.floor(amount * (feeRate / 100)); // 기본 수수료 (부가세 전)
+    const vatAmount = Math.floor(feeAmountBase * 0.1);          // 부가세 (수수료의 10%)
+    const feeAmount = feeAmountBase + vatAmount;                // 수수료 총액 (부가세 포함)
     const totalAmount = amount + feeAmount;
     const finalAmount = totalAmount - discountAmount;
-    return { feeAmount, totalAmount, finalAmount };
+    return { feeAmountBase, vatAmount, feeAmount, totalAmount, finalAmount };
   }
 
   /**
