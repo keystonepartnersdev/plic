@@ -11,6 +11,10 @@ import { IDeal, IDiscount } from '@/types';
 import { getErrorMessage } from '@/lib/utils';
 import { AttachmentPreview, RevisionRecipient } from '../types';
 
+interface UserCouponAsDiscount extends IDiscount {
+  userCouponId?: string;
+}
+
 export function useDealDetail(did: string) {
   const router = useRouter();
   const { currentUser, isLoggedIn, _hasHydrated, fetchCurrentUser } = useUserStore();
@@ -47,9 +51,46 @@ export function useDealDetail(did: string) {
   const [revisionVerificationFailed, setRevisionVerificationFailed] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // 스토어에서 활성 할인코드/쿠폰 가져오기
+  // 스토어에서 활성 할인코드 가져오기
   const availableDiscountCodes = getActiveCodes() || [];
-  const availableCoupons = getActiveCoupons() || [];
+  const storeCoupons = getActiveCoupons() || [];
+
+  // 사용자별 지급 쿠폰 (plic-user-coupons)
+  const [userCoupons, setUserCoupons] = useState<UserCouponAsDiscount[]>([]);
+  useEffect(() => {
+    if (!currentUser?.uid || !deal) return;
+    fetch(`/api/users/me/coupons?uid=${currentUser.uid}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data.available) {
+          // UserCoupon → IDiscount 형태로 변환하여 모달에서 사용
+          const converted: UserCouponAsDiscount[] = data.data.available.map((uc: { id: string; discountId: string; discountSnapshot: { name: string; discountType: string; discountValue: number; applicableDealTypes?: string[] }; expiresAt: string; maxUsage: number }) => ({
+            id: uc.discountId,
+            userCouponId: uc.id,
+            name: uc.discountSnapshot.name,
+            type: 'coupon' as const,
+            discountType: uc.discountSnapshot.discountType as IDiscount['discountType'],
+            discountValue: uc.discountSnapshot.discountValue,
+            minAmount: 0,
+            startDate: '',
+            expiry: uc.expiresAt,
+            canStack: false,
+            isActive: true,
+            isReusable: uc.maxUsage > 1,
+            usageCount: 0,
+            createdAt: '',
+            updatedAt: '',
+            usageType: 'single' as const,
+            issueMethod: 'manual' as const,
+          }));
+          setUserCoupons(converted);
+        }
+      })
+      .catch(() => {});
+  }, [currentUser?.uid, deal?.did]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 스토어 쿠폰 + 사용자 지급 쿠폰 합산
+  const availableCoupons = [...storeCoupons, ...userCoupons];
 
   // 전체 할인 금액 계산 (DB 값 직접 사용 - 부가세 포함 저장됨)
   const { total: totalDiscountAmount, details: discountDetails } = useMemo(() => {
