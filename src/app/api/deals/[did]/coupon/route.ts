@@ -96,11 +96,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const oldFeeAmount = Math.floor(oldFeeBase * 1.1);
       discountAmount = oldFeeAmount - newFeeAmount;
     } else if (snapshot.discountType === 'amount') {
-      // 정액 차감 (수수료 금액에서)
-      discountAmount = Math.min(snapshot.discountValue, deal.feeAmount as number);
+      // 정액 차감 (최소 1% 수수료 보장)
+      const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
+      const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
+      const maxDiscount = (deal.feeAmount as number) - minFeeTotal;
+      discountAmount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
     } else if (snapshot.discountType === 'feePercent') {
-      // 수수료의 N% 차감
-      discountAmount = Math.floor((deal.feeAmount as number) * snapshot.discountValue / 100);
+      // 수수료의 N% 차감 (최소 1% 수수료 보장)
+      const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
+      const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
+      const maxDiscount = (deal.feeAmount as number) - minFeeTotal;
+      discountAmount = Math.min(
+        Math.floor((deal.feeAmount as number) * snapshot.discountValue / 100),
+        Math.max(maxDiscount, 0)
+      );
     }
 
     const newFinalAmount = (deal.totalAmount as number) - discountAmount;
