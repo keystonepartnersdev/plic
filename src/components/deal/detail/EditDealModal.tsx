@@ -236,7 +236,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                   기본수수료 ({deal.feeRate}%): {Math.floor(amount * deal.feeRate / 100).toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">
-                  부가세 (10%): {Math.floor(Math.floor(amount * deal.feeRate / 100) * 0.1).toLocaleString()}원
+                  부가세: {Math.floor(Math.floor(amount * deal.feeRate / 100) * 0.1).toLocaleString()}원
                 </p>
                 <p className="text-sm font-medium text-primary-400">
                   총 결제금액: {(amount + Math.floor(amount * deal.feeRate / 100) + Math.floor(Math.floor(amount * deal.feeRate / 100) * 0.1)).toLocaleString()}원

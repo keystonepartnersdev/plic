@@ -782,7 +782,7 @@ function NewDealContent() {
                     <span>{feeAmountBase.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span>부가세 (10%)</span>
+                    <span>부가세</span>
                     <span>{vatAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-900">
@@ -1371,7 +1371,7 @@ function NewDealContent() {
                     <span className="font-medium">{feeAmountBase.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">부가세 (10%)</span>
+                    <span className="text-gray-600">부가세</span>
                     <span className="font-medium">{vatAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">

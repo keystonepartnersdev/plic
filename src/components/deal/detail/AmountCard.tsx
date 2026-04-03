@@ -38,7 +38,7 @@ export function AmountCard({
           <span className="font-medium">{feeBase.toLocaleString()}원</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">부가세 (10%)</span>
+          <span className="text-gray-500">부가세</span>
           <span className="font-medium">{vatAmt.toLocaleString()}원</span>
         </div>
 
