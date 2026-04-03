@@ -312,8 +312,9 @@ export function useDealDetail(did: string) {
     alert('할인코드가 적용되었습니다.');
   };
 
-  // 쿠폰 선택
-  const handleSelectCoupon = (coupon: IDiscount) => {
+  // 쿠폰 선택 → 서버 API 호출
+  const handleSelectCoupon = async (coupon: IDiscount) => {
+    if (!deal) return;
     if (!coupon.isActive) {
       alert('현재 사용할 수 없는 쿠폰입니다.');
       return;
@@ -325,17 +326,44 @@ export function useDealDetail(did: string) {
       return;
     }
 
-    const newAppliedDiscounts = [...appliedDiscounts, coupon];
-    setAppliedDiscounts(newAppliedDiscounts);
-    updateDealWithDiscounts(newAppliedDiscounts);
+    const couponWithId = coupon as UserCouponAsDiscount;
+    try {
+      const res = await fetch(`/api/deals/${deal.did}/coupon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userCouponId: couponWithId.userCouponId || coupon.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // DB 반영 완료 → deal 재조회로 동기화
+        const refreshed = await dealsAPI.get(deal.did);
+        if (refreshed.deal) setDeal(refreshed.deal);
+        setAppliedDiscounts([...appliedDiscounts, coupon]);
+      } else {
+        alert(data.error || '쿠폰 적용에 실패했습니다.');
+      }
+    } catch {
+      alert('쿠폰 적용 중 오류가 발생했습니다.');
+    }
     setShowCouponModal(false);
   };
 
-  // 개별 할인 취소
-  const handleRemoveDiscount = (discountId: string) => {
-    const newAppliedDiscounts = appliedDiscounts.filter(d => d.id !== discountId);
-    setAppliedDiscounts(newAppliedDiscounts);
-    updateDealWithDiscounts(newAppliedDiscounts);
+  // 개별 할인 취소 → 서버 API 호출
+  const handleRemoveDiscount = async (discountId: string) => {
+    if (!deal) return;
+    try {
+      const res = await fetch(`/api/deals/${deal.did}/coupon`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        const refreshed = await dealsAPI.get(deal.did);
+        if (refreshed.deal) setDeal(refreshed.deal);
+        setAppliedDiscounts(appliedDiscounts.filter(d => d.id !== discountId));
+      } else {
+        alert(data.error || '쿠폰 해제에 실패했습니다.');
+      }
+    } catch {
+      alert('쿠폰 해제 중 오류가 발생했습니다.');
+    }
   };
 
   // 거래 취소
