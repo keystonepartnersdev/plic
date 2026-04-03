@@ -97,6 +97,7 @@ export default function DealDetailPage() {
 
   const router = useRouter();
   const { deals: allDeals } = useDealStore();
+  const { settings } = useSettingsStore();
 
   // 결제 차단 모달 (결제 버튼 클릭 시)
   const [showBlockedModal, setShowBlockedModal] = useState<
@@ -144,7 +145,6 @@ export default function DealDetailPage() {
   const displayDeal = localDeal || deal;
 
   // 수수료 우선순위 로직: 미결제 거래는 실시간 재계산
-  const { settings } = useSettingsStore();
   const effectiveFeeRate = !displayDeal.isPaid && currentUser
     ? DealHelper.determineFeeRate(currentUser, displayDeal.dealType, settings?.feeSettings).feeRate
     : displayDeal.feeRate;
