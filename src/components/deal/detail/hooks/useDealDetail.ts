@@ -7,6 +7,14 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { dealsAPI } from '@/lib/api';
 import { useUserStore, useDealStore, useDiscountStore } from '@/stores';
+
+// DynamoDB 직접 조회 (Lambda는 finalAmount/discountAmount 미반환)
+async function fetchDealDirect(did: string) {
+  const res = await fetch(`/api/deals/${did}/detail`);
+  const result = await res.json();
+  if (result.success && result.data?.deal) return result.data.deal;
+  return null;
+}
 import { IDeal, IDiscount } from '@/types';
 import { getErrorMessage } from '@/lib/utils';
 import { AttachmentPreview, RevisionRecipient } from '../types';
@@ -168,13 +176,13 @@ export function useDealDetail(did: string) {
     if (dealFetchedRef.current) return;
     dealFetchedRef.current = true;
 
-    dealsAPI.get(did).then(response => {
-      if (response.deal) {
+    fetchDealDirect(did).then(dealData => {
+      if (dealData) {
         const completeDeal = {
-          ...response.deal,
-          recipient: response.deal.recipient || {},
-          attachments: response.deal.attachments || [],
-          history: response.deal.history || [],
+          ...dealData,
+          recipient: dealData.recipient || {},
+          attachments: dealData.attachments || [],
+          history: dealData.history || [],
         };
         setDeal(completeDeal);
 
@@ -336,8 +344,8 @@ export function useDealDetail(did: string) {
       const data = await res.json();
       if (data.success) {
         // DB 반영 완료 → deal 재조회로 동기화
-        const refreshed = await dealsAPI.get(deal.did);
-        if (refreshed.deal) setDeal(refreshed.deal);
+        const refreshed = await fetchDealDirect(deal.did);
+        if (refreshed) setDeal(refreshed);
         setAppliedDiscounts([...appliedDiscounts, coupon]);
       } else {
         alert(data.error || '쿠폰 적용에 실패했습니다.');
@@ -355,8 +363,8 @@ export function useDealDetail(did: string) {
       const res = await fetch(`/api/deals/${deal.did}/coupon`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        const refreshed = await dealsAPI.get(deal.did);
-        if (refreshed.deal) setDeal(refreshed.deal);
+        const refreshed = await fetchDealDirect(deal.did);
+        if (refreshed) setDeal(refreshed);
         setAppliedDiscounts(appliedDiscounts.filter(d => d.id !== discountId));
       } else {
         alert(data.error || '쿠폰 해제에 실패했습니다.');

@@ -76,12 +76,11 @@ export default function PaymentPage() {
     }
 
     if (mounted && _hasHydrated && isLoggedIn && userRefreshed) {
-      // API에서 거래 정보 가져오기
-      dealsAPI.get(did).then(response => {
-        if (response.deal && !response.deal.isPaid) {
-          setDeal(response.deal);
-          // 결제 페이지 진입 트래킹
-          tracking.paymentFunnel.start(response.deal.did);
+      // DynamoDB 직접 조회 (Lambda는 finalAmount/discountAmount 미반환)
+      fetch(`/api/deals/${did}/detail`).then(res => res.json()).then(result => {
+        if (result.success && result.data?.deal && !result.data.deal.isPaid) {
+          setDeal(result.data.deal);
+          tracking.paymentFunnel.start(result.data.deal.did);
         } else {
           router.replace('/deals');
         }
