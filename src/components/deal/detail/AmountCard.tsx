@@ -13,6 +13,7 @@ interface AmountCardProps {
   getDiscountLabel: (discount: IDiscount) => string;
   getDiscountAmount: (id: string) => number;
   calculatedFinalAmount: number;
+  effectiveFeeRate?: number; // 수수료 우선순위 로직 적용된 수수료율 (미결제 거래용)
 }
 
 export function AmountCard({
@@ -21,9 +22,14 @@ export function AmountCard({
   getDiscountLabel,
   getDiscountAmount,
   calculatedFinalAmount,
+  effectiveFeeRate,
 }: AmountCardProps) {
-  const feeBase = Math.floor(deal.amount * deal.feeRate / 100);
+  // 결제 완료된 거래는 DB값 고정, 미결제는 effectiveFeeRate 사용
+  const displayFeeRate = deal.isPaid ? deal.feeRate : (effectiveFeeRate ?? deal.feeRate);
+  const feeBase = Math.floor(deal.amount * displayFeeRate / 100);
   const vatAmt = Math.floor(feeBase * 0.1);
+  const feeTotal = feeBase + vatAmt;
+  const displayTotalAmount = deal.amount + feeTotal;
 
   return (
     <div className="bg-white px-5 py-4 mb-2">
@@ -34,7 +40,7 @@ export function AmountCard({
           <span className="font-medium">{deal.amount.toLocaleString()}원</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">기본수수료 ({deal.feeRate}%)</span>
+          <span className="text-gray-500">기본수수료 ({displayFeeRate}%)</span>
           <span className="font-medium">{feeBase.toLocaleString()}원</span>
         </div>
         <div className="flex justify-between">
@@ -73,11 +79,11 @@ export function AmountCard({
           <div className="text-right">
             {appliedDiscounts.length > 0 && (
               <span className="text-sm text-gray-400 line-through mr-2">
-                {deal.totalAmount.toLocaleString()}원
+                {displayTotalAmount.toLocaleString()}원
               </span>
             )}
             <span className="font-bold text-primary-400">
-              {(appliedDiscounts.length > 0 ? calculatedFinalAmount : deal.finalAmount).toLocaleString()}원
+              {(appliedDiscounts.length > 0 ? calculatedFinalAmount : displayTotalAmount).toLocaleString()}원
             </span>
           </div>
         </div>

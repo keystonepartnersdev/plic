@@ -39,6 +39,7 @@ interface EditDealModalProps {
   monthlyLimit?: number;
   usedAmount?: number;
   perTransactionLimit?: number;
+  effectiveFeeRate?: number;
 }
 
 const BANKS = [
@@ -48,7 +49,8 @@ const BANKS = [
   '경남은행', '광주은행', '전북은행', '제주은행',
 ];
 
-export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0, perTransactionLimit = 2000000 }: EditDealModalProps) {
+export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, monthlyLimit = 20000000, usedAmount = 0, perTransactionLimit = 2000000, effectiveFeeRate }: EditDealModalProps) {
+  const feeRate = effectiveFeeRate ?? deal.feeRate;
   // 금액 수정
   const [amount, setAmount] = useState(deal.amount);
 
@@ -233,13 +235,13 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                   step={100}
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  기본수수료 ({deal.feeRate}%): {Math.floor(amount * deal.feeRate / 100).toLocaleString()}원
+                  기본수수료 ({feeRate}%): {Math.floor(amount * feeRate / 100).toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">
-                  부가세: {Math.floor(Math.floor(amount * deal.feeRate / 100) * 0.1).toLocaleString()}원
+                  부가세: {Math.floor(Math.floor(amount * feeRate / 100) * 0.1).toLocaleString()}원
                 </p>
                 <p className="text-sm font-medium text-primary-400">
-                  총 결제금액: {(amount + Math.floor(amount * deal.feeRate / 100) + Math.floor(Math.floor(amount * deal.feeRate / 100) * 0.1)).toLocaleString()}원
+                  총 결제금액: {(amount + Math.floor(amount * feeRate / 100) + Math.floor(Math.floor(amount * feeRate / 100) * 0.1)).toLocaleString()}원
                 </p>
 
                 {/* 1회 결제 한도 */}

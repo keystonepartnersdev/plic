@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDealStore, useUserStore } from '@/stores';
+import { useDealStore, useUserStore, useSettingsStore } from '@/stores';
+import { DealHelper } from '@/classes';
 import { Header, Modal } from '@/components/common';
 import {
   useDealDetail,
@@ -142,6 +143,12 @@ export default function DealDetailPage() {
   // 실제 표시할 거래 데이터 (수정 후 반영)
   const displayDeal = localDeal || deal;
 
+  // 수수료 우선순위 로직: 미결제 거래는 실시간 재계산
+  const { settings } = useSettingsStore();
+  const effectiveFeeRate = !displayDeal.isPaid && currentUser
+    ? DealHelper.determineFeeRate(currentUser, displayDeal.dealType, settings?.feeSettings).feeRate
+    : displayDeal.feeRate;
+
   const showDiscountSection = (displayDeal.status === 'draft' || displayDeal.status === 'awaiting_payment') && !displayDeal.isPaid;
 
   // 수정 가능 여부: 결제 전 & draft/awaiting_payment 상태일 때만
@@ -202,6 +209,7 @@ export default function DealDetailPage() {
           getDiscountLabel={getDiscountLabel}
           getDiscountAmount={getDiscountAmount}
           calculatedFinalAmount={calculatedFinalAmount}
+          effectiveFeeRate={effectiveFeeRate}
         />
         {canEdit && (
           <button
@@ -395,6 +403,7 @@ export default function DealDetailPage() {
           monthlyLimit={currentUser?.monthlyLimit || 20000000}
           usedAmount={computedUsedAmount}
           perTransactionLimit={currentUser?.perTransactionLimit || 2000000}
+          effectiveFeeRate={effectiveFeeRate}
         />
       )}
     </div>
