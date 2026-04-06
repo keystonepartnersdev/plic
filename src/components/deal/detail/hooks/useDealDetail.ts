@@ -65,8 +65,8 @@ export function useDealDetail(did: string) {
     if (!currentUser?.uid || !deal) return;
     // 이미 할인 적용된 거래면 쿠폰 목록 불필요
     if (deal.appliedCouponId) return;
-    // 결제 대기 상태에서만 쿠폰 조회
-    if (deal.status !== 'awaiting_payment' || deal.isPaid) return;
+    // 결제 전 상태에서만 쿠폰 조회
+    if (!['draft', 'awaiting_payment'].includes(deal.status) || deal.isPaid) return;
 
     fetch(`/api/users/me/coupons?uid=${currentUser.uid}`)
       .then(res => res.json())

@@ -79,6 +79,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
       setAccountNumber(deal.recipient?.accountNumber || '');
       setAccountHolder(deal.recipient?.accountHolder || '');
       setIsVerified(deal.recipient?.isVerified || false);
+      setSenderName(deal.senderName || '');
       setAttachments(deal.attachments || []);
       setNewFiles([]);
       setError(null);
@@ -88,11 +89,31 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
     }
   }, [isOpen, deal]);
 
-  // TODO: 계좌인증 API 임시 비활성화 — API 복구 후 원래 로직 복원 필요
+  // 보내는분 성함
+  const [senderName, setSenderName] = useState(deal.senderName || '');
+
+  // Popbill 계좌 인증 API
   const handleVerifyAccount = async () => {
     if (!bank || !accountNumber || !accountHolder) return;
-    // API 호출 없이 바로 인증 완료 처리
-    setIsVerified(true);
+
+    setIsVerifying(true);
+    setVerificationFailed(false);
+    setVerificationError('');
+    setVerifiedHolderName('');
+
+    const result = await verifyBankAccount(bank, accountNumber, accountHolder);
+
+    if (result.isMatch) {
+      setIsVerified(true);
+    } else {
+      setVerificationFailed(true);
+      setVerificationError(result.errorMessage || '예금주가 일치하지 않습니다.');
+      if (result.accountHolder) {
+        setVerifiedHolderName(result.accountHolder);
+      }
+    }
+
+    setIsVerifying(false);
   };
 
   // 파일 추가
@@ -137,12 +158,32 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           setIsSaving(false);
           return;
         }
+        // 수수료 재계산 포함
+        const newFeeBase = Math.floor(amount * feeRate / 100);
+        const newVat = Math.floor(newFeeBase * 0.1);
+        const newFeeAmount = newFeeBase + newVat;
+        const newTotalAmount = amount + newFeeAmount;
         updateData.amount = amount;
+        updateData.feeRate = feeRate;
+        updateData.feeAmount = newFeeAmount;
+        updateData.totalAmount = newTotalAmount;
+        updateData.finalAmount = newTotalAmount; // 할인 미적용 상태로 리셋
+        updateData.discountAmount = 0;
+        // 쿠폰 적용된 상태였다면 리셋 (금액 변경 시 할인 무효)
+        updateData.appliedCouponId = undefined;
+        updateData.appliedDiscountType = undefined;
+        updateData.appliedDiscountValue = undefined;
+        updateData.discountCode = undefined;
       }
 
       if (editType === 'recipient') {
         if (!bank || !accountNumber || !accountHolder) {
           setError('모든 수취인 정보를 입력해주세요.');
+          setIsSaving(false);
+          return;
+        }
+        if (!isVerified) {
+          setError('계좌 인증을 완료해주세요.');
           setIsSaving(false);
           return;
         }
@@ -152,6 +193,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           accountHolder,
           isVerified,
         };
+        updateData.senderName = senderName;
       }
 
       if (editType === 'attachments') {
@@ -434,6 +476,20 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
                   </div>
                 )}
               </div>
+
+              {/* 보내는분 성함 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  보내는분 성함
+                </label>
+                <input
+                  type="text"
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
+                  className="w-full h-12 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  placeholder="보내는분 성함"
+                />
+              </div>
             </div>
           )}
 
@@ -510,7 +566,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0)))}
+            disabled={isSaving || isUploading || (editType === 'amount' && (amount > perTransactionLimit || amount > Math.max(monthlyLimit - usedAmount, 0))) || (editType === 'recipient' && !isVerified)}
             className="flex-1 h-12 bg-primary-400 text-white rounded-xl font-medium hover:bg-primary-500 transition-colors disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center gap-2"
           >
             {(isSaving || isUploading) ? (
