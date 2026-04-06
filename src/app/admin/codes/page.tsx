@@ -151,6 +151,29 @@ export default function AdminCodesPage() {
     try {
       if (editingDiscount) {
         await adminAPI.updateDiscount(editingDiscount.id, data);
+
+        // 수동 지급: 신규 추가된 사용자에게 쿠폰 실제 지급
+        if (data.issueMethod === 'manual' && data.targetUserIds && data.targetUserIds.length > 0) {
+          try {
+            const issueRes = await fetch('/api/admin/coupons/issue', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                discountId: editingDiscount.id,
+                issueMethod: 'manual',
+                targetUserIds: data.targetUserIds,
+              }),
+            });
+            const issueData = await issueRes.json();
+            if (issueData.success) {
+              const { issuedCount, skippedCount } = issueData.data;
+              if (issuedCount > 0) alert(`${issuedCount}명에게 쿠폰이 지급되었습니다.${skippedCount > 0 ? ` (${skippedCount}명 중복 제외)` : ''}`);
+              else if (skippedCount > 0) alert('선택한 사용자에게 이미 지급된 쿠폰입니다.');
+            }
+          } catch {
+            console.error('쿠폰 지급 실패');
+          }
+        }
       } else {
         await adminAPI.createDiscount(data);
       }
