@@ -299,7 +299,7 @@ export default function PaymentPage() {
         <p className="text-sm text-gray-500 mt-2">
           송금 {(deal.amount ?? 0).toLocaleString()}원 + 수수료 {(deal.feeAmount ?? 0).toLocaleString()}원
           {(deal.discountAmount ?? 0) > 0 && (
-            <span className="text-primary-500"> - 할인 {(deal.discountAmount ?? 0).toLocaleString()}원</span>
+            <span className="text-primary-500"> (할인 {(deal.discountAmount ?? 0).toLocaleString()}원 적용)</span>
           )}
         </p>
       </div>

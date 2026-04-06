@@ -72,56 +72,67 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: '이 거래 유형에는 적용할 수 없는 쿠폰입니다.' }, { status: 400 });
     }
 
-    // 수수료 재계산
+    // 수수료 재계산 — 처음부터 독립 계산 (totalAmount 의존 제거)
+    // 공식: feeBase = floor(amount * rate / 100), vat = floor(feeBase * 0.1), fee = feeBase + vat
     const snapshot = userCoupon.discountSnapshot;
     const amount = deal.amount as number;
     const baseFeeRate = deal.feeRate as number;
+
+    // 원본 수수료 (독립 계산)
+    const origFeeBase = Math.floor(amount * baseFeeRate / 100);
+    const origVat = Math.floor(origFeeBase * 0.1);
+    const origFeeTotal = origFeeBase + origVat;
+    const origTotal = amount + origFeeTotal;
+
     let newFeeRate = baseFeeRate;
-    let discountAmount = 0;
+    let newFeeBase = origFeeBase;
+    let newVat = origVat;
+    let newFeeTotal = origFeeTotal;
 
     if (snapshot.discountType === 'feeOverride') {
-      // 수수료율 대체 → 부가세 적용
-      newFeeRate = snapshot.discountValue;
-      const newFeeBase = Math.floor(amount * newFeeRate / 100);
-      const newFeeAmount = Math.floor(newFeeBase * 1.1);
-      const oldFeeBase = Math.floor(amount * baseFeeRate / 100);
-      const oldFeeAmount = Math.floor(oldFeeBase * 1.1);
-      discountAmount = oldFeeAmount - newFeeAmount;
+      // 수수료율 대체
+      newFeeRate = Math.max(snapshot.discountValue, MIN_FEE_RATE);
+      newFeeBase = Math.floor(amount * newFeeRate / 100);
+      newVat = Math.floor(newFeeBase * 0.1);
+      newFeeTotal = newFeeBase + newVat;
     } else if (snapshot.discountType === 'feeDiscount') {
-      // 수수료율 차감 → 최소 1% → 부가세 적용
+      // 수수료율 차감 → 최소 1%
       newFeeRate = Math.max(baseFeeRate - snapshot.discountValue, MIN_FEE_RATE);
-      const newFeeBase = Math.floor(amount * newFeeRate / 100);
-      const newFeeAmount = Math.floor(newFeeBase * 1.1);
-      const oldFeeBase = Math.floor(amount * baseFeeRate / 100);
-      const oldFeeAmount = Math.floor(oldFeeBase * 1.1);
-      discountAmount = oldFeeAmount - newFeeAmount;
+      newFeeBase = Math.floor(amount * newFeeRate / 100);
+      newVat = Math.floor(newFeeBase * 0.1);
+      newFeeTotal = newFeeBase + newVat;
     } else if (snapshot.discountType === 'amount') {
       // 정액 차감 (최소 1% 수수료 보장)
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
-      const maxDiscount = (deal.feeAmount as number) - minFeeTotal;
-      discountAmount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
+      const maxDiscount = origFeeTotal - minFeeTotal;
+      const actualDiscount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
+      newFeeTotal = origFeeTotal - actualDiscount;
     } else if (snapshot.discountType === 'feePercent') {
       // 수수료의 N% 차감 (최소 1% 수수료 보장)
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
-      const maxDiscount = (deal.feeAmount as number) - minFeeTotal;
-      discountAmount = Math.min(
-        Math.floor((deal.feeAmount as number) * snapshot.discountValue / 100),
+      const maxDiscount = origFeeTotal - minFeeTotal;
+      const actualDiscount = Math.min(
+        Math.floor(origFeeTotal * snapshot.discountValue / 100),
         Math.max(maxDiscount, 0)
       );
+      newFeeTotal = origFeeTotal - actualDiscount;
     }
 
-    const newFinalAmount = (deal.totalAmount as number) - discountAmount;
+    const newFinalAmount = amount + newFeeTotal;
+    const discountAmount = origTotal - newFinalAmount;
 
-    // 거래 업데이트 (할인 유형 정보도 함께 저장 — 프론트엔드 표시용)
+    // 거래 업데이트 — 할인 적용된 수수료/총액도 함께 갱신
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
+        ':fee': newFeeTotal,
+        ':total': newFinalAmount,  // 쿠폰 적용 후 totalAmount = finalAmount
         ':final': newFinalAmount,
         ':couponId': userCouponId,
         ':feeSource': 'coupon',
@@ -183,15 +194,24 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const now = new Date().toISOString();
 
-    // 거래에서 할인 제거
+    // 원본 수수료 재계산 (독립 계산)
+    const amount = deal.amount as number;
+    const baseFeeRate = deal.feeRate as number;
+    const origFeeBase = Math.floor(amount * baseFeeRate / 100);
+    const origVat = Math.floor(origFeeBase * 0.1);
+    const origFeeTotal = origFeeBase + origVat;
+    const origTotal = amount + origFeeTotal;
+
+    // 거래에서 할인 제거 — 원본 수수료/총액으로 복원
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
+      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, feeAmount = :fee, totalAmount = :total, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
       ExpressionAttributeValues: {
         ':empty': '',
         ':zero': 0,
-        ':total': deal.totalAmount,
+        ':fee': origFeeTotal,
+        ':total': origTotal,
         ':src': deal.feeSource === 'coupon' ? 'default' : (deal.feeSource || 'default'),
         ':now': now,
       },

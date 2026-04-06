@@ -88,7 +88,8 @@ export async function POST(
     // deal.uid로 사용자 조회가 필요하지만, 간단히 allowedGrades가 없으면 전체 허용
     // TODO: 필요 시 사용자 등급 검증 추가
 
-    // 수수료 재계산 (coupon/route.ts와 동일 로직)
+    // 수수료 재계산 — 처음부터 독립 계산 (totalAmount 의존 제거)
+    // 공식: feeBase = floor(amount * rate / 100), vat = floor(feeBase * 0.1), fee = feeBase + vat
     const snapshot = {
       name: discount.name,
       discountType: discount.discountType,
@@ -96,49 +97,57 @@ export async function POST(
     };
     const amount = deal.amount as number;
     const baseFeeRate = deal.feeRate as number;
-    let discountAmount = 0;
+
+    // 원본 수수료 (독립 계산)
+    const origFeeBase = Math.floor(amount * baseFeeRate / 100);
+    const origVat = Math.floor(origFeeBase * 0.1);
+    const origFeeTotal = origFeeBase + origVat;
+    const origTotal = amount + origFeeTotal;
+
+    let newFeeTotal = origFeeTotal;
 
     if (snapshot.discountType === 'feeOverride') {
-      const newFeeRate = snapshot.discountValue;
+      const newFeeRate = Math.max(snapshot.discountValue, MIN_FEE_RATE);
       const newFeeBase = Math.floor(amount * newFeeRate / 100);
-      const newFeeAmount = Math.floor(newFeeBase * 1.1);
-      const oldFeeBase = Math.floor(amount * baseFeeRate / 100);
-      const oldFeeAmount = Math.floor(oldFeeBase * 1.1);
-      discountAmount = oldFeeAmount - newFeeAmount;
+      const newVat = Math.floor(newFeeBase * 0.1);
+      newFeeTotal = newFeeBase + newVat;
     } else if (snapshot.discountType === 'feeDiscount') {
       const newFeeRate = Math.max(baseFeeRate - snapshot.discountValue, MIN_FEE_RATE);
       const newFeeBase = Math.floor(amount * newFeeRate / 100);
-      const newFeeAmount = Math.floor(newFeeBase * 1.1);
-      const oldFeeBase = Math.floor(amount * baseFeeRate / 100);
-      const oldFeeAmount = Math.floor(oldFeeBase * 1.1);
-      discountAmount = oldFeeAmount - newFeeAmount;
+      const newVat = Math.floor(newFeeBase * 0.1);
+      newFeeTotal = newFeeBase + newVat;
     } else if (snapshot.discountType === 'amount') {
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
-      const maxDiscount = (deal.feeAmount as number) - minFeeTotal;
-      discountAmount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
+      const maxDiscount = origFeeTotal - minFeeTotal;
+      const actualDiscount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
+      newFeeTotal = origFeeTotal - actualDiscount;
     } else if (snapshot.discountType === 'feePercent') {
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
-      const maxDiscount = (deal.feeAmount as number) - minFeeTotal;
-      discountAmount = Math.min(
-        Math.floor((deal.feeAmount as number) * snapshot.discountValue / 100),
+      const maxDiscount = origFeeTotal - minFeeTotal;
+      const actualDiscount = Math.min(
+        Math.floor(origFeeTotal * snapshot.discountValue / 100),
         Math.max(maxDiscount, 0)
       );
+      newFeeTotal = origFeeTotal - actualDiscount;
     }
 
-    const newFinalAmount = (deal.totalAmount as number) - discountAmount;
+    const newFinalAmount = amount + newFeeTotal;
+    const discountAmount = origTotal - newFinalAmount;
 
-    // 거래 업데이트
+    // 거래 업데이트 — 할인 적용된 수수료/총액도 함께 갱신
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, finalAmount = :final, appliedCouponId = :discountId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :discountId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
+        ':fee': newFeeTotal,
+        ':total': newFinalAmount,
         ':final': newFinalAmount,
-        ':discountId': `discount:${discount.id}`, // prefix로 쿠폰과 구분
+        ':discountId': `discount:${discount.id}`,
         ':feeSource': 'discount_code',
         ':dtype': snapshot.discountType,
         ':dval': snapshot.discountValue,
