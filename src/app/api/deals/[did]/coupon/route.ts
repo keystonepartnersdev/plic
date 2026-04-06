@@ -131,14 +131,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
         ':feeBase': newFeeBase,
         ':vat': newVat,
         ':fee': newFeeTotal,
-        ':total': newFinalAmount,
         ':final': newFinalAmount,
         ':couponId': userCouponId,
         ':feeSource': 'coupon',
@@ -208,18 +207,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const origFeeTotal = origFeeBase + origVat;
     const origTotal = amount + origFeeTotal;
 
-    // 거래에서 할인 제거 — 원본 수수료/총액으로 복원 (분해 값 포함)
+    // 거래에서 할인 제거 — 원본 수수료 복원 (totalAmount는 변경 안 함 — 원래 고정값)
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, totalAmount = :total, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
+      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, finalAmount = :origTotal, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
       ExpressionAttributeValues: {
         ':empty': '',
         ':zero': 0,
         ':feeBase': origFeeBase,
         ':vat': origVat,
         ':fee': origFeeTotal,
-        ':total': origTotal,
+        ':origTotal': origTotal,
         ':src': deal.feeSource === 'coupon' ? 'default' : (deal.feeSource || 'default'),
         ':now': now,
       },

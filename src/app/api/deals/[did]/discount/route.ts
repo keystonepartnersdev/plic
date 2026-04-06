@@ -146,14 +146,13 @@ export async function POST(
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :discountId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, finalAmount = :final, appliedCouponId = :discountId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
         ':feeBase': newFeeBase,
         ':vat': newVat,
         ':fee': newFeeTotal,
-        ':total': newFinalAmount,
         ':final': newFinalAmount,
         ':discountId': `discount:${discount.id}`,
         ':feeSource': 'discount_code',

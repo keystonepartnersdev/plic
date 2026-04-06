@@ -71,16 +71,16 @@ export interface IDeal {
   // 금액 정보 — 모든 값은 DB에서 직접 관리
   amount: number;
   feeRate: number;
-  feeAmountBase: number;   // 수수료 기본 (부가세 전) = floor(amount * feeRate / 100)
-  vatAmount: number;       // 부가세 = floor(feeAmountBase * 0.1)
-  feeAmount: number;       // 수수료 합계 = feeAmountBase + vatAmount
-  totalAmount: number;     // 총액 = amount + feeAmount
+  feeAmountBase: number;   // 수수료 기본 (부가세 전) — 쿠폰 적용 시 변경됨
+  vatAmount: number;       // 부가세 — 쿠폰 적용 시 변경됨
+  feeAmount: number;       // 수수료 합계 = feeAmountBase + vatAmount — 쿠폰 적용 시 변경됨
+  totalAmount: number;     // 할인 전 원래 총액 = amount + 원본수수료 — 거래 생성 후 고정 (절대 변경 안 함)
   feeSource?: string;      // 수수료 적용 근거 (default/deal_type/user_custom/coupon)
 
   // 할인 정보
   discountCode?: string;
-  discountAmount: number;
-  finalAmount: number;     // 최종 결제금액 = totalAmount (쿠폰 적용 시 할인 반영)
+  discountAmount: number;  // 할인액 = totalAmount - finalAmount
+  finalAmount: number;     // 최종 결제금액 = amount + feeAmount (쿠폰 적용 시 변경됨)
   appliedCouponId?: string;
   appliedDiscountType?: string;   // feeOverride | feeDiscount | amount | feePercent
   appliedDiscountValue?: number;
