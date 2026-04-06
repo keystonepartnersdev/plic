@@ -158,6 +158,22 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           setIsSaving(false);
           return;
         }
+        // 금액 미변경 시 → 저장 불필요
+        if (amount === deal.amount) {
+          setIsSaving(false);
+          onClose();
+          return;
+        }
+
+        // 쿠폰 적용 중이면 먼저 정상 해제 (쿠폰 DB 정리 포함)
+        if (deal.appliedCouponId) {
+          try {
+            await fetch(`/api/deals/${deal.did}/coupon`, { method: 'DELETE' });
+          } catch {
+            // 쿠폰 해제 실패해도 금액 수정은 진행
+          }
+        }
+
         // DealHelper.calculateTotal()로 수수료 재계산 (전체 통일 공식)
         const calc = DealHelper.calculateTotal(amount, feeRate);
         updateData.amount = amount;
@@ -166,13 +182,8 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
         updateData.vatAmount = calc.vatAmount;
         updateData.feeAmount = calc.feeAmount;
         updateData.totalAmount = calc.totalAmount;
-        updateData.finalAmount = calc.finalAmount; // 할인 미적용 상태로 리셋
+        updateData.finalAmount = calc.finalAmount;
         updateData.discountAmount = 0;
-        // 쿠폰 적용된 상태였다면 리셋 (금액 변경 시 할인 무효)
-        updateData.appliedCouponId = undefined;
-        updateData.appliedDiscountType = undefined;
-        updateData.appliedDiscountValue = undefined;
-        updateData.discountCode = undefined;
       }
 
       if (editType === 'recipient') {
