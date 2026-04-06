@@ -8,6 +8,7 @@ import { X, Loader2, Upload, Trash2, AlertCircle, Check } from 'lucide-react';
 import { ModalPortal } from '@/components/common';
 import { IDeal } from '@/types';
 import { dealsAPI } from '@/lib/api';
+import { DealHelper } from '@/classes';
 import { uploadFile } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
@@ -158,18 +159,15 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
           setIsSaving(false);
           return;
         }
-        // 수수료 재계산 포함
-        const newFeeBase = Math.floor(amount * feeRate / 100);
-        const newVat = Math.floor(newFeeBase * 0.1);
-        const newFeeAmount = newFeeBase + newVat;
-        const newTotalAmount = amount + newFeeAmount;
+        // DealHelper.calculateTotal()로 수수료 재계산 (전체 통일 공식)
+        const calc = DealHelper.calculateTotal(amount, feeRate);
         updateData.amount = amount;
         updateData.feeRate = feeRate;
-        updateData.feeAmountBase = newFeeBase;
-        updateData.vatAmount = newVat;
-        updateData.feeAmount = newFeeAmount;
-        updateData.totalAmount = newTotalAmount;
-        updateData.finalAmount = newTotalAmount; // 할인 미적용 상태로 리셋
+        updateData.feeAmountBase = calc.feeAmountBase;
+        updateData.vatAmount = calc.vatAmount;
+        updateData.feeAmount = calc.feeAmount;
+        updateData.totalAmount = calc.totalAmount;
+        updateData.finalAmount = calc.finalAmount; // 할인 미적용 상태로 리셋
         updateData.discountAmount = 0;
         // 쿠폰 적용된 상태였다면 리셋 (금액 변경 시 할인 무효)
         updateData.appliedCouponId = undefined;

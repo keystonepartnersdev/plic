@@ -61,8 +61,8 @@ async function proxyRequest(request: NextRequest, method: 'GET' | 'POST') {
       const requestedFeeSource = savedRequestBody.feeSource;
 
       if (deal.did && deal.amount && requestedFeeRate) {
-        // 프론트엔드 수수료율로 전체 재계산 (DealHelper.calculateTotal과 동일 공식)
-        const feeAmountBase = Math.floor(deal.amount * requestedFeeRate / 100);
+        // DealHelper.calculateTotal()과 동일 공식으로 재계산
+        const feeAmountBase = Math.floor(deal.amount * (requestedFeeRate / 100));
         const vatAmount = Math.floor(feeAmountBase * 0.1);
         const feeAmount = feeAmountBase + vatAmount;
         const totalAmount = deal.amount + feeAmount;
