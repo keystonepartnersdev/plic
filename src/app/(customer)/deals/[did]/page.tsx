@@ -33,6 +33,7 @@ export default function DealDetailPage() {
     // 상태
     mounted,
     deal,
+    refreshDeal,
     isLoggedIn,
     _hasHydrated,
     currentUser,
@@ -144,8 +145,10 @@ export default function DealDetailPage() {
   const canEdit = !displayDeal.isPaid &&
     (displayDeal.status === 'draft' || displayDeal.status === 'awaiting_payment');
 
-  const handleDealUpdate = (updatedDeal: IDeal) => {
-    setLocalDeal(updatedDeal);
+  const handleDealUpdate = async () => {
+    // DB에서 최신 deal 재조회 (쿠폰 해제 등 반영)
+    await refreshDeal();
+    setLocalDeal(null);  // localDeal 초기화 → deal(DB) 직접 사용
   };
 
   return (

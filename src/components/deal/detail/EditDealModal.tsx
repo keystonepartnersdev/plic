@@ -35,7 +35,7 @@ interface EditDealModalProps {
   isOpen: boolean;
   onClose: () => void;
   deal: IDeal;
-  onUpdate: (updatedDeal: IDeal) => void;
+  onUpdate: () => void;
   editType: 'amount' | 'recipient' | 'attachments';
   monthlyLimit?: number;
   usedAmount?: number;
@@ -221,7 +221,7 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
       }
 
       const result = await dealsAPI.update(deal.did, updateData);
-      onUpdate(result.deal);
+      onUpdate();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : '수정에 실패했습니다.');

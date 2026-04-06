@@ -440,10 +440,18 @@ export function useDealDetail(did: string) {
     setDeleteConfirmIndex(null);
   };
 
+  // DB에서 거래 재조회 (금액 수정 후 쿠폰 해제 등 deal 상태 갱신용)
+  const refreshDeal = async () => {
+    const refreshed = await fetchDealDirect(did);
+    if (refreshed) setDeal(refreshed);
+    return refreshed;
+  };
+
   return {
     // 상태
     mounted,
     deal,
+    refreshDeal,
     isLoggedIn,
     _hasHydrated,
     currentUser,
