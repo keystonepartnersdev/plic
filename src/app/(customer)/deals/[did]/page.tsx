@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDealStore, useUserStore, useSettingsStore } from '@/stores';
-import { DealHelper } from '@/classes';
+import { useDealStore, useUserStore } from '@/stores';
 import { Header, Modal } from '@/components/common';
 import {
   useDealDetail,
@@ -94,8 +93,6 @@ export default function DealDetailPage() {
 
   const router = useRouter();
   const { deals: allDeals } = useDealStore();
-  const { settings } = useSettingsStore();
-
   // 결제 차단 모달 (결제 버튼 클릭 시)
   const [showBlockedModal, setShowBlockedModal] = useState<
     'hold' | 'pending_verification' | 'rejected' | null
@@ -140,11 +137,6 @@ export default function DealDetailPage() {
 
   // 실제 표시할 거래 데이터 (수정 후 반영)
   const displayDeal = localDeal || deal;
-
-  // 수수료 우선순위 로직: 미결제 거래는 실시간 재계산
-  const effectiveFeeRate = !displayDeal.isPaid && currentUser
-    ? DealHelper.determineFeeRate(currentUser, displayDeal.dealType, settings?.feeSettings).feeRate
-    : displayDeal.feeRate;
 
   const showDiscountSection = (displayDeal.status === 'draft' || displayDeal.status === 'awaiting_payment') && !displayDeal.isPaid;
 
@@ -395,7 +387,6 @@ export default function DealDetailPage() {
           monthlyLimit={currentUser?.monthlyLimit || 20000000}
           usedAmount={computedUsedAmount}
           perTransactionLimit={currentUser?.perTransactionLimit || 2000000}
-          effectiveFeeRate={effectiveFeeRate}
         />
       )}
     </div>
