@@ -360,7 +360,6 @@ export default function AdminCodesPage() {
           type={activeTab}
           discount={editingDiscount}
           users={users}
-          searchUsers={searchUsers}
           isSaving={isSaving}
           onClose={() => {
             setShowCreateModal(false);
@@ -555,7 +554,6 @@ function DiscountModal({
   type,
   discount,
   users,
-  searchUsers,
   isSaving,
   onClose,
   onSave,
@@ -563,7 +561,6 @@ function DiscountModal({
   type: TDiscountType;
   discount: IDiscount | null;
   users: IUser[];
-  searchUsers: (query: string) => IUser[];
   isSaving: boolean;
   onClose: () => void;
   onSave: (data: IDiscountCreateInput) => void;
@@ -597,12 +594,31 @@ function DiscountModal({
   // 사용자 검색 관련 상태
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [searchedUsers, setSearchedUsers] = useState<IUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // 검색된 사용자 목록
-  const searchedUsers = useMemo(() => {
-    if (!userSearchQuery.trim()) return [];
-    return searchUsers(userSearchQuery).slice(0, 10); // 최대 10명
-  }, [userSearchQuery, searchUsers]);
+  // DynamoDB 직접 조회로 사용자 검색 (신규 가입자 포함)
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setSearchedUsers([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(userSearchQuery.trim())}`);
+        const data = await res.json();
+        if (data.success) {
+          setSearchedUsers(data.data.users || []);
+        }
+      } catch {
+        setSearchedUsers([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [userSearchQuery]);
 
   // 선택된 사용자 목록
   const selectedUsers = useMemo(() => {
