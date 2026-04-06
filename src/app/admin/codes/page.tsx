@@ -19,7 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
-import { useAdminUserStore } from '@/stores';
+// useAdminUserStore 제거 — 모든 사용자 데이터는 DynamoDB API에서 직접 조회
 import { IDiscount, IDiscountCreateInput, TDiscountType, TUserGrade, IUser } from '@/types';
 import { cn, getErrorMessage } from '@/lib/utils';
 
@@ -36,7 +36,6 @@ const ALL_GRADES: TUserGrade[] = ['basic', 'platinum', 'b2b', 'employee'];
 type TabType = 'code' | 'coupon';
 
 export default function AdminCodesPage() {
-  const { users, searchUsers, setUsers } = useAdminUserStore();
 
   // API 데이터 상태
   const [discounts, setDiscounts] = useState<IDiscount[]>([]);
@@ -64,15 +63,6 @@ export default function AdminCodesPage() {
       setLoading(false);
     }
   };
-
-  // 사용자 목록 로드 (쿠폰 개별 지급용)
-  useEffect(() => {
-    if (users.length === 0) {
-      adminAPI.getUsers().then(res => {
-        if (res.users) setUsers(res.users);
-      }).catch(() => {});
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchDiscounts();
@@ -359,7 +349,6 @@ export default function AdminCodesPage() {
         <DiscountModal
           type={activeTab}
           discount={editingDiscount}
-          users={users}
           isSaving={isSaving}
           onClose={() => {
             setShowCreateModal(false);
@@ -553,14 +542,12 @@ function DiscountRow({
 function DiscountModal({
   type,
   discount,
-  users,
   isSaving,
   onClose,
   onSave,
 }: {
   type: TDiscountType;
   discount: IDiscount | null;
-  users: IUser[];
   isSaving: boolean;
   onClose: () => void;
   onSave: (data: IDiscountCreateInput) => void;
@@ -620,16 +607,27 @@ function DiscountModal({
     return () => clearTimeout(timer);
   }, [userSearchQuery]);
 
-  // 선택된 사용자 목록 (API 검색 결과 포함 — localStorage 의존 제거)
-  const [selectedUsersMap, setSelectedUsersMap] = useState<Record<string, IUser>>(() => {
-    // 기존 targetUserIds가 있으면 users(localStorage)에서 초기화
-    const map: Record<string, IUser> = {};
-    (formData.targetUserIds || []).forEach(uid => {
-      const user = users.find(u => u.uid === uid);
-      if (user) map[uid] = user;
+  // 선택된 사용자 목록 (API에서 직접 조회 — localStorage 의존 없음)
+  const [selectedUsersMap, setSelectedUsersMap] = useState<Record<string, IUser>>({});
+
+  // 기존 targetUserIds가 있으면 API에서 사용자 정보 조회
+  useEffect(() => {
+    const existingIds = formData.targetUserIds || [];
+    if (existingIds.length === 0) return;
+
+    Promise.all(
+      existingIds.map(uid =>
+        fetch(`/api/admin/users/search?q=${encodeURIComponent(uid)}`)
+          .then(r => r.json())
+          .then(d => d.success && d.data.users?.[0] ? d.data.users[0] : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      const map: Record<string, IUser> = {};
+      results.forEach(user => { if (user) map[user.uid] = user; });
+      setSelectedUsersMap(map);
     });
-    return map;
-  });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedUsers = (formData.targetUserIds || [])
     .map(uid => selectedUsersMap[uid])
     .filter(Boolean);
