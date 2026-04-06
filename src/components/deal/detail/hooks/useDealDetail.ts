@@ -2,11 +2,12 @@
 
 // src/components/deal/detail/hooks/useDealDetail.ts
 // 거래 상세 페이지 로직 커스텀 훅
+// DB 기반 1거래 1할인 원칙 — 모든 할인 상태는 deal 레코드에서만 읽음
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { dealsAPI } from '@/lib/api';
-import { useUserStore, useDealStore, useDiscountStore } from '@/stores';
+import { useUserStore, useDealStore } from '@/stores';
 
 // DynamoDB 직접 조회 (Lambda는 finalAmount/discountAmount 미반환)
 async function fetchDealDirect(did: string) {
@@ -27,7 +28,6 @@ export function useDealDetail(did: string) {
   const router = useRouter();
   const { currentUser, isLoggedIn, _hasHydrated, fetchCurrentUser } = useUserStore();
   const { updateDeal } = useDealStore();
-  const { getDiscountByCode, getActiveCodes, getActiveCoupons, fetchUserCoupons } = useDiscountStore();
 
   // 기본 상태
   const [mounted, setMounted] = useState(false);
@@ -36,10 +36,10 @@ export function useDealDetail(did: string) {
   const [previewIndex, setPreviewIndex] = useState(0);
   const dealFetchedRef = useRef(false);
 
-  // 할인 관련 상태
+  // 할인 관련 상태 (DB 기반 — 1거래 1할인)
   const [discountCodeInput, setDiscountCodeInput] = useState('');
   const [showCouponModal, setShowCouponModal] = useState(false);
-  const [appliedDiscounts, setAppliedDiscounts] = useState<IDiscount[]>([]);
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
 
   // 보완 요청 관련 상태
   const [showRevisionModal, setShowRevisionModal] = useState(false);
@@ -59,19 +59,19 @@ export function useDealDetail(did: string) {
   const [revisionVerificationFailed, setRevisionVerificationFailed] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // 스토어에서 활성 할인코드 가져오기
-  const availableDiscountCodes = getActiveCodes() || [];
-  const storeCoupons = getActiveCoupons() || [];
-
   // 사용자별 지급 쿠폰 (plic-user-coupons)
   const [userCoupons, setUserCoupons] = useState<UserCouponAsDiscount[]>([]);
   useEffect(() => {
     if (!currentUser?.uid || !deal) return;
+    // 이미 할인 적용된 거래면 쿠폰 목록 불필요
+    if (deal.appliedCouponId) return;
+    // 결제 대기 상태에서만 쿠폰 조회
+    if (deal.status !== 'awaiting_payment' || deal.isPaid) return;
+
     fetch(`/api/users/me/coupons?uid=${currentUser.uid}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data.available) {
-          // UserCoupon → IDiscount 형태로 변환하여 모달에서 사용
           const converted: UserCouponAsDiscount[] = data.data.available.map((uc: { id: string; discountId: string; discountSnapshot: { name: string; discountType: string; discountValue: number; applicableDealTypes?: string[] }; expiresAt: string; maxUsage: number }) => ({
             id: uc.discountId,
             userCouponId: uc.id,
@@ -95,65 +95,25 @@ export function useDealDetail(did: string) {
         }
       })
       .catch(() => {});
-  }, [currentUser?.uid, deal?.did]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentUser?.uid, deal?.did, deal?.appliedCouponId, deal?.status, deal?.isPaid]);
 
-  // 스토어 쿠폰 + 사용자 지급 쿠폰 합산
-  const availableCoupons = [...storeCoupons, ...userCoupons];
+  const availableCoupons = userCoupons;
 
-  // 전체 할인 금액 계산 (DB 값 직접 사용 - 부가세 포함 저장됨)
-  const { total: totalDiscountAmount, details: discountDetails } = useMemo(() => {
-    if (!deal) return { total: 0, details: new Map<string, number>() };
+  // DB 기반: 할인 적용 여부는 deal.appliedCouponId 존재 여부로 판단
+  const hasDiscount = !!(deal?.appliedCouponId && (deal?.discountAmount ?? 0) > 0);
 
-    const feeAmount = deal.feeAmount;
-    const details = new Map<string, number>();
-    let remainingFee = feeAmount;
-
-    // 1. 퍼센트 할인 합산
-    const percentDiscounts = appliedDiscounts.filter(d => d.discountType === 'feePercent');
-    const totalPercent = percentDiscounts.reduce((sum, d) => sum + d.discountValue, 0);
-    const percentDiscount = Math.min(
-      Math.floor(feeAmount * (totalPercent / 100)),
-      remainingFee
-    );
-
-    if (percentDiscount > 0) {
-      remainingFee -= percentDiscount;
-      percentDiscounts.forEach(d => {
-        const individualDiscount = Math.floor(feeAmount * (d.discountValue / 100));
-        details.set(d.id, Math.min(individualDiscount, feeAmount));
-      });
+  // 할인 적용 가능 여부 (1거래 1할인)
+  const canApplyDiscount = (coupon: IDiscount): { canApply: boolean; reason?: string } => {
+    if (hasDiscount) {
+      return { canApply: false, reason: '이미 할인이 적용된 거래입니다.' };
     }
-
-    // 2. 금액 할인 순차 적용
-    const amountDiscounts = appliedDiscounts.filter(d => d.discountType === 'amount');
-    amountDiscounts.forEach(d => {
-      const discount = Math.min(d.discountValue, remainingFee);
-      if (discount > 0) {
-        details.set(d.id, discount);
-        remainingFee -= discount;
-      } else {
-        details.set(d.id, 0);
-      }
-    });
-
-    const totalDiscount = feeAmount - remainingFee;
-    return { total: totalDiscount, details };
-  }, [deal?.feeAmount, appliedDiscounts]);
-
-  const calculatedFinalAmount = deal ? deal.totalAmount - totalDiscountAmount : 0;
-
-  // 개별 할인 금액 조회
-  const getDiscountAmount = (discountId: string): number => {
-    return discountDetails.get(discountId) || 0;
-  };
-
-  // 할인 타입 라벨
-  const getDiscountLabel = (discount: IDiscount): string => {
-    if (discount.discountType === 'amount') {
-      return `${discount.discountValue.toLocaleString()}원 할인`;
-    } else {
-      return `수수료 ${discount.discountValue}% 할인`;
+    if (deal && deal.amount < coupon.minAmount) {
+      return { canApply: false, reason: `최소 주문 금액 ${coupon.minAmount.toLocaleString()}원 이상부터 사용 가능합니다.` };
     }
+    if (coupon.expiry && new Date(coupon.expiry) < new Date()) {
+      return { canApply: false, reason: '유효기간이 만료된 할인입니다.' };
+    }
+    return { canApply: true };
   };
 
   // 마운트 Effect + 최신 사용자 정보 가져오기 (어드민 상태 변경 즉시 반영)
@@ -164,7 +124,7 @@ export function useDealDetail(did: string) {
     }
   }, [isLoggedIn, fetchCurrentUser]);
 
-  // 거래 데이터 로드 Effect
+  // 거래 데이터 로드 Effect (DB 직접 조회 — 할인 상태도 DB에서 읽음)
   useEffect(() => {
     if (!mounted || !_hasHydrated || !isLoggedIn) {
       if (mounted && _hasHydrated && !isLoggedIn) {
@@ -185,21 +145,7 @@ export function useDealDetail(did: string) {
           history: dealData.history || [],
         };
         setDeal(completeDeal);
-
-        // 저장된 할인 코드 복원
-        if (completeDeal.discountCode) {
-          const discountCodes = completeDeal.discountCode.split(', ').filter((code: string) => code.trim());
-          const restoredDiscounts: IDiscount[] = [];
-          discountCodes.forEach((code: string) => {
-            const discountData = getDiscountByCode(code) || availableCoupons.find(c => c.name === code);
-            if (discountData) {
-              restoredDiscounts.push(discountData);
-            }
-          });
-          if (restoredDiscounts.length > 0) {
-            setAppliedDiscounts(restoredDiscounts);
-          }
-        }
+        // 할인 상태는 deal 레코드에 모두 포함되어 있으므로 별도 복원 불필요
       } else {
         router.replace('/deals');
       }
@@ -209,124 +155,43 @@ export function useDealDetail(did: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, _hasHydrated, isLoggedIn, did, router]);
 
-  // 쿠폰 목록 로드 Effect
-  useEffect(() => {
-    if (deal?.status === 'awaiting_payment' && !deal?.isPaid) {
-      fetchUserCoupons();
-    }
-  }, [deal?.status, deal?.isPaid, fetchUserCoupons]);
-
-  // 할인 적용 가능 여부 체크
-  const canApplyDiscount = (discount: IDiscount): { canApply: boolean; reason?: string } => {
-    if (appliedDiscounts.some(d => d.id === discount.id)) {
-      return { canApply: false, reason: '이미 적용된 할인입니다.' };
-    }
-    if (!discount.isReusable && discount.isUsed) {
-      return { canApply: false, reason: '이미 사용한 할인입니다. (재사용 불가)' };
-    }
-    if (deal && deal.amount < discount.minAmount) {
-      return { canApply: false, reason: `최소 주문 금액 ${discount.minAmount.toLocaleString()}원 이상부터 사용 가능합니다.` };
-    }
-    if (new Date(discount.expiry) < new Date()) {
-      return { canApply: false, reason: '유효기간이 만료된 할인입니다.' };
-    }
-    const remainingFee = (deal?.feeAmount || 0) - totalDiscountAmount;
-    if (remainingFee === 0) {
-      return { canApply: false, reason: '수수료가 이미 전액 할인되어 추가 할인을 적용할 수 없습니다.' };
-    }
-    const hasNonStackable = appliedDiscounts.some(d => !d.canStack);
-    if (hasNonStackable && !discount.canStack) {
-      return { canApply: false, reason: '다른 할인과 중복 사용이 불가합니다.' };
-    }
-    if (hasNonStackable) {
-      return { canApply: false, reason: '이미 적용된 할인이 중복 사용 불가 할인입니다.' };
-    }
-    if (!discount.canStack && appliedDiscounts.length > 0) {
-      return { canApply: false, reason: '이 할인은 다른 할인과 중복 사용이 불가합니다.' };
-    }
-    return { canApply: true };
-  };
-
-  // 거래 정보 업데이트 (할인 적용 시) - DB 값 직접 사용
-  const updateDealWithDiscounts = (newAppliedDiscounts: IDiscount[]) => {
-    if (!deal) return;
-
-    const feeAmount = deal.feeAmount;
-    let remainingFee = feeAmount;
-    let discountTotal = 0;
-
-    const percentDiscounts = newAppliedDiscounts.filter(d => d.discountType === 'feePercent');
-    const totalPercent = percentDiscounts.reduce((sum, d) => sum + d.discountValue, 0);
-    const percentDiscount = Math.min(
-      Math.floor(feeAmount * (totalPercent / 100)),
-      remainingFee
-    );
-
-    if (percentDiscount > 0) {
-      remainingFee -= percentDiscount;
-      discountTotal += percentDiscount;
-    }
-
-    const amountDiscounts = newAppliedDiscounts.filter(d => d.discountType === 'amount');
-    amountDiscounts.forEach(d => {
-      const discount = Math.min(d.discountValue, remainingFee);
-      if (discount > 0) {
-        discountTotal += discount;
-        remainingFee -= discount;
-      }
-    });
-
-    const newFinalAmount = deal.totalAmount - discountTotal;
-
-    const allDiscountNames = [
-      ...newAppliedDiscounts.filter(d => d.type === 'code').map(d => d.name || d.id),
-      ...newAppliedDiscounts.filter(d => d.type === 'coupon').map(d => d.name)
-    ].join(', ');
-
-    updateDeal(deal.did, {
-      discountCode: allDiscountNames || undefined,
-      discountAmount: discountTotal,
-      finalAmount: newFinalAmount,
-    });
-  };
-
-  // 할인코드 적용
-  const handleApplyDiscountCode = () => {
-    if (!discountCodeInput.trim()) {
+  // 할인코드 적용 → 서버 API 호출 (DB 직접 업데이트)
+  const handleApplyDiscountCode = async () => {
+    if (!deal || !discountCodeInput.trim()) {
       alert('할인코드를 입력해주세요.');
       return;
     }
-
-    const discountCode = getDiscountByCode(discountCodeInput);
-    if (!discountCode) {
-      alert('유효하지 않은 할인코드입니다.');
-      return;
-    }
-    if (!discountCode.isActive) {
-      alert('현재 사용할 수 없는 할인코드입니다.');
+    if (hasDiscount) {
+      alert('이미 할인이 적용된 거래입니다. 기존 할인을 해제한 후 다시 시도해주세요.');
       return;
     }
 
-    const { canApply, reason } = canApplyDiscount(discountCode);
-    if (!canApply) {
-      alert(reason);
-      return;
+    setApplyingDiscount(true);
+    try {
+      const res = await fetch(`/api/deals/${deal.did}/discount`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountCodeInput.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const refreshed = await fetchDealDirect(deal.did);
+        if (refreshed) setDeal(refreshed);
+        setDiscountCodeInput('');
+        alert('할인코드가 적용되었습니다.');
+      } else {
+        alert(data.error || '할인코드 적용에 실패했습니다.');
+      }
+    } catch {
+      alert('할인코드 적용 중 오류가 발생했습니다.');
+    } finally {
+      setApplyingDiscount(false);
     }
-
-    const newAppliedDiscounts = [...appliedDiscounts, discountCode];
-    setAppliedDiscounts(newAppliedDiscounts);
-    setDiscountCodeInput('');
-    updateDealWithDiscounts(newAppliedDiscounts);
-    alert('할인코드가 적용되었습니다.');
   };
 
-  // 쿠폰 선택 → 서버 API 호출
+  // 쿠폰 선택 → 서버 API 호출 (DB 직접 업데이트)
   const handleSelectCoupon = async (coupon: IDiscount) => {
     if (!deal) return;
-    if (!coupon.isActive) {
-      alert('현재 사용할 수 없는 쿠폰입니다.');
-      return;
-    }
 
     const { canApply, reason } = canApplyDiscount(coupon);
     if (!canApply) {
@@ -336,7 +201,8 @@ export function useDealDetail(did: string) {
 
     const couponWithId = coupon as UserCouponAsDiscount;
     const userCouponId = couponWithId.userCouponId || coupon.id;
-    console.log('[Coupon Apply] Sending:', { dealDid: deal.did, userCouponId, couponName: coupon.name });
+
+    setApplyingDiscount(true);
     try {
       const res = await fetch(`/api/deals/${deal.did}/coupon`, {
         method: 'POST',
@@ -344,36 +210,38 @@ export function useDealDetail(did: string) {
         body: JSON.stringify({ userCouponId }),
       });
       const data = await res.json();
-      console.log('[Coupon Apply] Response:', data);
       if (data.success) {
-        // DB 반영 완료 → deal 재조회로 동기화
+        // DB 반영 완료 → deal 재조회로 동기화 (유일한 source of truth)
         const refreshed = await fetchDealDirect(deal.did);
         if (refreshed) setDeal(refreshed);
-        setAppliedDiscounts([...appliedDiscounts, coupon]);
       } else {
         alert(data.error || '쿠폰 적용에 실패했습니다.');
       }
     } catch {
       alert('쿠폰 적용 중 오류가 발생했습니다.');
+    } finally {
+      setApplyingDiscount(false);
+      setShowCouponModal(false);
     }
-    setShowCouponModal(false);
   };
 
-  // 개별 할인 취소 → 서버 API 호출
-  const handleRemoveDiscount = async (discountId: string) => {
+  // 할인 해제 → 서버 API 호출 (쿠폰/할인코드 공통)
+  const handleRemoveDiscount = async () => {
     if (!deal) return;
+    setApplyingDiscount(true);
     try {
       const res = await fetch(`/api/deals/${deal.did}/coupon`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         const refreshed = await fetchDealDirect(deal.did);
         if (refreshed) setDeal(refreshed);
-        setAppliedDiscounts(appliedDiscounts.filter(d => d.id !== discountId));
       } else {
-        alert(data.error || '쿠폰 해제에 실패했습니다.');
+        alert(data.error || '할인 해제에 실패했습니다.');
       }
     } catch {
-      alert('쿠폰 해제 중 오류가 발생했습니다.');
+      alert('할인 해제 중 오류가 발생했습니다.');
+    } finally {
+      setApplyingDiscount(false);
     }
   };
 
@@ -478,21 +346,46 @@ export function useDealDetail(did: string) {
     setShowRevisionConfirmModal(true);
   };
 
-  // 계좌 인증
+  // 계좌 인증 (팝빌 API)
   const handleRevisionVerifyAccount = async () => {
-    setIsVerifying(true);
-    setRevisionVerificationFailed(false);
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     if (!revisionRecipient.bank || !revisionRecipient.accountNumber || !revisionRecipient.accountHolder) {
       setRevisionVerificationFailed(true);
-      setIsVerifying(false);
       return;
     }
 
-    setRevisionRecipient({ ...revisionRecipient, isVerified: true });
-    setIsVerifying(false);
+    setIsVerifying(true);
+    setRevisionVerificationFailed(false);
+
+    try {
+      const response = await fetch('/api/popbill/account/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankName: revisionRecipient.bank,
+          accountNumber: revisionRecipient.accountNumber,
+          accountHolder: revisionRecipient.accountHolder,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setRevisionVerificationFailed(true);
+        return;
+      }
+
+      const { isMatch } = result.data;
+
+      if (isMatch) {
+        setRevisionRecipient({ ...revisionRecipient, isVerified: true });
+      } else {
+        setRevisionVerificationFailed(true);
+      }
+    } catch {
+      setRevisionVerificationFailed(true);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   // 수취인 보완 확인
@@ -557,17 +450,14 @@ export function useDealDetail(did: string) {
     previewAttachment,
     setPreviewAttachment,
 
-    // 할인
+    // 할인 (DB 기반 1거래 1할인)
     discountCodeInput,
     setDiscountCodeInput,
     showCouponModal,
     setShowCouponModal,
-    appliedDiscounts,
+    hasDiscount,
+    applyingDiscount,
     availableCoupons,
-    totalDiscountAmount,
-    calculatedFinalAmount,
-    getDiscountAmount,
-    getDiscountLabel,
     canApplyDiscount,
     handleApplyDiscountCode,
     handleSelectCoupon,

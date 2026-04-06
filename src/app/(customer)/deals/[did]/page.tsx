@@ -40,17 +40,14 @@ export default function DealDetailPage() {
     previewAttachment,
     setPreviewAttachment,
 
-    // 할인
+    // 할인 (DB 기반 1거래 1할인)
     discountCodeInput,
     setDiscountCodeInput,
     showCouponModal,
     setShowCouponModal,
-    appliedDiscounts,
+    hasDiscount,
+    applyingDiscount,
     availableCoupons,
-    totalDiscountAmount,
-    calculatedFinalAmount,
-    getDiscountAmount,
-    getDiscountLabel,
     canApplyDiscount,
     handleApplyDiscountCode,
     handleSelectCoupon,
@@ -170,14 +167,14 @@ export default function DealDetailPage() {
       {showDiscountSection && (
         <div className="bg-white px-5 py-4 -mt-2 mb-2">
           <DiscountSection
-            appliedDiscounts={appliedDiscounts}
+            deal={displayDeal}
+            hasDiscount={hasDiscount}
+            applyingDiscount={applyingDiscount}
             discountCodeInput={discountCodeInput}
             onDiscountCodeChange={setDiscountCodeInput}
             onApplyCode={handleApplyDiscountCode}
             onRemoveDiscount={handleRemoveDiscount}
             onOpenCouponModal={() => setShowCouponModal(true)}
-            getDiscountAmount={getDiscountAmount}
-            getDiscountLabel={getDiscountLabel}
             availableCouponsCount={availableCoupons.length}
           />
         </div>
@@ -205,10 +202,6 @@ export default function DealDetailPage() {
       <div className="relative">
         <AmountCard
           deal={displayDeal}
-          appliedDiscounts={appliedDiscounts}
-          getDiscountLabel={getDiscountLabel}
-          getDiscountAmount={getDiscountAmount}
-          calculatedFinalAmount={calculatedFinalAmount}
           effectiveFeeRate={effectiveFeeRate}
         />
         {canEdit && (
@@ -274,7 +267,7 @@ export default function DealDetailPage() {
         <CouponModal
           isOpen={showCouponModal}
           availableCoupons={availableCoupons}
-          appliedDiscounts={appliedDiscounts}
+          hasDiscount={hasDiscount}
           canApplyDiscount={canApplyDiscount}
           onSelectCoupon={handleSelectCoupon}
           onClose={() => setShowCouponModal(false)}

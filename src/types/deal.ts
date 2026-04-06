@@ -79,6 +79,9 @@ export interface IDeal {
   discountCode?: string;
   discountAmount: number;
   finalAmount: number;
+  appliedCouponId?: string;
+  appliedDiscountType?: string;   // feeOverride | feeDiscount | amount | feePercent
+  appliedDiscountValue?: number;
 
   // 상대방 정보
   recipient: IRecipientAccount;

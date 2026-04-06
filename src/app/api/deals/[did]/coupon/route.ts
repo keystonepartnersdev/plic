@@ -114,17 +114,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const newFinalAmount = (deal.totalAmount as number) - discountAmount;
 
-    // 거래 업데이트
+    // 거래 업데이트 (할인 유형 정보도 함께 저장 — 프론트엔드 표시용)
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
         ':final': newFinalAmount,
         ':couponId': userCouponId,
         ':feeSource': 'coupon',
+        ':dtype': snapshot.discountType,
+        ':dval': snapshot.discountValue,
         ':now': now,
       },
     }));
@@ -185,7 +187,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId',
+      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
       ExpressionAttributeValues: {
         ':empty': '',
         ':zero': 0,

@@ -1,9 +1,9 @@
 'use client';
 
 // src/components/deal/detail/CouponModal.tsx
-// 쿠폰 선택 모달
+// 쿠폰 선택 모달 — DB 기반 1거래 1할인
 
-import { X, Ticket, Check } from 'lucide-react';
+import { X, Ticket } from 'lucide-react';
 import { ModalPortal } from '@/components/common';
 import { IDiscount } from '@/types';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ interface CouponModalProps {
   isOpen: boolean;
   onClose: () => void;
   availableCoupons: IDiscount[];
-  appliedDiscounts: IDiscount[];
+  hasDiscount: boolean;
   onSelectCoupon: (coupon: IDiscount) => void;
   canApplyDiscount: (discount: IDiscount) => { canApply: boolean; reason?: string };
 }
@@ -21,7 +21,7 @@ export function CouponModal({
   isOpen,
   onClose,
   availableCoupons,
-  appliedDiscounts,
+  hasDiscount,
   onSelectCoupon,
   canApplyDiscount,
 }: CouponModalProps) {
@@ -48,12 +48,20 @@ export function CouponModal({
           </button>
         </div>
 
+        {/* 이미 할인 적용된 경우 안내 */}
+        {hasDiscount && (
+          <div className="px-4 pt-3">
+            <div className="p-3 bg-yellow-50 rounded-xl text-sm text-yellow-700">
+              이미 할인이 적용된 거래입니다. 기존 할인을 해제한 후 쿠폰을 적용해주세요.
+            </div>
+          </div>
+        )}
+
         {/* 쿠폰 목록 */}
         <div className="p-4 space-y-3 overflow-y-auto flex-1">
           {availableCoupons.length > 0 ? (
             availableCoupons.map((coupon) => {
               const { canApply, reason } = canApplyDiscount(coupon);
-              const isAlreadyApplied = appliedDiscounts.some(d => d.id === coupon.id);
 
               return (
                 <button
@@ -62,52 +70,39 @@ export function CouponModal({
                   disabled={!canApply}
                   className={cn(
                     'w-full p-4 rounded-xl border-2 text-left transition-colors',
-                    isAlreadyApplied
-                      ? 'border-green-300 bg-green-50'
-                      : canApply
-                        ? 'border-gray-200 hover:border-primary-400 hover:bg-primary-50'
-                        : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                    canApply
+                      ? 'border-gray-200 hover:border-primary-400 hover:bg-primary-50'
+                      : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                   )}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Ticket className={cn(
                         'w-5 h-5',
-                        isAlreadyApplied ? 'text-green-500' : canApply ? 'text-primary-400' : 'text-gray-400'
+                        canApply ? 'text-primary-400' : 'text-gray-400'
                       )} />
                       <span className="font-semibold text-gray-900">{coupon.name}</span>
                     </div>
                     <span className={cn(
                       'text-lg font-bold',
-                      isAlreadyApplied ? 'text-green-500' : canApply ? 'text-primary-400' : 'text-gray-400'
+                      canApply ? 'text-primary-400' : 'text-gray-400'
                     )}>
                       {coupon.discountType === 'amount'
                         ? `-${coupon.discountValue.toLocaleString()}원`
-                        : `수수료 ${coupon.discountValue}% 할인`
+                        : coupon.discountType === 'feeOverride'
+                          ? `수수료 ${coupon.discountValue}%`
+                          : `수수료 ${coupon.discountValue}% 할인`
                       }
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 space-y-0.5">
-                    <p>{coupon.minAmount.toLocaleString()}원 이상 주문 시 사용 가능</p>
-                    <p>유효기간: {coupon.expiry}까지</p>
-                    <p>
-                      {coupon.canStack ? '다른 할인과 중복 사용 가능' : '단독 사용만 가능'}
-                      {' · '}
-                      {coupon.isReusable ? '재사용 가능' : '1회 사용'}
-                    </p>
+                    {coupon.minAmount > 0 && (
+                      <p>{coupon.minAmount.toLocaleString()}원 이상 주문 시 사용 가능</p>
+                    )}
+                    {coupon.expiry && <p>유효기간: {coupon.expiry}까지</p>}
+                    <p>{coupon.isReusable ? '재사용 가능' : '1회 사용'}</p>
                   </div>
-                  {isAlreadyApplied && (
-                    <p className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
-                      적용됨
-                    </p>
-                  )}
-                  {!coupon.isReusable && coupon.isUsed && !isAlreadyApplied && (
-                    <p className="mt-2 text-xs text-gray-500 font-medium">
-                      사용 완료
-                    </p>
-                  )}
-                  {!canApply && !isAlreadyApplied && !((!coupon.isReusable && coupon.isUsed)) && reason && (
+                  {!canApply && reason && (
                     <p className="mt-2 text-xs text-red-500">
                       {reason}
                     </p>

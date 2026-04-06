@@ -76,27 +76,10 @@ export function AdminEditDealModal({ isOpen, onClose, deal, onUpdate, editType }
     }
   }, [isOpen, deal]);
 
-  // 계좌 검증
+  // TODO: 계좌인증 API 임시 비활성화 — API 복구 후 원래 로직 복원 필요
   const handleVerifyAccount = async () => {
-    if (!bank || !accountNumber) return;
-
-    setIsVerifying(true);
-    setVerificationFailed(false);
-
-    try {
-      const result = await verifyBankAccount(bank, accountNumber, accountHolder);
-
-      if (result.valid) {
-        setAccountHolder(result.accountHolder || accountHolder);
-        setIsVerified(true);
-      } else {
-        setVerificationFailed(true);
-      }
-    } catch {
-      setVerificationFailed(true);
-    } finally {
-      setIsVerifying(false);
-    }
+    if (!bank || !accountNumber || !accountHolder) return;
+    setIsVerified(true);
   };
 
   // 파일 추가
