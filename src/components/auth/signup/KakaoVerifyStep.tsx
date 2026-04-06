@@ -5,7 +5,14 @@
 
 import { useEffect, useRef } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { KakaoVerifyStepProps } from './types';
+interface KakaoVerifyStepProps {
+  isVerified: boolean;
+  isLoading?: boolean;
+  verification: { kakaoId: number; nickname?: string; email?: string; verifiedAt: string } | null;
+  error: string;
+  onVerify: () => void;
+  onNext: () => void;
+}
 
 // 알파벳 물리 키 → QWERTY 문자 매핑 (한글 IME에서도 동작)
 // 숫자/특수문자는 한영 무관하므로 e.key 사용

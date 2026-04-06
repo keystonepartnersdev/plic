@@ -386,12 +386,13 @@ function SignupContent() {
     }
   };
 
-  // TODO: 사업자 인증 API 임시 비활성화 — API 복구 후 businessVerified 조건 복원 필요
   const canProceedBusinessInfo =
     businessName.length >= 2 &&
     isValidBusinessNumber(businessNumber) &&
     representativeName.length >= 2 &&
-    (businessLicenseKey || businessLicenseFile);
+    (businessLicenseKey || businessLicenseFile) &&
+    businessVerified &&
+    (businessState === '01' || businessState === '1');
 
   // 사업자등록증 파일 선택
   const handleLicenseFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1005,17 +1006,50 @@ function SignupContent() {
             {/* 사업자등록번호 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">사업자등록번호</label>
-              {/* TODO: 사업자 인증 API 임시 비활성화 — 버튼 숨김, API 복구 후 복원 필요 */}
-              <input
-                type="text"
-                value={businessNumber}
-                onChange={(e) => handleBusinessNumberChange(e.target.value)}
-                placeholder="000-00-00000"
-                maxLength={12}
-                className="w-full h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={businessNumber}
+                  onChange={(e) => handleBusinessNumberChange(e.target.value)}
+                  placeholder="000-00-00000"
+                  maxLength={12}
+                  readOnly={businessVerified}
+                  className={cn(
+                    "flex-1 h-14 px-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400",
+                    businessVerified && "bg-green-50 border-green-300"
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyBusiness}
+                  disabled={
+                    !isValidBusinessNumber(businessNumber) ||
+                    businessVerifying ||
+                    businessVerified
+                  }
+                  className="h-14 px-4 font-medium rounded-xl transition-colors whitespace-nowrap bg-primary-400 hover:bg-primary-500 disabled:bg-gray-200 disabled:text-gray-400 text-white"
+                >
+                  {businessVerifying ? '확인중...' : businessVerified ? '인증완료' : '사업자 확인'}
+                </button>
+              </div>
               {businessNumber && !isValidBusinessNumber(businessNumber) && (
                 <p className="text-sm text-red-500 mt-1">사업자등록번호 10자리를 입력해주세요.</p>
+              )}
+              {/* 인증 결과 표시 */}
+              {businessVerified && businessState && (
+                <div className={cn(
+                  "flex items-center gap-2 mt-2 p-3 rounded-xl text-sm font-medium",
+                  (businessState === '01' || businessState === '1')
+                    ? "bg-green-50 text-green-700"
+                    : "bg-red-50 text-red-700"
+                )}>
+                  {(businessState === '01' || businessState === '1') ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4" />
+                  )}
+                  {businessStateName}
+                </div>
               )}
             </div>
 
