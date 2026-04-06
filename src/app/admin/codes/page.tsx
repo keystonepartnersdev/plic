@@ -620,10 +620,19 @@ function DiscountModal({
     return () => clearTimeout(timer);
   }, [userSearchQuery]);
 
-  // 선택된 사용자 목록
-  const selectedUsers = useMemo(() => {
-    return users.filter(u => formData.targetUserIds?.includes(u.uid));
-  }, [users, formData.targetUserIds]);
+  // 선택된 사용자 목록 (API 검색 결과 포함 — localStorage 의존 제거)
+  const [selectedUsersMap, setSelectedUsersMap] = useState<Record<string, IUser>>(() => {
+    // 기존 targetUserIds가 있으면 users(localStorage)에서 초기화
+    const map: Record<string, IUser> = {};
+    (formData.targetUserIds || []).forEach(uid => {
+      const user = users.find(u => u.uid === uid);
+      if (user) map[uid] = user;
+    });
+    return map;
+  });
+  const selectedUsers = (formData.targetUserIds || [])
+    .map(uid => selectedUsersMap[uid])
+    .filter(Boolean);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -711,6 +720,7 @@ function DiscountModal({
         ...formData,
         targetUserIds: [...(formData.targetUserIds || []), user.uid],
       });
+      setSelectedUsersMap(prev => ({ ...prev, [user.uid]: user }));
     }
     setUserSearchQuery('');
     setShowUserSearch(false);
@@ -721,6 +731,11 @@ function DiscountModal({
     setFormData({
       ...formData,
       targetUserIds: formData.targetUserIds?.filter(id => id !== userId) || [],
+    });
+    setSelectedUsersMap(prev => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
     });
   };
 
