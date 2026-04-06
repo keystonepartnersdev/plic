@@ -202,7 +202,6 @@ export default function DealDetailPage() {
       <div className="relative">
         <AmountCard
           deal={displayDeal}
-          effectiveFeeRate={effectiveFeeRate}
         />
         {canEdit && (
           <button

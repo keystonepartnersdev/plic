@@ -1,53 +1,44 @@
 'use client';
 
 // src/components/deal/detail/AmountCard.tsx
-// 금액 정보 카드 — DB finalAmount 기준 + 할인 유형별 표시
-// appliedDiscountType/appliedDiscountValue는 DB에서 직접 읽음
+// 금액 정보 카드 — 모든 금액은 DB에서 직접 읽음 (로컬 계산 없음)
 
 import { IDeal } from '@/types';
 import { formatEstimatedTransferDate } from '@/lib/utils';
 
-const MIN_FEE_RATE = 1.0;
-
 interface AmountCardProps {
   deal: IDeal;
-  effectiveFeeRate?: number;
 }
 
-export function AmountCard({
-  deal,
-  effectiveFeeRate,
-}: AmountCardProps) {
+export function AmountCard({ deal }: AmountCardProps) {
   const amount = deal.amount;
-  const baseRate = deal.isPaid ? deal.feeRate : (effectiveFeeRate ?? deal.feeRate);
+  const feeRate = deal.feeRate;
 
-  // 기본 수수료 (부가세 전)
-  const baseFee = Math.floor(amount * baseRate / 100);
-  const baseVat = Math.floor(baseFee * 0.1);
-  const baseFeeTotal = baseFee + baseVat;
-  const baseTotalAmount = amount + baseFeeTotal;
+  // DB 값 직접 사용
+  const feeAmount = deal.feeAmount ?? 0;     // 현재 수수료 (부가세 포함, 쿠폰 적용 시 할인된 값)
+  const finalAmount = deal.finalAmount ?? 0;  // 최종 결제금액
+  const discountAmount = deal.discountAmount ?? 0;
 
-  // 할인 여부: DB에 appliedCouponId가 있고 discountAmount > 0이면 할인 적용 상태
-  const hasDiscount = !!(deal.appliedCouponId && (deal.discountAmount ?? 0) > 0);
+  // 할인 여부
+  const hasDiscount = !!(deal.appliedCouponId && discountAmount > 0);
   const discountType = deal.appliedDiscountType as string | undefined;
   const discountValue = deal.appliedDiscountValue as number | undefined;
   const isFeeOverride = discountType === 'feeOverride';
-
-  // DB 기준 최종 결제금액 (할인 미적용이면 자체 계산)
-  const displayFinalAmount = hasDiscount ? deal.finalAmount : baseTotalAmount;
-
-  // feeOverride일 때 할인된 수수료율/금액 계산 (표시용)
-  let discountedRate = baseRate;
-  let discountedFee = baseFee;
-  let discountedVat = baseVat;
-  if (hasDiscount && isFeeOverride && discountValue !== undefined) {
-    discountedRate = Math.max(discountValue, MIN_FEE_RATE);
-    discountedFee = Math.floor(amount * discountedRate / 100);
-    discountedVat = Math.floor(discountedFee * 0.1);
-  }
-
-  // 할인코드/쿠폰 이름 (DB discountCode 필드에 저장됨)
+  const isFeeDiscount = discountType === 'feeDiscount';
   const discountName = deal.discountCode || '할인 적용';
+
+  // 수수료 분해 (표시용) — DB feeAmount에서 역산
+  // feeAmount = feeBase + vat, vat = floor(feeBase * 0.1)
+  // 따라서 feeBase를 rate에서 계산, vat = feeAmount - feeBase
+  const currentRate = hasDiscount && (isFeeOverride || isFeeDiscount)
+    ? (isFeeOverride ? Math.max(discountValue!, 1.0) : Math.max(feeRate - discountValue!, 1.0))
+    : feeRate;
+  const currentFeeBase = Math.floor(amount * currentRate / 100);
+  const currentVat = feeAmount - currentFeeBase;
+
+  // 원본 수수료 (취소선 표시용 — 할인 적용 시에만 사용)
+  const origFeeBase = Math.floor(amount * feeRate / 100);
+  const origVat = Math.floor(origFeeBase * 0.1);
 
   return (
     <div className="bg-white px-5 py-4 mb-2">
@@ -59,61 +50,57 @@ export function AmountCard({
           <span className="font-medium">{amount.toLocaleString()}원</span>
         </div>
 
-        {/* === feeOverride: 수수료율 대체 === */}
-        {hasDiscount && isFeeOverride ? (
+        {/* === feeOverride / feeDiscount: 수수료율 변경 === */}
+        {hasDiscount && (isFeeOverride || isFeeDiscount) ? (
           <>
             <div className="flex justify-between">
-              <span className="text-gray-400 line-through">기본수수료 ({baseRate}%)</span>
-              <span className="text-gray-400 line-through">{baseFee.toLocaleString()}원</span>
+              <span className="text-gray-400 line-through">기본수수료 ({feeRate}%)</span>
+              <span className="text-gray-400 line-through">{origFeeBase.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary-500">할인수수료 ({discountedRate}%)</span>
-              <span className="font-medium text-primary-500">{discountedFee.toLocaleString()}원</span>
+              <span className="text-primary-500">할인수수료 ({currentRate}%)</span>
+              <span className="font-medium text-primary-500">{currentFeeBase.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400 line-through">부가세</span>
-              <span className="text-gray-400 line-through">{baseVat.toLocaleString()}원</span>
+              <span className="text-gray-400 line-through">{origVat.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between">
               <span className="text-primary-500">할인부가세</span>
-              <span className="font-medium text-primary-500">{discountedVat.toLocaleString()}원</span>
+              <span className="font-medium text-primary-500">{currentVat.toLocaleString()}원</span>
             </div>
             <div className="text-xs text-gray-400">{discountName}</div>
           </>
         ) : hasDiscount ? (
-          /* === amount/feePercent/feeDiscount: 금액 할인 === */
+          /* === amount/feePercent: 수수료 금액 할인 === */
           <>
             <div className="flex justify-between">
-              <span className="text-gray-500">기본수수료 ({baseRate}%)</span>
-              <span className="font-medium">{baseFee.toLocaleString()}원</span>
+              <span className="text-gray-500">수수료 ({feeRate}%)</span>
+              <span className="font-medium">{feeAmount.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between">
               <span className="text-primary-500">{discountName}</span>
-              <span className="font-medium text-primary-500">-{(deal.discountAmount ?? 0).toLocaleString()}원</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">부가세</span>
-              <span className="font-medium">{Math.floor((baseFee - (deal.discountAmount ?? 0)) * 0.1).toLocaleString()}원</span>
+              <span className="font-medium text-primary-500">-{discountAmount.toLocaleString()}원</span>
             </div>
           </>
         ) : (
           /* === 할인 없음 === */
           <>
             <div className="flex justify-between">
-              <span className="text-gray-500">기본수수료 ({baseRate}%)</span>
-              <span className="font-medium">{baseFee.toLocaleString()}원</span>
+              <span className="text-gray-500">기본수수료 ({feeRate}%)</span>
+              <span className="font-medium">{currentFeeBase.toLocaleString()}원</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">부가세</span>
-              <span className="font-medium">{baseVat.toLocaleString()}원</span>
+              <span className="font-medium">{currentVat.toLocaleString()}원</span>
             </div>
           </>
         )}
 
-        {/* 총 결제금액 — DB finalAmount 기준 */}
+        {/* 총 결제금액 — DB finalAmount */}
         <div className="flex justify-between pt-2 border-t border-gray-100 mt-2">
           <span className="font-semibold">총 결제금액</span>
-          <span className="font-bold text-primary-400">{displayFinalAmount.toLocaleString()}원</span>
+          <span className="font-bold text-primary-400">{finalAmount.toLocaleString()}원</span>
         </div>
       </div>
 
