@@ -104,24 +104,28 @@ export async function POST(
     const origFeeTotal = origFeeBase + origVat;
     const origTotal = amount + origFeeTotal;
 
+    let newFeeBase = origFeeBase;
+    let newVat = origVat;
     let newFeeTotal = origFeeTotal;
 
     if (snapshot.discountType === 'feeOverride') {
       const newFeeRate = Math.max(snapshot.discountValue, MIN_FEE_RATE);
-      const newFeeBase = Math.floor(amount * newFeeRate / 100);
-      const newVat = Math.floor(newFeeBase * 0.1);
+      newFeeBase = Math.floor(amount * newFeeRate / 100);
+      newVat = Math.floor(newFeeBase * 0.1);
       newFeeTotal = newFeeBase + newVat;
     } else if (snapshot.discountType === 'feeDiscount') {
       const newFeeRate = Math.max(baseFeeRate - snapshot.discountValue, MIN_FEE_RATE);
-      const newFeeBase = Math.floor(amount * newFeeRate / 100);
-      const newVat = Math.floor(newFeeBase * 0.1);
+      newFeeBase = Math.floor(amount * newFeeRate / 100);
+      newVat = Math.floor(newFeeBase * 0.1);
       newFeeTotal = newFeeBase + newVat;
     } else if (snapshot.discountType === 'amount') {
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
       const maxDiscount = origFeeTotal - minFeeTotal;
       const actualDiscount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
-      newFeeTotal = origFeeTotal - actualDiscount;
+      newFeeBase = origFeeBase - actualDiscount;
+      newVat = Math.floor(Math.max(newFeeBase, 0) * 0.1);
+      newFeeTotal = Math.max(newFeeBase, 0) + newVat;
     } else if (snapshot.discountType === 'feePercent') {
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
@@ -130,20 +134,24 @@ export async function POST(
         Math.floor(origFeeTotal * snapshot.discountValue / 100),
         Math.max(maxDiscount, 0)
       );
-      newFeeTotal = origFeeTotal - actualDiscount;
+      newFeeBase = origFeeBase - actualDiscount;
+      newVat = Math.floor(Math.max(newFeeBase, 0) * 0.1);
+      newFeeTotal = Math.max(newFeeBase, 0) + newVat;
     }
 
     const newFinalAmount = amount + newFeeTotal;
     const discountAmount = origTotal - newFinalAmount;
 
-    // 거래 업데이트 — 할인 적용된 수수료/총액도 함께 갱신
+    // 거래 업데이트 — 수수료 분해 값(feeAmountBase, vatAmount) 포함
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :discountId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :discountId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
+        ':feeBase': newFeeBase,
+        ':vat': newVat,
         ':fee': newFeeTotal,
         ':total': newFinalAmount,
         ':final': newFinalAmount,

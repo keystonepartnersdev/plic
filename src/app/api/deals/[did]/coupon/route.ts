@@ -107,7 +107,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const minFeeTotal = minFeeBase + Math.floor(minFeeBase * 0.1);
       const maxDiscount = origFeeTotal - minFeeTotal;
       const actualDiscount = Math.min(snapshot.discountValue, Math.max(maxDiscount, 0));
-      newFeeTotal = origFeeTotal - actualDiscount;
+      newFeeBase = origFeeBase - actualDiscount;  // 수수료 기본에서 차감
+      newVat = Math.floor(Math.max(newFeeBase, 0) * 0.1);
+      newFeeTotal = Math.max(newFeeBase, 0) + newVat;
     } else if (snapshot.discountType === 'feePercent') {
       // 수수료의 N% 차감 (최소 1% 수수료 보장)
       const minFeeBase = Math.floor(amount * MIN_FEE_RATE / 100);
@@ -117,22 +119,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         Math.floor(origFeeTotal * snapshot.discountValue / 100),
         Math.max(maxDiscount, 0)
       );
-      newFeeTotal = origFeeTotal - actualDiscount;
+      newFeeBase = origFeeBase - actualDiscount;
+      newVat = Math.floor(Math.max(newFeeBase, 0) * 0.1);
+      newFeeTotal = Math.max(newFeeBase, 0) + newVat;
     }
 
     const newFinalAmount = amount + newFeeTotal;
     const discountAmount = origTotal - newFinalAmount;
 
-    // 거래 업데이트 — 할인 적용된 수수료/총액도 함께 갱신
+    // 거래 업데이트 — 수수료 분해 값(feeAmountBase, vatAmount) 포함
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
+      UpdateExpression: 'SET discountCode = :code, discountAmount = :discountAmt, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, totalAmount = :total, finalAmount = :final, appliedCouponId = :couponId, feeSource = :feeSource, appliedDiscountType = :dtype, appliedDiscountValue = :dval, updatedAt = :now',
       ExpressionAttributeValues: {
         ':code': snapshot.name,
         ':discountAmt': discountAmount,
+        ':feeBase': newFeeBase,
+        ':vat': newVat,
         ':fee': newFeeTotal,
-        ':total': newFinalAmount,  // 쿠폰 적용 후 totalAmount = finalAmount
+        ':total': newFinalAmount,
         ':final': newFinalAmount,
         ':couponId': userCouponId,
         ':feeSource': 'coupon',
@@ -202,14 +208,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const origFeeTotal = origFeeBase + origVat;
     const origTotal = amount + origFeeTotal;
 
-    // 거래에서 할인 제거 — 원본 수수료/총액으로 복원
+    // 거래에서 할인 제거 — 원본 수수료/총액으로 복원 (분해 값 포함)
     await docClient.send(new UpdateCommand({
       TableName: DEALS_TABLE,
       Key: { did },
-      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, feeAmount = :fee, totalAmount = :total, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
+      UpdateExpression: 'SET discountCode = :empty, discountAmount = :zero, feeAmountBase = :feeBase, vatAmount = :vat, feeAmount = :fee, totalAmount = :total, finalAmount = :total, feeSource = :src, updatedAt = :now REMOVE appliedCouponId, appliedDiscountType, appliedDiscountValue',
       ExpressionAttributeValues: {
         ':empty': '',
         ':zero': 0,
+        ':feeBase': origFeeBase,
+        ':vat': origVat,
         ':fee': origFeeTotal,
         ':total': origTotal,
         ':src': deal.feeSource === 'coupon' ? 'default' : (deal.feeSource || 'default'),

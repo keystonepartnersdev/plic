@@ -165,6 +165,8 @@ export function EditDealModal({ isOpen, onClose, deal, onUpdate, editType, month
         const newTotalAmount = amount + newFeeAmount;
         updateData.amount = amount;
         updateData.feeRate = feeRate;
+        updateData.feeAmountBase = newFeeBase;
+        updateData.vatAmount = newVat;
         updateData.feeAmount = newFeeAmount;
         updateData.totalAmount = newTotalAmount;
         updateData.finalAmount = newTotalAmount; // 할인 미적용 상태로 리셋

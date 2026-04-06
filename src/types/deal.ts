@@ -68,17 +68,19 @@ export interface IDeal {
   revisionType?: 'documents' | 'recipient'; // 보완 요청 유형 (서류보완 또는 수취인정보보완)
   revisionMemo?: string; // 운영팀의 보완 요청 메모
 
-  // 금액 정보
+  // 금액 정보 — 모든 값은 DB에서 직접 관리
   amount: number;
   feeRate: number;
-  feeAmount: number;
-  totalAmount: number;
-  feeSource?: string;  // 수수료 적용 근거 (default/deal_type/user_custom/coupon)
+  feeAmountBase: number;   // 수수료 기본 (부가세 전) = floor(amount * feeRate / 100)
+  vatAmount: number;       // 부가세 = floor(feeAmountBase * 0.1)
+  feeAmount: number;       // 수수료 합계 = feeAmountBase + vatAmount
+  totalAmount: number;     // 총액 = amount + feeAmount
+  feeSource?: string;      // 수수료 적용 근거 (default/deal_type/user_custom/coupon)
 
   // 할인 정보
   discountCode?: string;
   discountAmount: number;
-  finalAmount: number;
+  finalAmount: number;     // 최종 결제금액 = totalAmount (쿠폰 적용 시 할인 반영)
   appliedCouponId?: string;
   appliedDiscountType?: string;   // feeOverride | feeDiscount | amount | feePercent
   appliedDiscountValue?: number;
