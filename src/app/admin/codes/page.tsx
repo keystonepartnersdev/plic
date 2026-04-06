@@ -149,30 +149,45 @@ export default function AdminCodesPage() {
   const handleSave = async (data: IDiscountCreateInput) => {
     setIsSaving(true);
     try {
+      const extData = data as typeof data & { issueMethods?: string[] };
+      const methods = extData.issueMethods || [data.issueMethod || 'manual'];
+
       if (editingDiscount) {
         await adminAPI.updateDiscount(editingDiscount.id, data);
+        const discountId = editingDiscount.id;
 
-        // 수동 지급: 신규 추가된 사용자에게 쿠폰 실제 지급
-        if (data.issueMethod === 'manual' && data.targetUserIds && data.targetUserIds.length > 0) {
+        // 선택된 지급 방식별로 쿠폰 실제 지급
+        let totalIssued = 0;
+        let totalSkipped = 0;
+
+        for (const method of methods) {
+          if (method === 'signup_auto') continue; // 가입 시 자동은 즉시 지급 아님
+
           try {
             const issueRes = await fetch('/api/admin/coupons/issue', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                discountId: editingDiscount.id,
-                issueMethod: 'manual',
-                targetUserIds: data.targetUserIds,
+                discountId,
+                issueMethod: method,
+                targetUserIds: method === 'manual' ? data.targetUserIds : undefined,
+                targetGrades: method === 'grade' ? data.targetGrades : undefined,
               }),
             });
             const issueData = await issueRes.json();
             if (issueData.success) {
-              const { issuedCount, skippedCount } = issueData.data;
-              if (issuedCount > 0) alert(`${issuedCount}명에게 쿠폰이 지급되었습니다.${skippedCount > 0 ? ` (${skippedCount}명 중복 제외)` : ''}`);
-              else if (skippedCount > 0) alert('선택한 사용자에게 이미 지급된 쿠폰입니다.');
+              totalIssued += issueData.data.issuedCount || 0;
+              totalSkipped += issueData.data.skippedCount || 0;
             }
           } catch {
-            console.error('쿠폰 지급 실패');
+            console.error(`쿠폰 지급 실패 (${method})`);
           }
+        }
+
+        if (totalIssued > 0) {
+          alert(`${totalIssued}명에게 쿠폰이 지급되었습니다.${totalSkipped > 0 ? ` (${totalSkipped}명 중복 제외)` : ''}`);
+        } else if (totalSkipped > 0) {
+          alert('대상 사용자에게 이미 지급된 쿠폰입니다.');
         }
       } else {
         await adminAPI.createDiscount(data);
@@ -601,6 +616,16 @@ function DiscountModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 지급 방식 복수 선택 (수동+등급 등 조합 가능)
+  const [issueMethods, setIssueMethods] = useState<string[]>(() => {
+    return discount?.issueMethod ? [discount.issueMethod] : ['manual'];
+  });
+  const toggleIssueMethod = (method: string) => {
+    setIssueMethods(prev =>
+      prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+    );
+  };
+
   // 사용자 검색 관련 상태
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -683,16 +708,19 @@ function DiscountModal({
       newErrors.allowedGrades = '최소 1개 등급을 선택해주세요.';
     }
 
-    // 쿠폰: 지급 방식에 따른 검증
+    // 쿠폰: 지급 방식에 따른 검증 (복수 선택 지원)
     if (type === 'coupon') {
-      const method = formData.issueMethod || 'manual';
-      if (method === 'manual') {
+      if (issueMethods.length === 0) {
+        newErrors.target = '최소 1개 지급 방식을 선택해주세요.';
+      }
+      if (issueMethods.includes('manual')) {
         if (!formData.targetUserIds || formData.targetUserIds.length === 0) {
-          newErrors.target = '지급 대상 사용자를 선택해주세요.';
+          newErrors.target = '수동 지급: 대상 사용자를 선택해주세요.';
         }
-      } else if (method === 'grade') {
+      }
+      if (issueMethods.includes('grade')) {
         if (!formData.targetGrades || formData.targetGrades.length === 0) {
-          newErrors.target = '지급 대상 등급을 선택해주세요.';
+          newErrors.target = '등급별 지급: 대상 등급을 선택해주세요.';
         }
       }
       // all, signup_auto는 별도 대상 선택 불필요
@@ -704,7 +732,12 @@ function DiscountModal({
 
   const handleSubmit = () => {
     if (validate()) {
-      onSave(formData);
+      // issueMethods를 formData에 반영 (첫번째를 primary로, 전체를 issueMethods로)
+      onSave({
+        ...formData,
+        issueMethod: issueMethods[0] || 'manual',
+        issueMethods, // 복수 선택 전달
+      } as IDiscountCreateInput & { issueMethods: string[] });
     }
   };
 
@@ -1026,9 +1059,9 @@ function DiscountModal({
                 </div>
               </div>
 
-              {/* 지급 방식 */}
+              {/* 지급 방식 (복수 선택 가능) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">지급 방식</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">지급 방식 (복수 선택 가능)</label>
                 <div className="grid grid-cols-2 gap-2">
                   {([
                     { value: 'manual', label: '수동 지급' },
@@ -1039,10 +1072,10 @@ function DiscountModal({
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => setFormData({ ...formData, issueMethod: opt.value })}
+                      onClick={() => toggleIssueMethod(opt.value)}
                       className={cn(
                         'h-10 px-3 rounded-lg border text-sm font-medium transition-colors',
-                        formData.issueMethod === opt.value
+                        issueMethods.includes(opt.value)
                           ? 'bg-primary-400 text-white border-primary-400'
                           : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
                       )}
@@ -1051,10 +1084,11 @@ function DiscountModal({
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">여러 방식을 동시에 선택할 수 있습니다.</p>
               </div>
 
               {/* 가입 시 자동 지급 기간 */}
-              {formData.issueMethod === 'signup_auto' && (
+              {issueMethods.includes('signup_auto') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">자동 지급 기간</label>
                   <div className="flex items-center gap-2">
@@ -1081,8 +1115,8 @@ function DiscountModal({
           {/* 쿠폰: 지급 대상 설정 */}
           {type === 'coupon' && (
             <>
-              {/* 등급별 지급 */}
-              <div>
+              {/* 등급별 지급 — grade 선택 시에만 표시 */}
+              {issueMethods.includes('grade') && <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
                     지급 대상 등급
@@ -1113,10 +1147,10 @@ function DiscountModal({
                   ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">선택한 등급의 사용자에게 쿠폰이 자동 지급됩니다.</p>
-              </div>
+              </div>}
 
-              {/* 개별 사용자 지급 */}
-              <div>
+              {/* 개별 사용자 지급 — manual 선택 시에만 표시 */}
+              {issueMethods.includes('manual') && <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   개별 사용자 지급
                 </label>
@@ -1215,7 +1249,7 @@ function DiscountModal({
                 <p className="text-xs text-gray-500 mt-1">
                   등급과 별개로 특정 사용자에게 직접 쿠폰을 지급할 수 있습니다.
                 </p>
-              </div>
+              </div>}
 
               {errors.target && <p className="text-xs text-red-500">{errors.target}</p>}
             </>
