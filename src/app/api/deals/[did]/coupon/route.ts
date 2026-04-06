@@ -63,7 +63,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // 1회 쿠폰 어뷰징 방지: 미결제 거래에 이미 적용 중인지 확인
     if (userCoupon.maxUsage === 1 && userCoupon.usedDealId && userCoupon.usedDealId !== did) {
-      return NextResponse.json({ success: false, error: '이 쿠폰은 다른 거래에 적용 중입니다.' }, { status: 400 });
+      // 참조된 거래가 존재하고 활성 상태인지 확인 (삭제/취소된 거래면 쿠폰 재사용 허용)
+      const refDealResult = await docClient.send(new GetCommand({ TableName: DEALS_TABLE, Key: { did: userCoupon.usedDealId } }));
+      const refDeal = refDealResult.Item;
+      if (refDeal && refDeal.status !== 'cancelled' && refDeal.appliedCouponId === userCoupon.id) {
+        return NextResponse.json({ success: false, error: '이 쿠폰은 다른 거래에 적용 중입니다.' }, { status: 400 });
+      }
+      // 참조된 거래가 없거나 취소됨 → 쿠폰 usedDealId 정리
+      await docClient.send(new UpdateCommand({
+        TableName: USER_COUPONS_TABLE,
+        Key: { id: userCoupon.id },
+        UpdateExpression: 'REMOVE usedDealId, usedAt SET updatedAt = :now',
+        ExpressionAttributeValues: { ':now': now },
+      }));
     }
 
     // 거래 유형 적용 가능 여부 확인

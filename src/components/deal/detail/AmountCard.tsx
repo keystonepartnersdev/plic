@@ -14,10 +14,10 @@ export function AmountCard({ deal }: AmountCardProps) {
   const amount = deal.amount;
   const feeRate = deal.feeRate;
 
-  // DB 값 직접 사용 — 로컬 계산 없음
-  const feeAmountBase = deal.feeAmountBase ?? 0;  // 수수료 기본 (부가세 전)
-  const vatAmount = deal.vatAmount ?? 0;           // 부가세
-  const finalAmount = deal.finalAmount ?? 0;       // 최종 결제금액
+  // DB 값 직접 사용 — 기존 거래(feeAmountBase 미존재) fallback 포함
+  const feeAmountBase = deal.feeAmountBase || Math.floor(amount * feeRate / 100);
+  const vatAmount = deal.vatAmount ?? (deal.feeAmount - feeAmountBase);
+  const finalAmount = deal.finalAmount ?? 0;
   const discountAmount = deal.discountAmount ?? 0;
 
   // 할인 여부
