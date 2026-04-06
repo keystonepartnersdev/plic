@@ -743,49 +743,45 @@ function DiscountModal({
 
   // 등급 선택 토글
   const toggleGrade = (grade: TUserGrade, field: 'allowedGrades' | 'targetGrades') => {
-    const currentGrades = formData[field] || [];
-    if (currentGrades.includes(grade)) {
-      setFormData({
-        ...formData,
-        [field]: currentGrades.filter(g => g !== grade),
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [field]: [...currentGrades, grade],
-      });
-    }
+    setFormData(prev => {
+      const currentGrades = prev[field] || [];
+      if (currentGrades.includes(grade)) {
+        return { ...prev, [field]: currentGrades.filter(g => g !== grade) };
+      }
+      return { ...prev, [field]: [...currentGrades, grade] };
+    });
   };
 
   // 전체 등급 선택/해제
   const toggleAllGrades = (field: 'allowedGrades' | 'targetGrades') => {
-    const currentGrades = formData[field] || [];
-    if (currentGrades.length === ALL_GRADES.length) {
-      setFormData({ ...formData, [field]: [] });
-    } else {
-      setFormData({ ...formData, [field]: [...ALL_GRADES] });
-    }
+    setFormData(prev => {
+      const currentGrades = prev[field] || [];
+      return currentGrades.length === ALL_GRADES.length
+        ? { ...prev, [field]: [] }
+        : { ...prev, [field]: [...ALL_GRADES] };
+    });
   };
 
   // 사용자 추가
   const addUser = (user: IUser) => {
-    if (!formData.targetUserIds?.includes(user.uid)) {
-      setFormData({
-        ...formData,
-        targetUserIds: [...(formData.targetUserIds || []), user.uid],
-      });
-      setSelectedUsersMap(prev => ({ ...prev, [user.uid]: user }));
-    }
+    setFormData(prev => {
+      if (prev.targetUserIds?.includes(user.uid)) return prev;
+      return {
+        ...prev,
+        targetUserIds: [...(prev.targetUserIds || []), user.uid],
+      };
+    });
+    setSelectedUsersMap(prev => ({ ...prev, [user.uid]: user }));
     setUserSearchQuery('');
     setShowUserSearch(false);
   };
 
   // 사용자 제거
   const removeUser = (userId: string) => {
-    setFormData({
-      ...formData,
-      targetUserIds: formData.targetUserIds?.filter(id => id !== userId) || [],
-    });
+    setFormData(prev => ({
+      ...prev,
+      targetUserIds: prev.targetUserIds?.filter(id => id !== userId) || [],
+    }));
     setSelectedUsersMap(prev => {
       const next = { ...prev };
       delete next[userId];
