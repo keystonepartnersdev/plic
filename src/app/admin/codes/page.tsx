@@ -474,11 +474,6 @@ function DiscountRow({
               : '조건 없음'}
           </p>
           <div className="flex flex-wrap gap-1 mt-1">
-            {discount.canStack && (
-              <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
-                중복가능
-              </span>
-            )}
             {discount.isReusable && (
               <span className="text-xs px-1.5 py-0.5 bg-green-50 text-green-600 rounded">
                 재사용
@@ -1241,18 +1236,6 @@ function DiscountModal({
           {/* 옵션 */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">옵션</label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.canStack}
-                onChange={(e) => setFormData({ ...formData, canStack: e.target.checked })}
-                className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
-              />
-              <div>
-                <p className="text-sm text-gray-700">중복 사용 가능</p>
-                <p className="text-xs text-gray-500">다른 할인과 함께 적용 가능</p>
-              </div>
-            </label>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"

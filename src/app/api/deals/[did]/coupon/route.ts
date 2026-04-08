@@ -60,6 +60,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (userCoupon.expiresAt && userCoupon.expiresAt < now) {
       return NextResponse.json({ success: false, error: '만료된 쿠폰입니다.' }, { status: 400 });
     }
+    const snapStartDate = userCoupon.discountSnapshot?.startDate;
+    if (snapStartDate && snapStartDate > now) {
+      return NextResponse.json({ success: false, error: '아직 사용할 수 없는 쿠폰입니다.' }, { status: 400 });
+    }
 
     // 1회 쿠폰 어뷰징 방지: 미결제 거래에 이미 적용 중인지 확인
     if (userCoupon.maxUsage === 1 && userCoupon.usedDealId && userCoupon.usedDealId !== did) {

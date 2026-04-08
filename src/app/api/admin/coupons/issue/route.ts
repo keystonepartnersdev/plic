@@ -43,6 +43,7 @@ async function issueToUser(uid: string, discount: Record<string, unknown>): Prom
         discountType: discount.discountType,
         discountValue: discount.discountValue,
         applicableDealTypes: discount.applicableDealTypes || [],
+        startDate: discount.startDate || null,
       },
       isUsed: false,
       usedCount: 0,
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
     }
 
     const discount = discountResult.Item;
+
+    if (!discount.isActive) {
+      return NextResponse.json({ success: false, error: '비활성화된 쿠폰은 지급할 수 없습니다.' }, { status: 400 });
+    }
     let targetUids: string[] = [];
 
     const method = issueMethod || discount.issueMethod || 'manual';
