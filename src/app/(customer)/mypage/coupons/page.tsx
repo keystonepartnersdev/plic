@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Ticket, Clock, Check, X } from 'lucide-react';
+import { Ticket } from 'lucide-react';
 import { Header } from '@/components/common';
+import { CouponCard } from '@/components/common/CouponCard';
 import { useUserStore } from '@/stores';
 import { cn } from '@/lib/utils';
 
@@ -41,20 +42,6 @@ export default function CouponsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [currentUser?.uid]);
-
-  const getDiscountLabel = (coupon: UserCoupon) => {
-    const { discountType, discountValue } = coupon.discountSnapshot;
-    if (discountType === 'feeOverride') return `수수료 ${discountValue}% 적용`;
-    if (discountType === 'feeDiscount') return `수수료 ${discountValue}% 차감`;
-    if (discountType === 'amount') return `${discountValue.toLocaleString()}원 할인`;
-    if (discountType === 'feePercent') return `수수료 ${discountValue}% 할인`;
-    return '';
-  };
-
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
-  };
 
   if (loading) {
     return (
@@ -100,41 +87,24 @@ export default function CouponsPage() {
         {coupons.length === 0 ? (
           <div className="text-center py-16">
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">{tab === 'available' ? '사용 가능한 쿠폰이 없습니다.' : '사용/만료된 쿠폰이 없습니다.'}</p>
+            <p className="text-gray-400">
+              {tab === 'available' ? '사용 가능한 쿠폰이 없습니다.' : '사용/만료된 쿠폰이 없습니다.'}
+            </p>
           </div>
         ) : (
           coupons.map(coupon => (
-            <div
+            <CouponCard
               key={coupon.id}
-              className={cn(
-                'bg-white rounded-xl overflow-hidden border',
-                tab === 'available' ? 'border-primary-100' : 'border-gray-100 opacity-60'
-              )}
-            >
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-gray-900">{coupon.discountSnapshot.name}</h3>
-                  {coupon.isUsed ? (
-                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                      <Check className="w-3 h-3" /> 사용완료
-                    </span>
-                  ) : new Date(coupon.expiresAt) < new Date() ? (
-                    <span className="flex items-center gap-1 text-xs text-red-400">
-                      <X className="w-3 h-3" /> 만료
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 bg-primary-50 text-primary-500 text-xs font-bold rounded-full">
-                      사용가능
-                    </span>
-                  )}
-                </div>
-                <p className="text-primary-500 font-bold text-lg mb-2">{getDiscountLabel(coupon)}</p>
-                <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <Clock className="w-3 h-3" />
-                  <span>{formatDate(coupon.issuedAt)} ~ {formatDate(coupon.expiresAt)}</span>
-                </div>
-              </div>
-            </div>
+              couponId={coupon.id}
+              name={coupon.discountSnapshot.name}
+              discountType={coupon.discountSnapshot.discountType}
+              discountValue={coupon.discountSnapshot.discountValue}
+              issuedAt={coupon.issuedAt}
+              expiresAt={coupon.expiresAt}
+              usedCount={coupon.usedCount}
+              maxUsage={coupon.maxUsage}
+              isUsed={coupon.isUsed}
+            />
           ))
         )}
       </div>

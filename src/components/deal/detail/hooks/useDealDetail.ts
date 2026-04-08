@@ -22,6 +22,9 @@ import { AttachmentPreview, RevisionRecipient } from '../types';
 
 interface UserCouponAsDiscount extends IDiscount {
   userCouponId?: string;
+  issuedAt?: string;
+  usedCount?: number;
+  maxUsage?: number;
 }
 
 export function useDealDetail(did: string) {
@@ -72,7 +75,7 @@ export function useDealDetail(did: string) {
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data.available) {
-          const converted: UserCouponAsDiscount[] = data.data.available.map((uc: { id: string; discountId: string; discountSnapshot: { name: string; discountType: string; discountValue: number; applicableDealTypes?: string[] }; expiresAt: string; maxUsage: number }) => ({
+          const converted: UserCouponAsDiscount[] = data.data.available.map((uc: { id: string; discountId: string; discountSnapshot: { name: string; discountType: string; discountValue: number; applicableDealTypes?: string[] }; issuedAt: string; expiresAt: string; usedCount: number; maxUsage: number }) => ({
             id: uc.discountId,
             userCouponId: uc.id,
             name: uc.discountSnapshot.name,
@@ -90,6 +93,9 @@ export function useDealDetail(did: string) {
             updatedAt: '',
             usageType: 'single' as const,
             issueMethod: 'manual' as const,
+            issuedAt: uc.issuedAt,
+            usedCount: uc.usedCount,
+            maxUsage: uc.maxUsage,
           }));
           setUserCoupons(converted);
         }
