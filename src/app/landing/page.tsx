@@ -475,7 +475,7 @@ function Hero() {
             월세, 거래대금 등 현금 거래 사업비<br />
             카드로 결제하시면 송금됩니다.
           </p>
-          <div className="flex flex-wrap justify-center gap-1.5 mb-16">
+          <div className="flex flex-col items-center gap-2 mb-16">
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">월세 수수료 상시 2.9% 적용</span>
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 1.8% 쿠폰 지급!</span>
@@ -705,7 +705,7 @@ function TrustSection() {
 // ==================== Features ====================
 function Features() {
   const features = [
-    { icon: CreditCard, title: '무이자 할부 가능!', description: '카드사에서 제공하는 무이자 할부 기간동안 이용 가능하시며 총 12개월까지 할부 결제가 가능합니다.' },
+    { icon: CreditCard, title: '송금액, 무이자 할부 가능!', description: '카드사에서 제공하는 무이자 할부 기간동안 이용 가능하시며 총 12개월까지 할부 결제가 가능합니다.' },
     { icon: Zap, title: '업계 최저 수수료!', description: '월세는 상시 2.9% 수수료 적용! 첫 거래 시, 수수료 1.8% 적용 쿠폰도 지급합니다!(EVENT 사항)' },
     { icon: Gift, title: '카드 혜택도 그대로 적용!', description: '카드 포인트 적립, 할인, 항공마일리지 적립 등 기존 카드 혜택을 그대로 누릴 수 있습니다.' },
     { icon: BarChart3, title: '대출보다 압도적으로 유리한 PLIC', description: '신용대출 평균 이자율 6~13%, 카드론 12~17%. PLIC 수수료는 월 2.9~3.3%. 신용점수 하락도 전혀 없습니다.' },
