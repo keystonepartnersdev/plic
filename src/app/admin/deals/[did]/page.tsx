@@ -539,6 +539,84 @@ export default function AdminDealDetailPage() {
 
         {/* 오른쪽: 상태 관리 및 히스토리 */}
         <div className="space-y-6">
+          {/* 신청자 정보 */}
+          {dealUser && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">신청자 정보</h2>
+                <button
+                  onClick={() => router.push(`/admin/users/${dealUser.uid}`)}
+                  className="flex items-center gap-1.5 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <User className="w-4 h-4" />
+                  회원 상세
+                </button>
+              </div>
+
+              {/* 기본 정보 */}
+              <div className="space-y-3 mb-4">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">기본 정보</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-gray-500">이름</p>
+                    <p className="text-sm font-medium text-gray-900">{dealUser.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">연락처</p>
+                    <p className="text-sm font-medium text-gray-900">{dealUser.phone}</p>
+                  </div>
+                  {dealUser.email && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-500">이메일</p>
+                      <p className="text-sm font-medium text-gray-900 break-all">{dealUser.email}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500">등급</p>
+                    <p className="text-sm font-medium text-gray-900">{dealUser.grade?.toUpperCase()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">수수료율</p>
+                    <p className="text-sm font-medium text-gray-900">{dealUser.feeRate}%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 사업자 정보 */}
+              {dealUser.userType === 'business' && dealUser.businessInfo && (
+                <div className="space-y-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">사업자 정보</p>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs text-gray-500">상호</p>
+                      <p className="text-sm font-medium text-gray-900">{dealUser.businessInfo.businessName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">사업자등록번호</p>
+                      <p className="text-sm font-medium text-gray-900 font-mono">{dealUser.businessInfo.businessNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">대표자명</p>
+                      <p className="text-sm font-medium text-gray-900">{dealUser.businessInfo.representativeName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">인증 상태</p>
+                      <span className={cn(
+                        'inline-block text-xs px-2 py-0.5 rounded-full font-medium',
+                        dealUser.businessInfo.verificationStatus === 'verified' ? 'bg-green-100 text-green-700' :
+                        dealUser.businessInfo.verificationStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      )}>
+                        {dealUser.businessInfo.verificationStatus === 'verified' ? '인증완료' :
+                         dealUser.businessInfo.verificationStatus === 'rejected' ? '반려' : '심사중'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 상태 관리 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">상태 관리</h2>
