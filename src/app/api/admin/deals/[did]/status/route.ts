@@ -8,6 +8,7 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
+const USER_COUPONS_TABLE = 'plic-user-coupons';
 
 type TDealStatus = 'draft' | 'awaiting_payment' | 'pending' | 'reviewing' | 'hold' | 'need_revision' | 'approved' | 'cancelled' | 'completed';
 
@@ -84,6 +85,18 @@ export async function PUT(
           ConditionExpression: 'attribute_exists(uid)',
         }));
       } catch (e) { console.error('사용자 통계 차감 실패:', e); }
+    }
+
+    // 취소 시 적용된 쿠폰 복귀 (usedDealId 제거 → 사용 가능 상태로 복원)
+    if (body.status === 'cancelled' && deal.appliedCouponId && !String(deal.appliedCouponId).startsWith('discount:')) {
+      try {
+        await docClient.send(new UpdateCommand({
+          TableName: USER_COUPONS_TABLE,
+          Key: { id: deal.appliedCouponId },
+          UpdateExpression: 'REMOVE usedDealId, usedAt SET updatedAt = :now',
+          ExpressionAttributeValues: { ':now': now },
+        }));
+      } catch (e) { console.error('쿠폰 복귀 실패:', e); }
     }
 
     // 송금 완료 시 사용자에게 이메일 통보

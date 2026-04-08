@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
       if (c.isUsed) return false;
       if (c.usedCount >= c.maxUsage) return false;
       if (c.expiresAt && c.expiresAt < now) return false;
+      if (c.usedDealId) return false; // 거래에 적용 중인 쿠폰은 사용 불가
       return true;
     });
 

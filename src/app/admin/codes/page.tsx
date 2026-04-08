@@ -43,7 +43,7 @@ export default function AdminCodesPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<TabType>('code');
+  const [activeTab, setActiveTab] = useState<TabType>('coupon');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<IDiscount | null>(null);
@@ -267,27 +267,6 @@ export default function AdminCodesPage() {
       <div className="bg-white rounded-xl shadow-sm mb-6">
         <div className="flex border-b border-gray-100">
           <button
-            onClick={() => setActiveTab('code')}
-            className={cn(
-              'flex items-center gap-2 px-6 py-4 font-medium transition-colors relative',
-              activeTab === 'code' ? 'text-primary-400' : 'text-gray-400 hover:text-gray-600'
-            )}
-          >
-            <Tag className="w-5 h-5" />
-            할인코드
-            <span
-              className={cn(
-                'ml-1 text-sm',
-                activeTab === 'code' ? 'text-primary-400' : 'text-gray-400'
-              )}
-            >
-              {codeStats.total}
-            </span>
-            {activeTab === 'code' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400" />
-            )}
-          </button>
-          <button
             onClick={() => setActiveTab('coupon')}
             className={cn(
               'flex items-center gap-2 px-6 py-4 font-medium transition-colors relative',
@@ -307,6 +286,14 @@ export default function AdminCodesPage() {
             {activeTab === 'coupon' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400" />
             )}
+          </button>
+          <button
+            disabled
+            className="flex items-center gap-2 px-6 py-4 font-medium text-gray-300 cursor-not-allowed relative"
+          >
+            <Tag className="w-5 h-5" />
+            할인코드
+            <span className="ml-1 text-sm text-gray-300">{codeStats.total}</span>
           </button>
         </div>
 
@@ -850,10 +837,10 @@ function DiscountModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">할인 유형</label>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { value: 'amount', label: '금액 할인' },
-                { value: 'feePercent', label: '수수료 % 할인' },
                 { value: 'feeOverride', label: '수수료율 대체' },
                 { value: 'feeDiscount', label: '수수료율 차감' },
+                { value: 'amount', label: '수수료금액 할인' },
+                { value: 'feePercent', label: '수수료 % 할인' },
               ] as const).map(opt => (
                 <button
                   key={opt.value}
