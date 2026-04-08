@@ -18,7 +18,7 @@ type TabType = 'progress' | 'revision' | 'completed';
 const tabs: { id: TabType; label: string; statuses: TDealStatus[] }[] = [
   { id: 'progress', label: '진행중', statuses: ['draft', 'pending', 'reviewing', 'hold', 'awaiting_payment', 'approved'] },
   { id: 'revision', label: '보완필요', statuses: ['need_revision'] },
-  { id: 'completed', label: '거래완료', statuses: ['completed'] },
+  { id: 'completed', label: '거래완료', statuses: ['completed', 'cancelled'] },
 ];
 
 export default function DealsPage() {
@@ -70,8 +70,8 @@ export default function DealsPage() {
         console.log('[DealsPage] Fetching deals from API...');
         const response = await dealsAPI.list();
         const apiDeals = response.deals || [];
-        // cancelled 상태 거래 제외 (삭제된 거래)
-        const filteredApiDeals = apiDeals.filter((d: IDeal) => d.status !== 'cancelled');
+        // 미결제 취소(결제 전 취소)는 제외, 결제 완료 후 취소(isPaid=true)는 거래완료 탭에 표시
+        const filteredApiDeals = apiDeals.filter((d: IDeal) => d.status !== 'cancelled' || d.isPaid);
         console.log('[DealsPage] API returned:', apiDeals.length, 'deals, after filter:', filteredApiDeals.length);
         console.log('[DealsPage] Deals status:', filteredApiDeals.map((d: IDeal) => ({ did: d.did, status: d.status, isPaid: d.isPaid })));
 
