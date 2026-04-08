@@ -403,11 +403,9 @@ function Hero() {
               카드로 결제하시면 송금됩니다.
             </p>
             <div className="flex flex-wrap gap-2 mb-20">
-              {['거래대금', '사업장월세', '인건비', '자재비', '장비 대여료'].map((tag) => (
-                <span key={tag} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                  {tag}
-                </span>
-              ))}
+              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
+              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">월세 수수료 상시 2.9% 적용</span>
+              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 1.8% 쿠폰 지급!</span>
             </div>
           </motion.div>
 
@@ -478,11 +476,9 @@ function Hero() {
             카드로 결제하시면 송금됩니다.
           </p>
           <div className="flex flex-wrap justify-center gap-1.5 mb-16">
-            {['거래대금', '사업장월세', '인건비', '자재비'].map((tag) => (
-              <span key={tag} className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                {tag}
-              </span>
-            ))}
+            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
+            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">월세 수수료 상시 2.9% 적용</span>
+            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 1.8% 쿠폰 지급!</span>
           </div>
         </motion.div>
 
@@ -549,11 +545,11 @@ function CardBanner() {
 // ==================== iMessage Q&A (스크롤 등장 모션, 간격 확대) ====================
 function MessageQA() {
   const conversations = [
-    { q: '이거 돈 세탁 아닌가요!?', a: '아닙니다! 플릭은 정식 PG사와 연계하는 합법적인 결제 대행 서비스입니다!' },
+    { q: '이거 돈 세탁 아닌가요!?', a: '아닙니다!! 카드 결제 대금으로 송금 대행을 하는 합법적인 정식 결제 대행 서비스입니다!' },
+    { q: '카드 할부도 되나요?', a: '네! 무이자 할부도 가능하고 최대 12개월 할부까지 이용하실 수 있습니다!' },
     { q: '수취인의 동의가 필요한가요?', a: "아닙니다. 수취인의 동의 없이 지정된 '송금자'명으로 수취인에게 이체됩니다!" },
-    { q: '카드 할부도 되나요?', a: '네! 카드사에서 지원하는 무이자 기간 그대로 적용 가능합니다!' },
     { q: '카드 혜택도 적용되나요!?', a: '네! 포인트/항공마일리지 적립, 결제 할인 등 그대로 적용됩니다!' },
-    { q: '단기 대출을 받는게 낫지 않나요?', a: '대출은 신용도 하락의 문제가 있고, 대출 이자보다 수수료도 저렴합니다!' },
+    { q: '단기 대출을 받는게 낫지 않나요?', a: '카드론, 신용대출은 신용도 하락의 문제가 있지만, PLIC은 신용도 하락의 문제가 전혀 없습니다! 높은 대출 이자를 감당하시면서 대출받으실 필요가 전혀 없습니다!(신용 대출 평균 이자율 6%~13%, 카드론 평균 이자율 12%~17%)' },
   ];
 
   return (
@@ -590,7 +586,7 @@ function MessageQA() {
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
                 <div className="max-w-[80%]">
-                  <div className="bg-[#E9E9EB] text-gray-900 px-4 py-3 rounded-2xl rounded-bl-md text-[15px] leading-relaxed font-medium">
+                  <div className="bg-[#E9E9EB] text-gray-900 px-5 py-4 rounded-2xl rounded-bl-md text-base leading-relaxed font-medium">
                     {conv.q}
                   </div>
                 </div>
@@ -605,7 +601,7 @@ function MessageQA() {
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
                 <div className="max-w-[80%]">
-                  <div className="bg-[#007AFF] text-white px-4 py-3 rounded-2xl rounded-br-md text-[15px] leading-relaxed">
+                  <div className="bg-[#007AFF] text-white px-5 py-4 rounded-2xl rounded-br-md text-base leading-relaxed">
                     {conv.a}
                   </div>
                 </div>
@@ -693,8 +689,8 @@ function TrustSection() {
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm mb-3 text-[#2563EB]">
                       <Icon size={20} />
                     </div>
-                    <h3 className="font-bold text-gray-900 mb-1.5">{point.title}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">{point.description}</p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">{point.title}</h3>
+                    <p className="text-gray-600 leading-relaxed text-sm md:text-base">{point.description}</p>
                   </motion.div>
                 );
               })}
@@ -709,12 +705,12 @@ function TrustSection() {
 // ==================== Features ====================
 function Features() {
   const features = [
-    { icon: Clock, title: '결제일까지 여유', description: '현금 여유가 없을 때, 신용카드로 결제가 가능하기에 여유로운 자금흐름을 만들 수 있습니다.' },
-    { icon: BadgeCheck, title: '원금 전액 송금 보장', description: '수취인은 송금 원금을 100% 그대로 받습니다. 100만원을 보내면, 100만원이 도착합니다.' },
-    { icon: Zap, title: '빠른 송금 처리', description: '결제가 완료되면 운영팀 검수 후 수취인에게 원금이 송금됩니다.' },
-    { icon: Building2, title: '어떤 계좌든 OK', description: '국내 모든 은행 계좌로 송금할 수 있습니다. 수취인이 PLIC 회원이 아니어도 괜찮습니다.' },
-    { icon: Gift, title: '카드 혜택 그대로', description: '카드 포인트, 할인, 할부 등 기존 카드 혜택을 그대로 누릴 수 있습니다.' },
-    { icon: BarChart3, title: '실시간 거래 내역', description: '모든 거래 상태를 실시간으로 확인할 수 있습니다. 투명한 거래 이력 관리가 가능합니다.' },
+    { icon: CreditCard, title: '무이자 할부 가능!', description: '카드사에서 제공하는 무이자 할부 기간동안 이용 가능하시며 총 12개월까지 할부 결제가 가능합니다.' },
+    { icon: Zap, title: '업계 최저 수수료!', description: '월세는 상시 2.9% 수수료 적용! 첫 거래 시, 수수료 1.8% 적용 쿠폰도 지급합니다!(EVENT 사항)' },
+    { icon: Gift, title: '카드 혜택도 그대로 적용!', description: '카드 포인트 적립, 할인, 항공마일리지 적립 등 기존 카드 혜택을 그대로 누릴 수 있습니다.' },
+    { icon: BarChart3, title: '대출보다 압도적으로 유리한 PLIC', description: '신용대출 평균 이자율 6~13%, 카드론 12~17%. PLIC 수수료는 월 2.9~3.3%. 신용점수 하락도 전혀 없습니다.' },
+    { icon: TrendingUp, title: '실질 수수료 부담 약 1%대', description: '수수료 부가세 공제 및 카드 혜택 적용 시, 수수료 부담이 확 내려갑니다!' },
+    { icon: CheckCircle, title: '원금 전액 송금 보장', description: '수취인은 송금 원금을 100% 그대로 받습니다. 100만원을 보내면, 100만원이 도착합니다.' },
   ];
 
   return (
@@ -923,7 +919,7 @@ function Reviews() {
     { name: "이ㅇㅇ 실장", role: "인테리어 디자인", category: "인건비/자재비", icon: Users, content: "현장 일용직 인건비는 당일 지급이 원칙이라 현금이 항상 부족했는데, PLIC 덕분에 카드 결제로 여유 있게 지급하고 있습니다.", amount: "건당 150만원 이용" },
     { name: "박ㅇㅇ 대표", role: "온라인 쇼핑몰", category: "재고 매입", icon: TrendingUp, content: "시즌 상품 사입할 때 목돈이 필요한데, 카드 한도를 이용해서 물건을 먼저 받고 결제는 나중에 하니 매출 회전이 훨씬 빨라졌어요.", amount: "월 평균 950만원 이용" },
     { name: "최ㅇㅇ 원장", role: "입시 학원", category: "강사료", icon: Users, content: "프리랜서 선생님들 강사료 지급일에 맞춰 현금을 준비하는 게 스트레스였는데, 이제 카드로 간편하게 송금합니다.", amount: "월 평균 800만원 이용" },
-    { name: "정ㅇㅇ 대표", role: "스타트업", category: "사무실 월세", icon: Building2, content: "공유오피스 보증금과 월세를 법인카드로 결제할 수 있어서 비용 처리가 간편하고 현금 흐름 관리가 수월해졌습니다.", amount: "월 250만원 이용" },
+    { name: "정ㅇㅇ 대표", role: "스타트업", category: "사무실 월세", icon: Building2, content: "공유오피스 보증금과 월세를 사업자 카드로 결제할 수 있어서 비용 처리가 간편하고 현금 흐름 관리가 수월해졌습니다.", amount: "월 250만원 이용" },
     { name: "한ㅇㅇ 대표", role: "건설/시공", category: "장비 대여료", icon: Building2, content: "고가의 장비 대여료를 현금으로만 달라는 곳이 많은데, PLIC으로 카드 결제하고 송금해주니 거래처도 좋아하고 저도 편합니다.", amount: "건당 180만원 이용" },
   ];
 
@@ -1271,6 +1267,70 @@ function Footer() {
   );
 }
 
+// ==================== FeeSection ====================
+function FeeSection() {
+  const fees = [
+    { rate: '1.8%', label: '최초 거래', badge: 'EVENT', badgeColor: 'bg-orange-500 text-white', cardColor: 'border-orange-200 bg-orange-50' },
+    { rate: '2.9%', label: '월세 전용', badge: '업계 최저', badgeColor: 'bg-blue-600 text-white', cardColor: 'border-blue-200 bg-blue-50' },
+    { rate: '3.3%', label: '기본 거래', badge: '표준', badgeColor: 'bg-gray-400 text-white', cardColor: 'border-gray-200 bg-gray-50' },
+  ];
+
+  return (
+    <section data-section="fee" className="py-20 md:py-28 px-6 bg-gradient-to-b from-white to-blue-50">
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4">
+            업계 최저 수수료!
+          </h2>
+          <p className="text-xl md:text-2xl font-bold text-[#2563EB] mb-3">
+            월세 2.9%,{' '}
+            <span className="text-orange-600">최초 거래 1.8% EVENT 진행 중!</span>
+          </p>
+          <p className="text-base text-gray-500 max-w-xl mx-auto leading-relaxed">
+            부가세 공제 및 카드 혜택 적립까지 고려하면,<br />
+            실질 수수료 부담은 생각보다 훨씬 저렴합니다.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-3 gap-3 md:gap-6 mb-6">
+          {fees.map((fee, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className={`rounded-2xl border-2 p-4 md:p-8 text-center ${fee.cardColor}`}
+            >
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-3 ${fee.badgeColor}`}>
+                {fee.badge}
+              </span>
+              <div className="text-3xl md:text-5xl font-black text-gray-900 mb-2">{fee.rate}</div>
+              <div className="text-sm md:text-base text-gray-600 font-medium">{fee.label}</div>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="text-center text-xs text-gray-400"
+        >
+          * 가입 시, 최초 거래 1.8% 수수료 쿠폰이 자동 발급됩니다.
+        </motion.p>
+      </div>
+    </section>
+  );
+}
+
 // ==================== Main Page ====================
 export default function LandingPage() {
   return (
@@ -1279,9 +1339,10 @@ export default function LandingPage() {
         <Navigation />
         <Hero />
         <CardBanner />
-        <MessageQA />
         <Features />
+        <MessageQA />
         <HowItWorks />
+        <FeeSection />
         <TrustSection />
         <Security />
         <Reviews />
