@@ -143,7 +143,7 @@ export default function PaymentPage() {
         payerName: currentUser.name || '',
         payerEmail: currentUser.email || '',
         payerTel: currentUser.phone || '',
-        device: 'mobile',
+        device: /mobile|iphone|android/i.test(navigator.userAgent) ? 'mobile' : 'pc',
         dealId: deal.did,
         userId: currentUser.uid,
       };

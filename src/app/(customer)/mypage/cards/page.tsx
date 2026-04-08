@@ -117,7 +117,7 @@ function CardsPageContent() {
           payerName: currentUser.name || '',
           payerEmail: currentUser.email || '',
           payerTel: currentUser.phone || '',
-          device: 'mobile',
+          device: /mobile|iphone|android/i.test(navigator.userAgent) ? 'mobile' : 'pc',
           userId: currentUser.uid,
         }),
       });
