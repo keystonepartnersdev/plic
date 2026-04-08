@@ -16,6 +16,7 @@ interface UserCoupon {
     applicableDealTypes?: string[];
   };
   isUsed: boolean;
+  usedDealId?: string;  // 거래에 적용 중인 경우 (결제 완료 포함)
   usedCount: number;
   maxUsage: number;
   issuedAt: string;
@@ -103,7 +104,7 @@ export default function CouponsPage() {
               expiresAt={coupon.expiresAt}
               usedCount={coupon.usedCount}
               maxUsage={coupon.maxUsage}
-              isUsed={coupon.isUsed}
+              isUsed={coupon.isUsed || !!coupon.usedDealId}
             />
           ))
         )}
