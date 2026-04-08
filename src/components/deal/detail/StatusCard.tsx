@@ -147,8 +147,8 @@ export function StatusCard({ deal, onPaymentBlocked }: StatusCardProps) {
         </div>
       )}
 
-      {/* 결제완료 but 거래 미완료 (검수중 등) */}
-      {deal.isPaid && deal.status !== 'completed' && (
+      {/* 결제완료 but 거래 미완료 (검수중 등) — 취소 제외 */}
+      {deal.isPaid && deal.status !== 'completed' && deal.status !== 'cancelled' && (
         <div className="mt-4">
           <button
             disabled
@@ -170,6 +170,26 @@ export function StatusCard({ deal, onPaymentBlocked }: StatusCardProps) {
               검수가 완료되면 하단에 기재하신 수취인 정보로 송금이 진행됩니다.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* 결제 완료 후 취소 */}
+      {deal.isPaid && deal.status === 'cancelled' && (
+        <div className="mt-4">
+          <button
+            disabled
+            className="
+              w-full h-14
+              bg-red-100
+              text-red-500 font-semibold
+              rounded-xl
+              flex items-center justify-center gap-2
+              cursor-not-allowed
+            "
+          >
+            <AlertCircle className="w-5 h-5" />
+            거래취소
+          </button>
         </div>
       )}
     </div>
