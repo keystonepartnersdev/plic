@@ -403,9 +403,9 @@ function Hero() {
               카드로 결제하시면 송금됩니다.
             </p>
             <div className="flex flex-wrap gap-2 mb-20">
+              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">무이자 할부 가능!</span>
               <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
-              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">월세 수수료 상시 2.9% 적용</span>
-              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 1.8% 쿠폰 지급!</span>
+              <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 수수료 1.8% 쿠폰 지급!</span>
             </div>
           </motion.div>
 
@@ -476,9 +476,9 @@ function Hero() {
             카드로 결제하시면 송금됩니다.
           </p>
           <div className="flex flex-col items-center gap-2 mb-16">
+            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">무이자 할부 가능!</span>
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
-            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">월세 수수료 상시 2.9% 적용</span>
-            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 1.8% 쿠폰 지급!</span>
+            <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 수수료 1.8% 쿠폰 지급!</span>
           </div>
         </motion.div>
 
