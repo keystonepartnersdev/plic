@@ -370,7 +370,7 @@ function Hero() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
               <Briefcase size={14} />
-              <span>사업자 전용 서비스</span>
+              <span>온라인 셀러님 주목!!</span>
             </div>
 
             <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-2">
@@ -450,7 +450,7 @@ function Hero() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
             <Briefcase size={14} />
-            <span>사업자 전용 서비스</span>
+            <span>온라인 셀러님 주목!!</span>
           </div>
 
           <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-2">
@@ -548,6 +548,7 @@ function MessageQA() {
     { q: '목돈이 없어서 사업을 못 시작했어요', a: '무이자 할부도 지원하고 최대 12개월 분납 가능합니다!\n부담스러운 사입비, PLIC이 해결해드립니다!' },
     { q: '재고가 남아서 추가 사입할 비용이 부족해요..', a: 'PLIC은 카드로 결제 후 송금해드리는 송금 결제 대행 서비스입니다!\nPLIC으로 현금 흐름을 개선하고 다음 사입 자금 확보하세요!' },
     { q: '사입비 말고 다른 비용도 송금 결제 가능한가요..?', a: 'PLIC은 셀러님들의 모든 사업비 송금을 지원합니다! 도매 사입비, 월세, 물류비 등 사업 관련 비용은 모두 가능합니다!' },
+    { q: '거래처 동의가 필요한가요?', a: '거래처 동의는 전혀 필요 없습니다! PLIC에서 카드 결제만 하시면 지정하신 송금인명, 계좌번호로 이체됩니다!' },
     { q: '카드 할부도 되나요?', a: '네! 무이자 할부도 가능하고 최대 12개월 할부까지 이용하실 수 있습니다!' },
     { q: '단기 대출을 받는게 낫지 않나요?', a: '카드론, 신용대출은 신용도 하락의 문제가 있지만, PLIC은 신용도 하락의 문제가 전혀 없습니다! 높은 대출 이자를 감당하시면서 대출받으실 필요가 전혀 없습니다!(신용 대출 평균 이자율 6%~13%, 카드론 평균 이자율 12%~17%)' },
   ];
@@ -915,12 +916,12 @@ function Security() {
 // ==================== Reviews (무한궤도, 2초 간격, 모바일 중앙 정렬) ====================
 function Reviews() {
   const reviews = [
-    { name: "김ㅇㅇ 대표", role: "프랜차이즈 카페 운영", category: "물품대금", icon: ShoppingBag, content: "매달 나가는 원두값과 부자재 비용이 만만치 않았는데, 카드로 결제하고 현금 유동성을 확보할 수 있어서 매장 운영에 큰 도움이 됩니다.", amount: "월 평균 700만원 이용" },
-    { name: "이ㅇㅇ 실장", role: "인테리어 디자인", category: "인건비/자재비", icon: Users, content: "현장 일용직 인건비는 당일 지급이 원칙이라 현금이 항상 부족했는데, PLIC 덕분에 카드 결제로 여유 있게 지급하고 있습니다.", amount: "건당 150만원 이용" },
-    { name: "박ㅇㅇ 대표", role: "온라인 쇼핑몰", category: "재고 매입", icon: TrendingUp, content: "시즌 상품 사입할 때 목돈이 필요한데, 카드 한도를 이용해서 물건을 먼저 받고 결제는 나중에 하니 매출 회전이 훨씬 빨라졌어요.", amount: "월 평균 950만원 이용" },
-    { name: "최ㅇㅇ 원장", role: "입시 학원", category: "강사료", icon: Users, content: "프리랜서 선생님들 강사료 지급일에 맞춰 현금을 준비하는 게 스트레스였는데, 이제 카드로 간편하게 송금합니다.", amount: "월 평균 800만원 이용" },
-    { name: "정ㅇㅇ 대표", role: "스타트업", category: "사무실 월세", icon: Building2, content: "공유오피스 보증금과 월세를 사업자 카드로 결제할 수 있어서 비용 처리가 간편하고 현금 흐름 관리가 수월해졌습니다.", amount: "월 250만원 이용" },
-    { name: "한ㅇㅇ 대표", role: "건설/시공", category: "장비 대여료", icon: Building2, content: "고가의 장비 대여료를 현금으로만 달라는 곳이 많은데, PLIC으로 카드 결제하고 송금해주니 거래처도 좋아하고 저도 편합니다.", amount: "건당 180만원 이용" },
+    { name: "김ㅇㅇ 셀러", role: "스마트스토어 운영", category: "도매 사입비", icon: ShoppingBag, content: "본업 다니면서 부업으로 스토어 시작했는데 사입 목돈이 제일 부담이었어요. PLIC으로 할부 결제하고 나서 재고 늘리는 게 훨씬 수월해졌습니다.", amount: "월 평균 400만원 이용" },
+    { name: "이ㅇㅇ 셀러", role: "쿠팡 파트너스", category: "초기 사입비", icon: TrendingUp, content: "처음 시작할 때 300만원 사입비가 너무 부담이었는데, PLIC으로 12개월 할부 하니까 월 25만원 수준으로 줄었어요. 덕분에 리스크 없이 시작했습니다.", amount: "건당 300만원 이용" },
+    { name: "박ㅇㅇ 대표", role: "온라인 패션몰", category: "시즌 사입비", icon: ShoppingBag, content: "시즌마다 신상 사입 때 현금이 묶이는 게 제일 힘들었는데, PLIC 쓰고 나서 현금 흐름이 완전히 달라졌어요. 광고비도 여유 있게 쓸 수 있게 됐습니다.", amount: "월 평균 950만원 이용" },
+    { name: "최ㅇㅇ 셀러", role: "도매 사입 셀러", category: "물류비", icon: TrendingUp, content: "재고는 쌓여있는데 물류비, 포장재비가 계속 나가니까 현금이 항상 부족했어요. PLIC으로 물류비까지 카드 결제하니까 숨통이 트이는 느낌입니다.", amount: "월 평균 200만원 이용" },
+    { name: "정ㅇㅇ 대표", role: "카카오쇼핑 입점 셀러", category: "재고 매입", icon: ShoppingBag, content: "플랫폼 수수료에 광고비까지 나가는데 사입비까지 현금으로 빠지면 남는 게 없었어요. PLIC 수수료는 쿠팡 판매 수수료 15%에 비하면 훨씬 합리적이에요.", amount: "월 평균 600만원 이용" },
+    { name: "한ㅇㅇ 셀러", role: "위탁→사입 전환 셀러", category: "사입비/창고비", icon: TrendingUp, content: "위탁판매에서 사입으로 전환하려고 했는데 초기 자금이 없었어요. PLIC 덕분에 부담 없이 전환할 수 있었고 지금은 매출이 3배 늘었습니다.", amount: "월 평균 800만원 이용" },
   ];
 
   // 무한궤도를 위해 리뷰를 3배로 복제
@@ -987,11 +988,11 @@ function Reviews() {
             <span>생생한 이용 후기</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            많은 사업자분들이<br />
-            <span className="text-[#2563EB]">자금 고민을 해결</span>했어요!
+            많은 셀러분들이<br />
+            <span className="text-[#2563EB]">자금 고민을 해결</span>했어요
           </h2>
           <p className="text-lg text-gray-500">
-            인건비, 계약금, 월세까지.<br />
+            사입비, 물류비, 월세까지.<br />
             사업에 필요한 모든 자금, PLIC으로 해결하세요.
           </p>
         </motion.div>
@@ -1178,7 +1179,7 @@ function CTA() {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-8 leading-tight">
-            지금 바로<br />PLIC하세요
+            온라인 셀러님들의<br />부담 없는 사업을<br />지원합니다.
           </h2>
           <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-2xl mx-auto">
             카드로 송금하는 새로운 경험을 시작해보세요!
@@ -1289,8 +1290,8 @@ function FeeSection() {
             업계 최저 수수료!
           </h2>
           <p className="text-xl md:text-2xl font-bold text-[#2563EB] mb-3">
-            월세 2.9%,{' '}
-            <span className="text-orange-600">최초 거래 1.8% EVENT 진행 중!</span>
+            <span className="text-orange-600">최초 거래 1.8% EVENT!</span><br />
+            월세 상시 2.9%!!
           </p>
           <p className="text-base text-gray-500 max-w-xl mx-auto leading-relaxed">
             부가세 공제 및 카드 혜택 적립까지 고려하면,<br />
