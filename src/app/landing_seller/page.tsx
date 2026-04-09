@@ -347,7 +347,7 @@ function CardFlowGraphic({ className = '' }: { className?: string }) {
 
 // ==================== Hero ====================
 function Hero() {
-  const rollingTexts = ['도매 사입비를', '물류대금을', '월세를'];
+  const rollingTexts = ['도매 사입비', '물류대금', '월세'];
   const [rollingIndex, setRollingIndex] = useState(0);
 
   useEffect(() => {
@@ -386,7 +386,7 @@ function Hero() {
                   {rollingTexts[rollingIndex]}
                 </motion.span>
               </AnimatePresence>
-              <br />부담을 확 낮춰드립니다!
+              <br />부담 확 낮춰드립니다!
             </h1>
             <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-6">
               PLIC
@@ -466,7 +466,7 @@ function Hero() {
                 {rollingTexts[rollingIndex]}
               </motion.span>
             </AnimatePresence>
-            <br />부담을 확 낮춰드립니다!
+            <br />부담 확 낮춰드립니다!
           </h1>
           <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-4">
             PLIC
