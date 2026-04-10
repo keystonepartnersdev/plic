@@ -1444,7 +1444,7 @@ function CoupangSellerSection() {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <div className="w-16 h-1 bg-blue-500 mx-auto mb-8 rounded-full" />
-            <h2 className="text-3xl md:text-5xl font-black leading-tight">
+            <h2 className="text-5xl md:text-7xl lg:text-8xl font-black leading-tight tracking-tight">
               <span className="text-white">카드로 결제하면</span>
               <br />
               <span className="text-[#60a5fa]">PLIC이 송금해드립니다!</span>
