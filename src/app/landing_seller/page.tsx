@@ -45,7 +45,7 @@ function Navigation() {
       style={{ zIndex: 99999 }}
     >
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-14">
           <a href="#" className="text-2xl font-black text-gray-900 tracking-tight">
             PLIC
           </a>
@@ -1246,11 +1246,11 @@ function CTA() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-8 leading-tight">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-8 leading-tight">
             온라인 셀러님들의<br />부담 없는 사업을<br />지원합니다.
           </h2>
-          <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-2xl mx-auto">
-            카드로 송금하는 새로운 경험을 시작해보세요!
+          <p className="text-2xl md:text-3xl text-blue-100 mb-12 max-w-2xl mx-auto leading-snug">
+            카드로 송금하는 새로운 경험을<br />시작해보세요!
           </p>
 
           <div className="hidden md:flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
@@ -1264,11 +1264,11 @@ function CTA() {
             </a>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 text-white/80">
-            {['가입비 무료', '숨겨진 비용 없음', '언제든지 회원가입 해지 가능'].map((text) => (
+          <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 text-white/90">
+            {['가입비 없음', '무이자 할부 가능', '업계 최저 수수료'].map((text) => (
               <div key={text} className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-white rounded-full" />
-                <span className="text-sm">{text}</span>
+                <div className="w-2 h-2 bg-white rounded-full flex-shrink-0" />
+                <span className="text-base md:text-lg font-medium">{text}</span>
               </div>
             ))}
           </div>
@@ -1564,7 +1564,7 @@ function DealCreationPreview() {
               className="relative bg-gray-900 rounded-[2.8rem] overflow-hidden cursor-grab active:cursor-grabbing"
               style={{
                 width: '270px',
-                height: '584px',
+                height: '536px',
                 border: '7px solid #374151',
               }}
               onTouchStart={onTouchStart}
@@ -1580,7 +1580,7 @@ function DealCreationPreview() {
                   key={currentStep}
                   src={steps[currentStep].image}
                   alt={steps[currentStep].title}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-full object-fill"
                   draggable={false}
                   custom={swipeDir}
                   initial={{ opacity: 0, x: swipeDir * 40 }}
