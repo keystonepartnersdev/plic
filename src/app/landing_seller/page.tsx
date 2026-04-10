@@ -524,7 +524,7 @@ function SellerPersona() {
     },
     {
       role: '초보 셀러',
-      lines: ['처음 사입인데 목돈이 한꺼번에', '나가는 게 무섭네..'],
+      lines: ['첫 사입인데 목돈이', '한꺼번에 나가는게 너무 무서워ㅜ'],
       align: 'right' as const,
     },
     {
