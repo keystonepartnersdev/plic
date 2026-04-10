@@ -1404,7 +1404,7 @@ function FeeSection() {
 function CoupangSellerSection() {
   const painPoints = [
     { text: '부담스러운 사입비,', delay: 0.1 },
-    { text: '갑작스러운 현금지출', delay: 0.3 },
+    { text: '부족한 현금', delay: 0.3 },
   ];
 
   return (
@@ -1430,7 +1430,7 @@ function CoupangSellerSection() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.55, delay: item.delay }}
-                className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-tight tracking-tight"
+                className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight"
               >
                 {item.text}
               </motion.div>
@@ -1444,7 +1444,7 @@ function CoupangSellerSection() {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <div className="w-16 h-1 bg-blue-500 mx-auto mb-8 rounded-full" />
-            <h2 className="text-5xl md:text-7xl lg:text-8xl font-black leading-tight tracking-tight">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight">
               <span className="text-[#60a5fa]">카드로 결제하면</span>
               <br />
               <span className="text-white">PLIC이</span>
@@ -1470,42 +1470,48 @@ function DealCreationPreview() {
   ];
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [mouseStartX, setMouseStartX] = useState<number | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragDelta, setDragDelta] = useState(0);
+  const [swipeDir, setSwipeDir] = useState<1 | -1>(1);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const isHorizSwipe = useRef<boolean | null>(null);
 
-  const MIN_SWIPE = 50;
+  const MIN_SWIPE = 40;
 
-  const goNext = () => setCurrentStep((p) => Math.min(steps.length - 1, p + 1));
-  const goPrev = () => setCurrentStep((p) => Math.max(0, p - 1));
+  const goNext = () => { setSwipeDir(1); setCurrentStep((p) => Math.min(steps.length - 1, p + 1)); };
+  const goPrev = () => { setSwipeDir(-1); setCurrentStep((p) => Math.max(0, p - 1)); };
 
-  // Touch handlers
-  const onTouchStart = (e: React.TouchEvent) => setTouchStartX(e.targetTouches[0].clientX);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+    isHorizSwipe.current = null;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = Math.abs(e.targetTouches[0].clientX - touchStartX.current);
+    const dy = Math.abs(e.targetTouches[0].clientY - touchStartY.current);
+    if (isHorizSwipe.current === null && (dx > 5 || dy > 5)) {
+      isHorizSwipe.current = dx > dy;
+    }
+    // 수평 스와이프로 판단되면 페이지 스크롤 방지
+    if (isHorizSwipe.current) {
+      e.preventDefault();
+    }
+  };
+
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
-    const dist = touchStartX - e.changedTouches[0].clientX;
+    if (touchStartX.current === null || !isHorizSwipe.current) {
+      touchStartX.current = null;
+      touchStartY.current = null;
+      isHorizSwipe.current = null;
+      return;
+    }
+    const dist = touchStartX.current - e.changedTouches[0].clientX;
     if (dist > MIN_SWIPE) goNext();
     else if (dist < -MIN_SWIPE) goPrev();
-    setTouchStartX(null);
-  };
-
-  // Mouse drag handlers (desktop)
-  const onMouseDown = (e: React.MouseEvent) => {
-    setMouseStartX(e.clientX);
-    setIsDragging(true);
-    setDragDelta(0);
-  };
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || mouseStartX === null) return;
-    setDragDelta(e.clientX - mouseStartX);
-  };
-  const onMouseUp = () => {
-    if (dragDelta > MIN_SWIPE) goPrev();
-    else if (dragDelta < -MIN_SWIPE) goNext();
-    setIsDragging(false);
-    setMouseStartX(null);
-    setDragDelta(0);
+    touchStartX.current = null;
+    touchStartY.current = null;
+    isHorizSwipe.current = null;
   };
 
   return (
@@ -1521,7 +1527,7 @@ function DealCreationPreview() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-300 rounded-full text-sm font-bold mb-6">
             <Send size={14} />
-            <span>실제 앱 화면</span>
+            <span>실제 서비스 화면</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
             PLIC 거래 생성
@@ -1547,13 +1553,12 @@ function DealCreationPreview() {
           </button>
 
           {/* 폰 프레임 */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
+          <div
             className="relative select-none"
-            style={{ filter: 'drop-shadow(0 0 40px rgba(37,99,235,0.35))' }}
+            style={{
+              boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+              borderRadius: '2.8rem',
+            }}
           >
             <div
               className="relative bg-gray-900 rounded-[2.8rem] overflow-hidden cursor-grab active:cursor-grabbing"
@@ -1561,34 +1566,31 @@ function DealCreationPreview() {
                 width: '270px',
                 height: '584px',
                 border: '7px solid #374151',
-                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
               }}
               onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              onMouseDown={onMouseDown}
-              onMouseMove={onMouseMove}
-              onMouseUp={onMouseUp}
-              onMouseLeave={onMouseUp}
             >
               {/* 노치 */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[22px] bg-gray-900 rounded-b-2xl z-20" />
 
               {/* 이미지 슬라이드 */}
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait" custom={swipeDir}>
                 <motion.img
                   key={currentStep}
                   src={steps[currentStep].image}
                   alt={steps[currentStep].title}
                   className="w-full h-full object-cover object-top"
                   draggable={false}
-                  initial={{ opacity: 0, x: dragDelta < 0 ? 30 : -30 }}
+                  custom={swipeDir}
+                  initial={{ opacity: 0, x: swipeDir * 40 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: dragDelta < 0 ? -30 : 30 }}
-                  transition={{ duration: 0.28 }}
+                  exit={{ opacity: 0, x: swipeDir * -40 }}
+                  transition={{ duration: 0.25 }}
                 />
               </AnimatePresence>
             </div>
-          </motion.div>
+          </div>
 
           {/* 다음 버튼 */}
           <button
@@ -1609,7 +1611,7 @@ function DealCreationPreview() {
           {steps.map((_, i) => (
             <button
               key={i}
-              onClick={() => setCurrentStep(i)}
+              onClick={() => { setSwipeDir(i > currentStep ? 1 : -1); setCurrentStep(i); }}
               className={`rounded-full transition-all duration-300 ${
                 i === currentStep
                   ? 'w-8 h-2.5 bg-blue-500'
@@ -1643,7 +1645,7 @@ function DealCreationPreview() {
           {steps.map((step, i) => (
             <button
               key={i}
-              onClick={() => setCurrentStep(i)}
+              onClick={() => { setSwipeDir(i > currentStep ? 1 : -1); setCurrentStep(i); }}
               className={`flex flex-col items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 ${
                 i === currentStep ? 'bg-blue-500/20' : 'hover:bg-white/5'
               }`}
