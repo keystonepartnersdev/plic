@@ -1403,9 +1403,8 @@ function FeeSection() {
 // ==================== CoupangSeller Pain Points ====================
 function CoupangSellerSection() {
   const painPoints = [
-    { text: '선입금이', delay: 0.1 },
-    { text: '초보 셀러 한꺼번에', delay: 0.25 },
-    { text: '먼저 보내야 하는데..', delay: 0.4, noWrap: true },
+    { text: '부담스러운 사입비,', delay: 0.1 },
+    { text: '갑작스러운 현금지출', delay: 0.3 },
   ];
 
   return (
@@ -1431,7 +1430,7 @@ function CoupangSellerSection() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.55, delay: item.delay }}
-                className={`text-5xl md:text-7xl lg:text-8xl font-black text-white leading-tight tracking-tight ${item.noWrap ? 'whitespace-nowrap' : ''}`}
+                className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-tight tracking-tight"
               >
                 {item.text}
               </motion.div>
@@ -1446,9 +1445,9 @@ function CoupangSellerSection() {
           >
             <div className="w-16 h-1 bg-blue-500 mx-auto mb-8 rounded-full" />
             <h2 className="text-3xl md:text-5xl font-black leading-tight">
-              <span className="text-white">거래처 송금,</span>
+              <span className="text-white">카드로 결제하면</span>
               <br />
-              <span className="text-[#60a5fa]">이제 현금 말고 카드로 하세요!</span>
+              <span className="text-[#60a5fa]">PLIC이 송금해드립니다!</span>
             </h2>
           </motion.div>
         </motion.div>
