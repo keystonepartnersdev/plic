@@ -511,31 +511,26 @@ function SellerPersona() {
       role: '스마트스토어 판매자',
       lines: ['새 아이템 사입해야 하는데', '현금이 부족하네..'],
       align: 'left' as const,
-      width: 'w-[85%]',
     },
     {
       role: '패션몰 운영자',
       lines: ['이번 시즌 자켓 제작비가', '좀 타이트한데..'],
       align: 'right' as const,
-      width: 'w-[62%]',
     },
     {
       role: '쿠팡 셀러',
       lines: ['재고 더 넣고 싶은데 선입금이', '너무 부담이야..'],
       align: 'left' as const,
-      width: 'w-[72%]',
     },
     {
       role: '초보 셀러',
       lines: ['처음 사입인데 목돈이 한꺼번에', '나가는 게 무섭네..'],
       align: 'right' as const,
-      width: 'w-[78%]',
     },
     {
       role: '투잡 온라인 셀러',
-      lines: ['월급 전에 사입 대금을 먼저 보내야 하는데..', '너무 빠듯해.'],
+      lines: ['월급 전에 사입 대금을', '먼저 보내야 하는데..', '너무 빠듯해'],
       align: 'left' as const,
-      width: 'w-[90%]',
     },
   ];
 
@@ -555,36 +550,22 @@ function SellerPersona() {
             <span className="text-base md:text-lg font-bold text-[#2563EB] tracking-tight px-1">
               {p.role}
             </span>
-            {/* 말풍선 */}
+            {/* 말풍선: w-fit으로 콘텐츠 너비에 맞추되 최대 90% 제한 */}
             <div
-              className={`${p.width} px-5 py-4 rounded-2xl ${
+              className={`w-fit max-w-[90%] px-5 py-4 rounded-2xl ${
                 p.align === 'left'
                   ? 'bg-white shadow-sm rounded-tl-md'
                   : 'bg-[#BFDBFE] rounded-tr-md'
               }`}
             >
-              <p className="text-[17px] md:text-lg font-semibold text-gray-800 leading-relaxed">
-                &ldquo;{p.lines[0]}<br />{p.lines[1]}&rdquo;
+              <p className="text-[17px] md:text-lg font-semibold text-gray-800 leading-relaxed whitespace-nowrap">
+                &ldquo;{p.lines.map((line, li) => (
+                  <span key={li}>{line}{li < p.lines.length - 1 && <br />}</span>
+                ))}&rdquo;
               </p>
             </div>
           </motion.div>
         ))}
-
-        {/* 하단 타이틀 */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-10 text-center"
-        >
-          <div className="w-12 h-0.5 bg-[#2563EB] mx-auto mb-6 rounded-full" />
-          <h2 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
-            셀러님의 자금 고민
-            <br />
-            <span className="text-[#2563EB]">PLIC이 덜어드립니다!</span>
-          </h2>
-        </motion.div>
       </div>
     </section>
   );
@@ -1439,7 +1420,7 @@ function CoupangSellerSection() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-blue-300 rounded-full text-sm font-bold mb-12">
             <ShoppingBag size={14} />
-            <span>쿠팡셀러 · 스마트스토어 · 온라인몰</span>
+            <span>쿠팡셀러 · 스마트스토어 · 온라인몰 · 소매업</span>
           </div>
 
           <div className="space-y-5 mb-16">
@@ -1465,9 +1446,9 @@ function CoupangSellerSection() {
           >
             <div className="w-16 h-1 bg-blue-500 mx-auto mb-8 rounded-full" />
             <h2 className="text-3xl md:text-5xl font-black leading-tight">
-              <span className="text-gray-300">셀러님의 자금 고민</span>
+              <span className="text-white">거래처 송금,</span>
               <br />
-              <span className="text-[#60a5fa]">PLIC이 덜어드립니다!</span>
+              <span className="text-[#60a5fa]">이제 현금 말고 카드로 하세요!</span>
             </h2>
           </motion.div>
         </motion.div>
@@ -1685,8 +1666,8 @@ export default function LandingPage() {
       <div className="min-h-screen bg-white overflow-x-hidden">
         <Navigation />
         <Hero />
-        <SellerPersona />
         <CardBanner />
+        <SellerPersona />
         <CoupangSellerSection />
         <Features />
         <MessageQA />
