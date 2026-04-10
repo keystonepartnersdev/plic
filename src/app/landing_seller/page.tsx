@@ -9,7 +9,8 @@ import {
   Clock, BadgeCheck, Zap, Building2, Gift, BarChart3,
   UserCheck, Send, CheckCircle, Shield, Lock, AlertTriangle,
   Star, Quote, TrendingUp, Users, ShoppingBag,
-  Plus, Minus, MessageCircle, Briefcase, FileCheck, Scale
+  Plus, Minus, MessageCircle, Briefcase, FileCheck, Scale,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -360,7 +361,7 @@ function Hero() {
   return (
     <section data-section="hero" className="relative bg-gradient-to-br from-[#F8F9FA] via-white to-[#F3F4F6] pt-20 overflow-hidden">
       {/* Desktop: 좌측 텍스트 + 우측 영상 (간격 확대) */}
-      <div className="hidden md:flex max-w-7xl mx-auto px-6 pt-28 pb-20 items-center gap-16 lg:gap-28 xl:gap-36">
+      <div className="hidden md:flex max-w-7xl mx-auto px-6 pt-28 pb-40 items-center gap-20 lg:gap-36 xl:gap-48">
         {/* 좌측: 텍스트 영역 */}
         <div className="flex-1 text-left">
           <motion.div
@@ -368,12 +369,12 @@ function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-12">
               <Briefcase size={14} />
               <span>온라인 셀러님 주목!!</span>
             </div>
 
-            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-2">
+            <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight mb-8">
               <AnimatePresence mode="wait">
                 <motion.span
                   key={rollingTexts[rollingIndex]}
@@ -388,7 +389,7 @@ function Hero() {
               </AnimatePresence>
               <br />부담 확 낮춰드립니다!
             </h1>
-            <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-6">
+            <p className="text-4xl lg:text-6xl xl:text-7xl font-black text-[#2563EB] tracking-tight mb-12">
               PLIC
             </p>
           </motion.div>
@@ -398,11 +399,11 @@ function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            <p className="text-lg lg:text-xl text-gray-600 mb-4 leading-relaxed">
+            <p className="text-lg lg:text-xl text-gray-600 mb-10 leading-relaxed">
               무이자 할부도 가능한<br />
               카드 결제 송금 대행 서비스
             </p>
-            <div className="flex flex-wrap gap-2 mb-20">
+            <div className="flex flex-wrap gap-2 mb-24">
               <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">사입비 부담 80% 감소!</span>
               <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
               <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 수수료 1.8% 쿠폰 지급!</span>
@@ -441,19 +442,19 @@ function Hero() {
       </div>
 
       {/* Mobile: 중앙 정렬 (폰 확대) */}
-      <div className="md:hidden px-6 pt-24 pb-8">
+      <div className="md:hidden px-6 pt-24 pb-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-center"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-[#2563EB] rounded-full text-sm font-bold mb-12">
             <Briefcase size={14} />
             <span>온라인 셀러님 주목!!</span>
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-2">
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-8">
             <AnimatePresence mode="wait">
               <motion.span
                 key={rollingTexts[rollingIndex]}
@@ -468,14 +469,14 @@ function Hero() {
             </AnimatePresence>
             <br />부담 확 낮춰드립니다!
           </h1>
-          <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-4">
+          <p className="text-4xl font-black text-[#2563EB] tracking-tight mb-8">
             PLIC
           </p>
-          <p className="text-base text-gray-600 mb-3 leading-relaxed">
+          <p className="text-base text-gray-600 mb-8 leading-relaxed">
             무이자 할부도 가능한<br />
             카드 결제 송금 대행 서비스
           </p>
-          <div className="flex flex-col items-center gap-2 mb-16">
+          <div className="flex flex-col items-center gap-2 mb-24">
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">사입비 부담 80% 감소!</span>
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">업계 최저 수수료!</span>
             <span className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">최초 거래 수수료 1.8% 쿠폰 지급!</span>
@@ -497,6 +498,92 @@ function Hero() {
               </video>
             </div>
           </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== SellerPersona ====================
+function SellerPersona() {
+  const personas = [
+    {
+      role: '스마트스토어 판매자',
+      lines: ['새 아이템 사입해야 하는데', '현금이 부족하네..'],
+      align: 'left' as const,
+      width: 'w-[85%]',
+    },
+    {
+      role: '패션몰 운영자',
+      lines: ['이번 시즌 자켓 제작비가', '좀 타이트한데..'],
+      align: 'right' as const,
+      width: 'w-[62%]',
+    },
+    {
+      role: '쿠팡 셀러',
+      lines: ['재고 더 넣고 싶은데 선입금이', '너무 부담이야..'],
+      align: 'left' as const,
+      width: 'w-[72%]',
+    },
+    {
+      role: '초보 셀러',
+      lines: ['처음 사입인데 목돈이 한꺼번에', '나가는 게 무섭네..'],
+      align: 'right' as const,
+      width: 'w-[78%]',
+    },
+    {
+      role: '투잡 온라인 셀러',
+      lines: ['월급 전에 사입 대금을 먼저 보내야 하는데..', '너무 빠듯해.'],
+      align: 'left' as const,
+      width: 'w-[90%]',
+    },
+  ];
+
+  return (
+    <section className="pt-24 pb-20 md:pt-32 md:pb-28 bg-[#F8F9FA]">
+      <div className="max-w-lg mx-auto px-8 flex flex-col gap-8">
+        {personas.map((p, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-30px' }}
+            transition={{ duration: 0.4, delay: i * 0.07 }}
+            className={`flex flex-col gap-2.5 ${p.align === 'right' ? 'items-end' : 'items-start'}`}
+          >
+            {/* 발화자 레이블 */}
+            <span className="text-base md:text-lg font-bold text-[#2563EB] tracking-tight px-1">
+              {p.role}
+            </span>
+            {/* 말풍선 */}
+            <div
+              className={`${p.width} px-5 py-4 rounded-2xl ${
+                p.align === 'left'
+                  ? 'bg-white shadow-sm rounded-tl-md'
+                  : 'bg-[#BFDBFE] rounded-tr-md'
+              }`}
+            >
+              <p className="text-[17px] md:text-lg font-semibold text-gray-800 leading-relaxed">
+                &ldquo;{p.lines[0]}<br />{p.lines[1]}&rdquo;
+              </p>
+            </div>
+          </motion.div>
+        ))}
+
+        {/* 하단 타이틀 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-10 text-center"
+        >
+          <div className="w-12 h-0.5 bg-[#2563EB] mx-auto mb-6 rounded-full" />
+          <h2 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
+            셀러님의 자금 고민
+            <br />
+            <span className="text-[#2563EB]">PLIC이 덜어드립니다!</span>
+          </h2>
         </motion.div>
       </div>
     </section>
@@ -1040,7 +1127,7 @@ function Reviews() {
                     </p>
                   </div>
                   <div className="mt-auto border-t border-gray-100 flex items-center justify-between pt-4">
-                    <span className="text-sm text-gray-500">{review.role}</span>
+                    <span className="text-base font-semibold text-gray-700">{review.role}</span>
                     <span className="text-sm font-bold text-[#2563EB] bg-blue-50 px-3 py-1 rounded-full">{review.amount}</span>
                   </div>
                 </div>
@@ -1332,6 +1419,265 @@ function FeeSection() {
   );
 }
 
+// ==================== CoupangSeller Pain Points ====================
+function CoupangSellerSection() {
+  const painPoints = [
+    { text: '선입금이', delay: 0.1 },
+    { text: '초보 셀러 한꺼번에', delay: 0.25 },
+    { text: '먼저 보내야 하는데..', delay: 0.4, noWrap: true },
+  ];
+
+  return (
+    <section className="py-24 md:py-32 px-6 bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 overflow-hidden">
+      <div className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12 md:mb-16"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-blue-300 rounded-full text-sm font-bold mb-12">
+            <ShoppingBag size={14} />
+            <span>쿠팡셀러 · 스마트스토어 · 온라인몰</span>
+          </div>
+
+          <div className="space-y-5 mb-16">
+            {painPoints.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.55, delay: item.delay }}
+                className={`text-5xl md:text-7xl lg:text-8xl font-black text-white leading-tight tracking-tight ${item.noWrap ? 'whitespace-nowrap' : ''}`}
+              >
+                {item.text}
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <div className="w-16 h-1 bg-blue-500 mx-auto mb-8 rounded-full" />
+            <h2 className="text-3xl md:text-5xl font-black leading-tight">
+              <span className="text-gray-300">셀러님의 자금 고민</span>
+              <br />
+              <span className="text-[#60a5fa]">PLIC이 덜어드립니다!</span>
+            </h2>
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ==================== Deal Creation Preview ====================
+function DealCreationPreview() {
+  const steps = [
+    { number: 1, title: '거래유형 선택', image: '/images/landing/deal-creation/step-1.jpg' },
+    { number: 2, title: '송금금액 입력', image: '/images/landing/deal-creation/step-2.jpg' },
+    { number: 3, title: '수취인정보 입력', image: '/images/landing/deal-creation/step-3.jpg' },
+    { number: 4, title: '거래증빙 첨부', image: '/images/landing/deal-creation/step-4.jpg' },
+    { number: 5, title: '거래확인', image: '/images/landing/deal-creation/step-5.jpg' },
+    { number: 6, title: '결제', image: '/images/landing/deal-creation/step-6.jpg' },
+  ];
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [mouseStartX, setMouseStartX] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragDelta, setDragDelta] = useState(0);
+
+  const MIN_SWIPE = 50;
+
+  const goNext = () => setCurrentStep((p) => Math.min(steps.length - 1, p + 1));
+  const goPrev = () => setCurrentStep((p) => Math.max(0, p - 1));
+
+  // Touch handlers
+  const onTouchStart = (e: React.TouchEvent) => setTouchStartX(e.targetTouches[0].clientX);
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const dist = touchStartX - e.changedTouches[0].clientX;
+    if (dist > MIN_SWIPE) goNext();
+    else if (dist < -MIN_SWIPE) goPrev();
+    setTouchStartX(null);
+  };
+
+  // Mouse drag handlers (desktop)
+  const onMouseDown = (e: React.MouseEvent) => {
+    setMouseStartX(e.clientX);
+    setIsDragging(true);
+    setDragDelta(0);
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || mouseStartX === null) return;
+    setDragDelta(e.clientX - mouseStartX);
+  };
+  const onMouseUp = () => {
+    if (dragDelta > MIN_SWIPE) goPrev();
+    else if (dragDelta < -MIN_SWIPE) goNext();
+    setIsDragging(false);
+    setMouseStartX(null);
+    setDragDelta(0);
+  };
+
+  return (
+    <section className="py-24 md:py-32 px-6 bg-gradient-to-b from-gray-900 to-gray-950 overflow-hidden">
+      <div className="max-w-6xl mx-auto">
+        {/* 헤더 */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-14"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-300 rounded-full text-sm font-bold mb-6">
+            <Send size={14} />
+            <span>실제 앱 화면</span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
+            PLIC 거래 생성
+            <br />
+            <span className="text-[#60a5fa]">미리보기</span>
+          </h2>
+          <p className="text-gray-400 mt-4 text-base">좌우로 스와이프하여 단계별 화면을 확인해보세요</p>
+        </motion.div>
+
+        {/* 폰 목업 + 화살표 */}
+        <div className="flex items-center justify-center gap-6 md:gap-10">
+          {/* 이전 버튼 */}
+          <button
+            onClick={goPrev}
+            disabled={currentStep === 0}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+              currentStep === 0
+                ? 'bg-white/5 text-gray-600 cursor-not-allowed'
+                : 'bg-white/10 text-white hover:bg-white/20 active:scale-95'
+            }`}
+          >
+            <ChevronLeft size={24} />
+          </button>
+
+          {/* 폰 프레임 */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="relative select-none"
+            style={{ filter: 'drop-shadow(0 0 40px rgba(37,99,235,0.35))' }}
+          >
+            <div
+              className="relative bg-gray-900 rounded-[2.8rem] overflow-hidden cursor-grab active:cursor-grabbing"
+              style={{
+                width: '270px',
+                height: '584px',
+                border: '7px solid #374151',
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+              }}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+              onMouseLeave={onMouseUp}
+            >
+              {/* 노치 */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-[22px] bg-gray-900 rounded-b-2xl z-20" />
+
+              {/* 이미지 슬라이드 */}
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentStep}
+                  src={steps[currentStep].image}
+                  alt={steps[currentStep].title}
+                  className="w-full h-full object-cover object-top"
+                  draggable={false}
+                  initial={{ opacity: 0, x: dragDelta < 0 ? 30 : -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: dragDelta < 0 ? -30 : 30 }}
+                  transition={{ duration: 0.28 }}
+                />
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          {/* 다음 버튼 */}
+          <button
+            onClick={goNext}
+            disabled={currentStep === steps.length - 1}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+              currentStep === steps.length - 1
+                ? 'bg-white/5 text-gray-600 cursor-not-allowed'
+                : 'bg-white/10 text-white hover:bg-white/20 active:scale-95'
+            }`}
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
+
+        {/* 스텝 인디케이터 */}
+        <div className="flex justify-center gap-2 mt-8">
+          {steps.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentStep(i)}
+              className={`rounded-full transition-all duration-300 ${
+                i === currentStep
+                  ? 'w-8 h-2.5 bg-blue-500'
+                  : 'w-2.5 h-2.5 bg-gray-600 hover:bg-gray-500'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* 스텝 타이틀 */}
+        <div className="text-center mt-5">
+          <span className="text-blue-400 font-bold text-sm tracking-wide">
+            STEP {steps[currentStep].number}
+          </span>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={currentStep}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
+              className="text-white font-bold text-xl mt-1"
+            >
+              {steps[currentStep].title}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+
+        {/* 전체 단계 미리보기 (데스크톱) */}
+        <div className="hidden md:flex justify-center gap-3 mt-12">
+          {steps.map((step, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentStep(i)}
+              className={`flex flex-col items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 ${
+                i === currentStep ? 'bg-blue-500/20' : 'hover:bg-white/5'
+              }`}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full ${i === currentStep ? 'bg-blue-400' : 'bg-gray-600'}`} />
+              <span className={`text-xs font-medium ${i === currentStep ? 'text-blue-300' : 'text-gray-500'}`}>
+                {step.number}. {step.title}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ==================== Main Page ====================
 export default function LandingPage() {
   return (
@@ -1339,7 +1685,9 @@ export default function LandingPage() {
       <div className="min-h-screen bg-white overflow-x-hidden">
         <Navigation />
         <Hero />
+        <SellerPersona />
         <CardBanner />
+        <CoupangSellerSection />
         <Features />
         <MessageQA />
         <HowItWorks />
@@ -1347,6 +1695,7 @@ export default function LandingPage() {
         <TrustSection />
         <Security />
         <Reviews />
+        <DealCreationPreview />
         <FAQ />
         <CTA />
         <Footer />
