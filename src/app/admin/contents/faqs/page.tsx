@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import { contentAPI, adminAPI } from '@/lib/api';
+import { Plus, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, RefreshCw, Database, Home } from 'lucide-react';
+import { adminAPI } from '@/lib/api';
 import { ContentHelper } from '@/classes';
 import { IFAQ } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function AdminFAQsPage() {
   // API 데이터 상태
@@ -18,6 +18,7 @@ export default function AdminFAQsPage() {
   const [editingFAQ, setEditingFAQ] = useState<IFAQ | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   // Form state
   const [question, setQuestion] = useState('');
@@ -32,11 +33,16 @@ export default function AdminFAQsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await contentAPI.getFaqs();
-      setFaqs(response.faqs || []);
-    } catch (err: any) {
+      const response = await adminAPI.getFaqs();
+      // API 응답에서 faqId가 없고 id만 있는 경우 대비
+      const normalized = (response.faqs || []).map((faq: IFAQ & { id?: string }) => ({
+        ...faq,
+        faqId: faq.faqId || faq.id || '',
+      }));
+      setFaqs(normalized);
+    } catch (err: unknown) {
       console.error('FAQ 목록 로드 실패:', err);
-      setError(err.message || 'FAQ 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || 'FAQ 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -93,9 +99,9 @@ export default function AdminFAQsPage() {
       }
       await fetchFaqs();
       resetForm();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 저장 실패:', err);
-      alert(err.message || 'FAQ 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || 'FAQ 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -108,9 +114,9 @@ export default function AdminFAQsPage() {
     try {
       await adminAPI.deleteFaq(faqId);
       await fetchFaqs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 삭제 실패:', err);
-      alert(err.message || 'FAQ 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || 'FAQ 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -121,9 +127,22 @@ export default function AdminFAQsPage() {
     try {
       await adminAPI.updateFaq(faq.faqId, { isVisible: !faq.isVisible });
       await fetchFaqs();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('FAQ 상태 변경 실패:', err);
-      alert(err.message || 'FAQ 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || 'FAQ 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleHomeFeatured = async (faq: IFAQ) => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updateFaq(faq.faqId, { isHomeFeatured: !faq.isHomeFeatured });
+      await fetchFaqs();
+    } catch (err: unknown) {
+      console.error('홈 노출 변경 실패:', err);
+      alert(getErrorMessage(err) || '홈 노출 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -142,6 +161,43 @@ export default function AdminFAQsPage() {
       account: 'bg-orange-100 text-orange-700',
     };
     return colors[categoryId || ''] || 'bg-gray-100 text-gray-700';
+  };
+
+  // FAQ 시드 데이터 등록
+  const handleSeedFaqs = async () => {
+    if (!confirm('FAQ 샘플 데이터 40개를 등록하시겠습니까?\n(이미 등록된 FAQ가 있으면 중복될 수 있습니다)')) {
+      return;
+    }
+
+    setIsSeeding(true);
+    try {
+      const adminToken = localStorage.getItem('plic_admin_token');
+      if (!adminToken) {
+        alert('어드민 로그인이 필요합니다.');
+        return;
+      }
+
+      const response = await fetch('/api/admin/faqs/seed', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`FAQ 시드 완료!\n성공: ${result.success}개\n실패: ${result.failed?.length || 0}개`);
+        await fetchFaqs();
+      } else {
+        alert(result.error || 'FAQ 시드 실패');
+      }
+    } catch (err: unknown) {
+      console.error('FAQ seed error:', err);
+      alert(getErrorMessage(err) || 'FAQ 시드 중 오류가 발생했습니다.');
+    } finally {
+      setIsSeeding(false);
+    }
   };
 
   // 로딩 상태
@@ -170,6 +226,16 @@ export default function AdminFAQsPage() {
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             새로고침
           </button>
+          {faqs.length === 0 && (
+            <button
+              onClick={handleSeedFaqs}
+              disabled={isSeeding || isSaving}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
+            >
+              <Database className={cn("w-4 h-4", isSeeding && "animate-pulse")} />
+              {isSeeding ? '등록 중...' : '샘플 데이터'}
+            </button>
+          )}
           <button
             onClick={() => setShowForm(true)}
             disabled={isSaving}
@@ -309,6 +375,11 @@ export default function AdminFAQsPage() {
                       )}>
                         {getCategoryName(faq.category)}
                       </span>
+                      {faq.isHomeFeatured && (
+                        <span className="inline-flex px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                          🏠 홈 노출
+                        </span>
+                      )}
                       {!faq.isVisible && (
                         <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-medium rounded">
                           숨김
@@ -318,6 +389,19 @@ export default function AdminFAQsPage() {
                     <p className="font-medium text-gray-900">{faq.question}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleHomeFeatured(faq)}
+                      disabled={isSaving}
+                      title={faq.isHomeFeatured ? '홈 노출 해제' : '홈 노출 설정'}
+                      className={cn(
+                        'p-2 rounded-lg transition-colors disabled:opacity-50',
+                        faq.isHomeFeatured
+                          ? 'text-amber-600 bg-amber-50'
+                          : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50'
+                      )}
+                    >
+                      <Home className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleToggleVisibility(faq)}
                       className={cn(

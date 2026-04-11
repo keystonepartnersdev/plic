@@ -44,6 +44,7 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              data-track={`nav_${item.label === '홈' ? 'home' : item.label === '거래내역' ? 'deals' : item.label === '이용안내' ? 'guide' : 'mypage'}`}
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full',
                 'transition-all duration-300',

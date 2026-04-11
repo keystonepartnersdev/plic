@@ -1,0 +1,14 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "plic"
+resolve_s3 = true
+s3_prefix = "plic"
+region = "ap-northeast-2"
+profile = "plic"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-northeast-2"

@@ -1,18 +1,14 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail } from 'lucide-react';
 import { Header } from '@/components/common';
-import { authAPI, tokenManager } from '@/lib/api';
 import { useUserStore } from '@/stores';
-
-// 카카오 ID로부터 결정적 비밀번호 생성 (회원가입과 동일한 로직)
-const generateKakaoPassword = (kakaoId: number): string => {
-  const idStr = kakaoId.toString(16).padStart(12, '0');
-  return `Kk${idStr.substring(0, 10)}Px1!`;
-};
+import { getErrorMessage } from '@/lib/utils';
+import { secureAuth } from '@/lib/auth';
+import tracking from '@/lib/tracking';
 
 function LoginContent() {
   const router = useRouter();
@@ -25,6 +21,87 @@ function LoginContent() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [kakaoAutoLoginStatus, setKakaoAutoLoginStatus] = useState<string>('');
+
+  // 카카오 자동 로그인 처리 (useEffect보다 먼저 정의)
+  const handleKakaoAutoLogin = useCallback(async (key: string) => {
+    setKakaoAutoLoginStatus('카카오 인증 확인 중...');
+    setError('');
+
+    try {
+      // DynamoDB에서 카카오 인증 결과 조회
+      const resultRes = await fetch(`/api/kakao/result?key=${key}`);
+      const resultData = await resultRes.json();
+
+      if (!resultData.success || !resultData.data?.email || !resultData.data?.kakaoId) {
+        tracking.loginFunnel.fail('카카오 인증 정보 조회 실패');
+        setError('카카오 인증 정보를 가져올 수 없습니다.');
+        router.replace('/auth/login', { scroll: false });
+        return;
+      }
+
+      const kakaoEmail = resultData.data.email;
+      const kakaoId = resultData.data.kakaoId;
+
+      setKakaoAutoLoginStatus('회원 정보 확인 중...');
+
+      // 백엔드 카카오 로그인 API 호출 (자동 로그인 포함)
+      const checkRes = await fetch('/api/auth/kakao-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // httpOnly 쿠키 수신
+        body: JSON.stringify({ email: kakaoEmail, kakaoId }),
+      });
+      const checkData = await checkRes.json();
+
+      if (!checkData.success) {
+        tracking.loginFunnel.fail(checkData.error || '회원 확인 실패');
+        setError(checkData.error || '회원 확인에 실패했습니다.');
+        router.replace('/auth/login', { scroll: false });
+        return;
+      }
+
+      // 백엔드에서 자동 로그인 완료된 경우 (토큰은 httpOnly 쿠키로 자동 설정됨)
+      if (checkData.autoLogin && checkData.data) {
+        setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
+        tracking.loginFunnel.success();
+
+        // 사용자 정보 저장 (토큰은 httpOnly 쿠키로 이미 설정됨)
+        setUser(checkData.data.user);
+
+        // 홈으로 이동
+        router.replace('/');
+        return;
+      }
+
+      // 회원이 존재하고 완전히 가입된 경우 (autoLogin이 없는 경우 - fallback)
+      if (checkData.exists && !checkData.incomplete) {
+        setError('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+        router.replace('/auth/login', { scroll: false });
+        return;
+      }
+
+      // 가입이 완료되지 않은 경우
+      if (checkData.incomplete) {
+        setKakaoAutoLoginStatus('');
+        setError(checkData.message || '가입이 완료되지 않은 계정입니다. 다시 가입해주세요.');
+        // 회원가입 페이지로 이동
+        router.replace(`/auth/signup?verified=true&verificationKey=${key}&fromLogin=true`);
+        return;
+      }
+
+      // 회원이 없는 경우 - 회원가입 페이지로 카카오 인증 데이터와 함께 이동
+      setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
+      router.replace(`/auth/signup?verified=true&verificationKey=${key}&fromLogin=true`);
+      return;
+    } catch (err) {
+      console.error('카카오 로그인 처리 실패:', err);
+      tracking.loginFunnel.fail('카카오 로그인 실패');
+      setError('카카오 로그인 처리 중 오류가 발생했습니다.');
+      router.replace('/auth/login', { scroll: false });
+    } finally {
+      setKakaoAutoLoginStatus('');
+    }
+  }, [router, setUser]);
 
   // 카카오 인증 결과 처리
   useEffect(() => {
@@ -42,126 +119,28 @@ function LoginContent() {
     if (verified === 'true' && verificationKey) {
       handleKakaoAutoLogin(verificationKey);
     }
-  }, [searchParams]);
-
-  // 카카오 자동 로그인 처리
-  const handleKakaoAutoLogin = async (key: string) => {
-    setKakaoAutoLoginStatus('카카오 인증 확인 중...');
-    setError('');
-
-    try {
-      // DynamoDB에서 카카오 인증 결과 조회
-      const resultRes = await fetch(`/api/kakao/result?key=${key}`);
-      const resultData = await resultRes.json();
-
-      if (!resultData.success || !resultData.data?.email || !resultData.data?.kakaoId) {
-        setError('카카오 인증 정보를 가져올 수 없습니다.');
-        router.replace('/auth/login', { scroll: false });
-        return;
-      }
-
-      const kakaoEmail = resultData.data.email;
-      const kakaoId = resultData.data.kakaoId;
-
-      setKakaoAutoLoginStatus('회원 정보 확인 중...');
-
-      // 회원 존재 여부 및 완전 가입 여부 확인
-      const checkRes = await fetch('/api/auth/kakao-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: kakaoEmail, kakaoId }),
-      });
-      const checkData = await checkRes.json();
-
-      if (!checkData.success) {
-        setError(checkData.error || '회원 확인에 실패했습니다.');
-        router.replace('/auth/login', { scroll: false });
-        return;
-      }
-
-      // 회원이 존재하고 완전히 가입된 경우 - 자동 로그인
-      if (checkData.exists && !checkData.incomplete) {
-        setKakaoAutoLoginStatus('자동 로그인 중...');
-
-        // 결정적 비밀번호 생성
-        const kakaoPassword = generateKakaoPassword(kakaoId);
-
-        try {
-          // 일반 로그인 API 호출
-          const loginResult = await authAPI.login({
-            email: kakaoEmail,
-            password: kakaoPassword,
-          });
-
-          // 사용자 정보 저장
-          setUser(loginResult.user);
-
-          setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
-
-          // 홈으로 이동
-          router.replace('/');
-          return;
-        } catch (loginErr: any) {
-          console.error('카카오 자동 로그인 실패:', loginErr);
-          // 비밀번호가 맞지 않는 경우 (기존 회원이 일반 가입한 경우)
-          setError('카카오 계정으로 가입된 회원이 아닙니다. 이메일/비밀번호로 로그인해주세요.');
-          setEmail(kakaoEmail);
-          router.replace('/auth/login', { scroll: false });
-          return;
-        }
-      }
-
-      // 가입이 완료되지 않은 경우 (이메일 미인증) - 카카오 사용자는 로그인 시도
-      if (checkData.incomplete) {
-        setKakaoAutoLoginStatus('카카오 인증 사용자 로그인 시도 중...');
-
-        // 카카오 인증 사용자이므로 결정적 비밀번호로 로그인 시도
-        const kakaoPassword = generateKakaoPassword(kakaoId);
-
-        try {
-          const loginResult = await authAPI.login({
-            email: kakaoEmail,
-            password: kakaoPassword,
-          });
-
-          setUser(loginResult.user);
-          setKakaoAutoLoginStatus('로그인 성공! 이동 중...');
-          router.replace('/');
-          return;
-        } catch (incompleteLoginErr: any) {
-          console.error('미인증 사용자 로그인 실패:', incompleteLoginErr);
-          setKakaoAutoLoginStatus('');
-          // 이메일 인증이 필요한 경우
-          setError('이메일 인증이 필요합니다. 가입 시 입력한 이메일의 인증 링크를 확인해주세요. (인증 메일 발송까지 최대 5분 소요)');
-          setEmail(kakaoEmail);
-          router.replace('/auth/login', { scroll: false });
-          return;
-        }
-      }
-
-      // 회원이 없는 경우 - 회원가입 페이지로 카카오 인증 데이터와 함께 이동
-      // verificationKey를 그대로 전달하여 회원가입에서 다시 인증하지 않아도 됨
-      setKakaoAutoLoginStatus('신규 회원입니다. 회원가입 페이지로 이동...');
-      router.replace(`/auth/signup?verified=true&verificationKey=${key}&fromLogin=true`);
-      return;
-    } catch (err) {
-      console.error('카카오 로그인 처리 실패:', err);
-      setError('카카오 로그인 처리 중 오류가 발생했습니다.');
-      router.replace('/auth/login', { scroll: false });
-    } finally {
-      setKakaoAutoLoginStatus('');
-    }
-  };
+  }, [searchParams, handleKakaoAutoLogin, router]);
 
   // 카카오 인증 시작
   const handleKakaoLogin = () => {
-    window.location.href = '/api/kakao/auth?returnTo=/auth/login';
+    // 버퍼 없이 즉시 전송 (페이지 이동 전 확실한 전송 보장)
+    const now = new Date().toISOString();
+    const sessionId = sessionStorage.getItem('plic_session_id') || '';
+    const anonymousId = localStorage.getItem('plic_anonymous_id') || '';
+    tracking.sendNow(
+      { eventType: 'funnel', sessionId, anonymousId, timestamp: now, page: { path: '/auth/login', title: document.title, referrer: '' }, funnel: { step: 'login_attempt', name: '로그인 시도' } },
+      { eventType: 'click', sessionId, anonymousId, timestamp: now, page: { path: '/auth/login', title: document.title, referrer: '' }, click: { element: 'login_kakao', text: '카카오로 시작하기' } }
+    );
+    setTimeout(() => {
+      window.location.href = '/api/kakao/auth?returnTo=/auth/login';
+    }, 200);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    tracking.loginFunnel.attempt();
 
     if (!email) {
       setError('이메일을 입력해주세요.');
@@ -176,19 +155,21 @@ function LoginContent() {
     }
 
     try {
-      const result = await authAPI.login({ email, password });
+      // httpOnly 쿠키 기반 보안 로그인 사용
+      const result = await secureAuth.login(email, password);
 
-      // 토큰 저장
-      if (result.tokens?.accessToken && result.tokens?.refreshToken) {
-        tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
+      // 토큰은 httpOnly 쿠키로 자동 저장됨
+      // 사용자 정보만 저장 (BFF 응답 형식 양쪽 호환: result.user 또는 result.data.user)
+      const user = result.user || result.data?.user;
+      if (user) {
+        setUser(user);
       }
 
-      // 사용자 정보 저장
-      setUser(result.user);
-
+      tracking.loginFunnel.success();
       router.replace('/');
-    } catch (err: any) {
-      setError(err.message || '로그인에 실패했습니다.');
+    } catch (err: unknown) {
+      tracking.loginFunnel.fail(getErrorMessage(err) || '로그인 실패');
+      setError(getErrorMessage(err) || '로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -288,10 +269,16 @@ function LoginContent() {
           </button>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
+          <Link href="/auth/reset-password" data-track="login_reset_pw" className="text-sm text-gray-400 hover:text-gray-600 transition-colors duration-300">
+            비밀번호를 잊으셨나요?
+          </Link>
+        </div>
+
+        <div className="mt-4 text-center">
           <p className="text-gray-500 font-medium">
             아직 회원이 아니신가요?{' '}
-            <Link href="/auth/signup" className="text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
+            <Link href="/auth/signup" data-track="login_signup_link" className="text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
               회원가입
             </Link>
           </p>

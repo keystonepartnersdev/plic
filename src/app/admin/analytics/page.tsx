@@ -17,11 +17,13 @@ import {
   Building,
   Wallet,
   BarChart3,
+  LucideIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
+import { UserJourneyTab } from '@/components/admin/UserJourneyTab';
 
 // API 기본 URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod';
 
 interface BusinessAnalyticsData {
   summary: {
@@ -156,13 +158,15 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<BusinessAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'journey' | 'business'>('journey');
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('plic_admin_token');
-      const response = await fetch(`${API_BASE}/admin/business-analytics`, {
+      // Use Next.js API route to avoid CORS issues
+      const response = await fetch('/api/admin/business-analytics', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const result = await response.json();
@@ -171,9 +175,9 @@ export default function AdminAnalyticsPage() {
       } else {
         throw new Error(result.error || '데이터 로드 실패');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Business Analytics 로드 실패:', err);
-      setError(err.message || '데이터를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -181,6 +185,7 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatAmount = (amount: number) => {
@@ -196,20 +201,50 @@ export default function AdminAnalyticsPage() {
   return (
     <div>
       {/* 페이지 헤더 */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">비즈니스 Analytics</h1>
-          <p className="text-gray-500 mt-1">PLIC 핵심 지표 및 전환율 분석</p>
+          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-gray-500 mt-1">유입부터 전환까지 전체 분석</p>
         </div>
+        {activeTab === 'business' && (
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+            새로고침
+          </button>
+        )}
+      </div>
+
+      {/* 메인 탭 */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-6">
         <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50"
+          onClick={() => setActiveTab('journey')}
+          className={cn(
+            'px-5 py-2.5 rounded-md text-sm font-medium transition-all flex-1',
+            activeTab === 'journey' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
         >
-          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-          새로고침
+          유저 여정 트래킹
+        </button>
+        <button
+          onClick={() => setActiveTab('business')}
+          className={cn(
+            'px-5 py-2.5 rounded-md text-sm font-medium transition-all flex-1',
+            activeTab === 'business' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          비즈니스 지표
         </button>
       </div>
+
+      {/* 유저 여정 탭 */}
+      {activeTab === 'journey' && <UserJourneyTab />}
+
+      {/* 비즈니스 지표 탭 */}
+      {activeTab === 'business' && <>
 
       {/* 에러 메시지 */}
       {error && (
@@ -467,106 +502,6 @@ export default function AdminAnalyticsPage() {
         </div>
       </div>
 
-      {/* 대기 목록 (인증 대기 & 검수 대기) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* 사업자 인증 대기 */}
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">
-              <Clock className="inline w-4 h-4 mr-2 text-orange-500" />
-              사업자 인증 대기
-            </h3>
-            <Link href="/admin/users?status=pending_verification" className="text-sm text-primary-400 hover:text-primary-500">
-              전체보기 <ChevronRight className="inline w-4 h-4" />
-            </Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {loading ? (
-              Array(3).fill(0).map((_, i) => (
-                <div key={i} className="p-4 animate-pulse">
-                  <div className="h-4 bg-gray-100 rounded w-32 mb-2" />
-                  <div className="h-3 bg-gray-100 rounded w-24" />
-                </div>
-              ))
-            ) : data?.pendingVerificationUsers && data.pendingVerificationUsers.length > 0 ? (
-              data.pendingVerificationUsers.slice(0, 5).map((user) => (
-                <Link
-                  key={user.uid}
-                  href={`/admin/users/${user.uid}`}
-                  className="flex items-center justify-between p-4 hover:bg-gray-50"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{user.name}</p>
-                    <p className="text-sm text-gray-500">{user.businessName || user.email}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">
-                      {new Date(user.createdAt).toLocaleDateString('ko-KR')}
-                    </p>
-                    <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="p-8 text-center text-gray-400">
-                대기중인 회원이 없습니다
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 거래 검수 대기 */}
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">
-              <AlertCircle className="inline w-4 h-4 mr-2 text-purple-500" />
-              거래 검수 대기
-            </h3>
-            <Link href="/admin/deals?status=reviewing" className="text-sm text-primary-400 hover:text-primary-500">
-              전체보기 <ChevronRight className="inline w-4 h-4" />
-            </Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {loading ? (
-              Array(3).fill(0).map((_, i) => (
-                <div key={i} className="p-4 animate-pulse">
-                  <div className="h-4 bg-gray-100 rounded w-32 mb-2" />
-                  <div className="h-3 bg-gray-100 rounded w-24" />
-                </div>
-              ))
-            ) : data?.pendingReviewDeals && data.pendingReviewDeals.length > 0 ? (
-              data.pendingReviewDeals.slice(0, 5).map((deal) => (
-                <Link
-                  key={deal.did}
-                  href={`/admin/deals/${deal.did}`}
-                  className="flex items-center justify-between p-4 hover:bg-gray-50"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{deal.dealName}</p>
-                    <p className="text-sm text-gray-500">
-                      {deal.userName} · {deal.amount.toLocaleString()}원
-                    </p>
-                  </div>
-                  <div className="text-right flex items-center gap-2">
-                    <span className={cn(
-                      'px-2 py-1 rounded text-xs font-medium',
-                      STATUS_COLORS[deal.status]
-                    )}>
-                      {STATUS_LABELS[deal.status]}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="p-8 text-center text-gray-400">
-                대기중인 거래가 없습니다
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* 거래 유형별 분석 */}
       {data?.dealTypeAnalysis && data.dealTypeAnalysis.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-6">
@@ -584,6 +519,8 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
       )}
+
+      </>}
     </div>
   );
 }
@@ -601,7 +538,7 @@ function SummaryCard({
   label: string;
   value: number | string;
   subLabel: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   urgent?: boolean;
   isAmount?: boolean;
@@ -683,7 +620,7 @@ function StatusBox({
   label: string;
   count: number;
   color: string;
-  icon: any;
+  icon: LucideIcon;
 }) {
   return (
     <div className={cn('p-3 rounded-lg text-center', color)}>

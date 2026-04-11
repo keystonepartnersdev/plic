@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Upload, X, Check, Building2, AlertCircle, FileText, Download, Eye, History } from 'lucide-react';
-import { Header, Modal } from '@/components/common';
+import { Header, Modal, ModalPortal } from '@/components/common';
 import { dealsAPI } from '@/lib/api';
 import { uploadFile, validateFile, UploadResult } from '@/lib/upload';
-import { useUserStore, useDealStore, useDealDraftStore, useAdminUserStore } from '@/stores';
+import { useUserStore, useDealStore, useDealDraftStore, useSettingsStore } from '@/stores';
 import { DealHelper } from '@/classes';
 import { TDealType, TDealStep, IDeal, IRecipientAccount, IDraftDocument } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage, formatEstimatedTransferDate } from '@/lib/utils';
+import tracking from '@/lib/tracking';
 
 type Step = 'type' | 'amount' | 'recipient' | 'docs' | 'confirm';
 
@@ -43,15 +44,15 @@ const BANKS = [
 ];
 
 // 최소 송금 금액
-const MIN_AMOUNT = 10000;
+const MIN_AMOUNT = 100;
 
 function NewDealContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, isLoggedIn } = useUserStore();
-  const { addDeal } = useDealStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
+  const { addDeal, deals } = useDealStore();
   const { currentDraft, startNewDraft, updateDraft, setCurrentStep, submitDraft, loadDraft, clearCurrentDraft } = useDealDraftStore();
-  const { getUserById, updateUser } = useAdminUserStore();
+  const { settings } = useSettingsStore();
 
   const [step, setStep] = useState<Step>('type');
   const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +76,7 @@ function NewDealContent() {
   const [verificationFailed, setVerificationFailed] = useState(false);
   const [verificationError, setVerificationError] = useState<string>('');
   const [verifiedHolderName, setVerifiedHolderName] = useState<string>(''); // 실제 예금주명 (팝빌 조회)
+  const [verifyingAccount, setVerifyingAccount] = useState(false);
   const [senderName, setSenderName] = useState('');
 
   // Step 4: 서류 첨부
@@ -91,6 +93,7 @@ function NewDealContent() {
   }
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [attachmentsRestored, setAttachmentsRestored] = useState(false);
+
   const [previewFile, setPreviewFile] = useState<AttachmentFile | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
 
@@ -179,6 +182,7 @@ function NewDealContent() {
       startNewDraft(currentUser.uid);
     }
     setDraftInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, currentUser]);
 
   // Draft 데이터로 상태 복원
@@ -237,6 +241,7 @@ function NewDealContent() {
       }
       setAttachmentsRestored(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftInitialized, currentDraft?.id, attachmentsRestored]);
 
   // URL 파라미터에서 금액 확인
@@ -251,10 +256,29 @@ function NewDealContent() {
     }
   }, [searchParams]);
 
-  // 단계 변경 시 Draft 업데이트
+  // 단계 변경 시 Draft 업데이트 + 퍼널 트래킹
   const handleStepChange = (newStep: Step) => {
     setStep(newStep);
     setCurrentStep(newStep as TDealStep);
+
+    // 스텝 전환 시 스크롤 최상단으로 리셋 (모바일 프레임 내부 스크롤 컨테이너)
+    const scrollContainer = document.getElementById('scroll-container');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    } else {
+      window.scrollTo(0, 0);
+    }
+
+    // 송금 퍼널 트래킹
+    const funnelMap: Record<Step, () => void> = {
+      type: tracking.transferFunnel.start,
+      amount: tracking.transferFunnel.info,
+      recipient: tracking.transferFunnel.recipient,
+      docs: tracking.transferFunnel.attachment,
+      confirm: tracking.transferFunnel.confirm,
+    };
+    funnelMap[newStep]?.();
+
   };
 
   // 데이터 변경 시 Draft에 저장 (디바운스)
@@ -289,15 +313,26 @@ function NewDealContent() {
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealType, amount, discountCode, recipient, senderName, attachments, draftInitialized]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  // 한도 검증: 실제 거래 데이터에서 이번 달 사용량 계산 (DB 값은 취소 건 미반영 가능)
+  const usedAmount = useMemo(() => {
+    if (!currentUser) return 0;
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return deals
+      .filter(d => d.uid === currentUser.uid && d.status === 'completed' && d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  }, [deals, currentUser]);
+
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -306,16 +341,18 @@ function NewDealContent() {
   }
 
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
-  const { feeAmount, totalAmount, finalAmount } = DealHelper.calculateTotal(
+  const { feeRate: determinedFeeRate, feeSource } = currentUser && dealType
+    ? DealHelper.determineFeeRate(currentUser, dealType, settings?.feeSettings)
+    : { feeRate: currentUser?.feeRate || 3.3, feeSource: 'default' };
+  const { feeAmountBase, vatAmount, feeAmount, totalAmount, finalAmount } = DealHelper.calculateTotal(
     numericAmount,
-    currentUser?.feeRate || 0,
+    determinedFeeRate,
     0
   );
 
-  // 한도 검증을 위한 사용자 데이터 조회
-  const adminUser = getUserById(currentUser.uid);
-  const usedAmount = adminUser?.usedAmount || 0;
-  const monthlyLimit = adminUser?.monthlyLimit || currentUser.monthlyLimit || 10000000;
+  const perTransactionLimit = currentUser?.perTransactionLimit || 2000000;
+  const isOverPerTransaction = numericAmount > perTransactionLimit;
+  const monthlyLimit = currentUser?.monthlyLimit || 20000000;
   const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
   const isOverLimit = numericAmount > remainingLimit;
   const wouldExceedLimit = usedAmount + numericAmount > monthlyLimit;
@@ -494,21 +531,18 @@ function NewDealContent() {
   };
 
   const handleVerifyAccount = async () => {
-    setIsLoading(true);
-    setVerificationFailed(false);
-    setVerificationError('');
-    setVerifiedHolderName('');
-
-    // 기본 입력값 확인
     if (!recipient.bank || !recipient.accountNumber || !recipient.accountHolder) {
       setVerificationFailed(true);
       setVerificationError('은행, 계좌번호, 예금주를 모두 입력해주세요.');
-      setIsLoading(false);
       return;
     }
 
+    setVerificationFailed(false);
+    setVerificationError('');
+    setVerifiedHolderName('');
+    setVerifyingAccount(true);
+
     try {
-      // 팝빌 계좌 예금주 조회 API 호출
       const response = await fetch('/api/popbill/account/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -522,37 +556,29 @@ function NewDealContent() {
       const result = await response.json();
 
       if (!result.success) {
-        // API 오류
         setVerificationFailed(true);
-        setVerificationError(result.error?.message || '계좌 조회에 실패했습니다.');
-        setIsLoading(false);
+        setVerificationError(result.error?.message || '계좌 확인에 실패했습니다.');
         return;
       }
 
-      // 실제 예금주명 저장
-      setVerifiedHolderName(result.data.accountHolder);
+      const { isMatch, accountHolder: actualHolder } = result.data;
+      setVerifiedHolderName(actualHolder || '');
 
-      // 예금주 일치 여부 확인
-      if (result.data.isMatch) {
-        // 일치: 인증 성공
+      if (isMatch) {
         setRecipient({
           ...recipient,
           isVerified: true,
           verifiedAt: new Date().toISOString(),
         });
       } else {
-        // 불일치: 인증 실패, 실제 예금주 안내
         setVerificationFailed(true);
-        setVerificationError(
-          `입력한 예금주(${recipient.accountHolder})와 실제 예금주(${result.data.accountHolder})가 일치하지 않습니다. 예금주명을 수정해주세요.`
-        );
+        setVerificationError(`예금주가 일치하지 않습니다. (실제: ${actualHolder})`);
       }
-    } catch (error) {
-      console.error('계좌 인증 오류:', error);
+    } catch {
       setVerificationFailed(true);
-      setVerificationError('계좌 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setVerificationError('계좌 확인 중 오류가 발생했습니다.');
     } finally {
-      setIsLoading(false);
+      setVerifyingAccount(false);
     }
   };
 
@@ -584,6 +610,8 @@ function NewDealContent() {
         dealName: `${selectedTypeConfig?.name} - ${recipient.accountHolder}`,
         dealType,
         amount: numericAmount,
+        feeRate: determinedFeeRate,
+        feeSource,
         recipient: {
           bank: recipient.bank,
           accountNumber: recipient.accountNumber,
@@ -594,9 +622,13 @@ function NewDealContent() {
         attachments: attachmentData,
       };
 
-      console.log('[NewDeal] Creating deal...');
+      console.log('[NewDeal] Creating deal with data:', JSON.stringify(dealData, null, 2));
       const response = await dealsAPI.create(dealData);
       console.log('[NewDeal] API response:', { did: response.deal?.did, status: response.deal?.status, isPaid: response.deal?.isPaid });
+
+      // 거래 생성 완료 트래킹 (송금 완료는 어드민 승인 시 기록)
+      tracking.transferFunnel.submitted();
+      tracking.flush(); // 페이지 이동 전 즉시 전송
 
       // Draft 제출 완료 후 삭제
       submitDraft();
@@ -617,7 +649,7 @@ function NewDealContent() {
         history: response.deal.history || [],
         isPaid: false, // 항상 미결제 상태
         isTransferred: false,
-        feeRate: response.deal.feeRate ?? (currentUser?.feeRate || 0),
+        feeRate: response.deal.feeRate ?? determinedFeeRate,
         feeAmount: response.deal.feeAmount ?? feeAmount,
         totalAmount: response.deal.totalAmount ?? totalAmount,
         finalAmount: response.deal.finalAmount ?? finalAmount,
@@ -630,16 +662,16 @@ function NewDealContent() {
       addDeal(completeDeal);
 
       router.replace(`/deals/${response.deal.did}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('거래 생성 실패:', error);
-      alert(error.message || '거래 생성에 실패했습니다.');
+      alert(getErrorMessage(error) || '거래 생성에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const isBelowMinimum = numericAmount > 0 && numericAmount < MIN_AMOUNT;
-  const canProceedAmount = numericAmount >= MIN_AMOUNT && !isOverLimit;
+  const canProceedAmount = numericAmount >= MIN_AMOUNT && !isOverPerTransaction && !isOverLimit;
   const canProceedRecipient =
     recipient.bank &&
     recipient.accountNumber.length >= 10 &&
@@ -744,7 +776,7 @@ function NewDealContent() {
                   placeholder="0"
                   className={cn(
                     "w-full text-3xl font-bold bg-transparent border-none outline-none",
-                    isOverLimit ? "text-red-500" : isBelowMinimum ? "text-yellow-600" : "text-gray-900"
+                    isOverPerTransaction || isOverLimit ? "text-red-500" : isBelowMinimum ? "text-yellow-600" : "text-gray-900"
                   )}
                 />
                 <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400">원</span>
@@ -753,13 +785,47 @@ function NewDealContent() {
               {numericAmount > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span>수수료 ({currentUser?.feeRate || 0}%)</span>
-                    <span>{feeAmount.toLocaleString()}원</span>
+                    <span>기본수수료 ({determinedFeeRate}%)</span>
+                    <span>{feeAmountBase.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-500 mb-1">
+                    <span>부가세</span>
+                    <span>{vatAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-900">
                     <span>총 결제금액</span>
                     <span className="text-primary-400">{totalAmount.toLocaleString()}원</span>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* 1회 결제 한도 */}
+            <div className={cn(
+              "rounded-xl p-4 mb-3",
+              isOverPerTransaction ? "bg-red-50" : "bg-gray-50"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className={cn(
+                  "text-sm font-medium",
+                  isOverPerTransaction ? "text-red-700" : "text-gray-700"
+                )}>
+                  1회 결제 한도
+                </span>
+                <span className={cn(
+                  "text-sm font-semibold",
+                  isOverPerTransaction ? "text-red-600" : "text-gray-900"
+                )}>
+                  {perTransactionLimit.toLocaleString()}원
+                </span>
+              </div>
+              {isOverPerTransaction && (
+                <div className="mt-2 flex items-start gap-2 text-red-700">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs">
+                    1회 결제 한도를 초과하였습니다.
+                    한도 상향이 필요하시면 고객센터로 문의해 주세요.
+                  </p>
                 </div>
               )}
             </div>
@@ -831,7 +897,7 @@ function NewDealContent() {
                 if (numericAmount > 0) {
                   updateDraft({ amount: numericAmount });
                 }
-                setStep('type');
+                handleStepChange('type');
               }}
               className="w-full mb-6 text-left"
             >
@@ -872,7 +938,7 @@ function NewDealContent() {
             {/* 기존 거래 내역 조회 버튼 */}
             <button
               onClick={handleLoadPreviousAccounts}
-              className="w-full mb-6 h-12 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+              className="w-full mb-6 h-14 bg-primary-400 hover:bg-primary-500 rounded-xl flex items-center justify-center gap-2 transition-colors text-white font-semibold"
             >
               <History className="w-5 h-5" />
               기존 거래 내역 조회
@@ -964,17 +1030,24 @@ function NewDealContent() {
                     recipient.accountNumber.length < 10 ||
                     !recipient.accountHolder ||
                     recipient.isVerified ||
-                    isLoading
+                    verifyingAccount
                   }
                   className="
-                    h-14 px-4
-                    bg-gray-900 text-white font-medium
-                    rounded-xl
+                    h-14 px-5
+                    bg-primary-400 hover:bg-primary-500
+                    text-white font-semibold
+                    rounded-xl transition-colors
                     disabled:bg-gray-200 disabled:text-gray-400
                     whitespace-nowrap
+                    flex items-center justify-center gap-2
                   "
                 >
-                  {recipient.isVerified ? '인증완료' : '계좌확인'}
+                  {verifyingAccount ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      확인 중...
+                    </>
+                  ) : recipient.isVerified ? '인증완료' : '계좌확인'}
                 </button>
               </div>
             </div>
@@ -1090,7 +1163,7 @@ function NewDealContent() {
               mb-4
             ">
               <Upload className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-sm text-gray-500">파일 선택 또는 드래그</span>
+              <span className="text-sm text-gray-500">탭하여 파일 선택</span>
               <span className="text-xs text-gray-400 mt-1">개별 파일 50MB 이하</span>
               <input
                 type="file"
@@ -1188,8 +1261,9 @@ function NewDealContent() {
 
             {/* 미리보기 팝업 */}
             {previewFile && (
+              <ModalPortal>
               <div
-                className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+                className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
                 onClick={() => setPreviewFile(null)}
               >
                 <div
@@ -1258,6 +1332,7 @@ function NewDealContent() {
                   </div>
                 </div>
               </div>
+              </ModalPortal>
             )}
 
             <button
@@ -1299,14 +1374,27 @@ function NewDealContent() {
                     <span className="font-medium">{numericAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">수수료 ({currentUser?.feeRate || 0}%)</span>
-                    <span className="font-medium">{feeAmount.toLocaleString()}원</span>
+                    <span className="text-gray-600">기본수수료 ({determinedFeeRate}%)</span>
+                    <span className="font-medium">{feeAmountBase.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">부가세</span>
+                    <span className="font-medium">{vatAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
                     <span className="font-semibold">총 결제금액</span>
                     <span className="font-bold text-primary-400">{totalAmount.toLocaleString()}원</span>
                   </div>
                 </div>
+              </div>
+
+              {/* 송금 예정일 */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">송금 예정일</span>
+                  <span className="font-medium text-gray-900">{formatEstimatedTransferDate()}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">금일 결제 시 기준 (영업일 기준)</p>
               </div>
 
               {/* 수취인 정보 */}
@@ -1340,13 +1428,19 @@ function NewDealContent() {
               disabled={isLoading}
               className="
                 w-full h-14 mt-6
-                bg-primary-400 hover:bg-primary-500
+                bg-primary-600 hover:bg-primary-700
                 disabled:bg-gray-200 disabled:text-gray-400
                 text-white font-semibold text-lg
                 rounded-xl transition-colors
+                flex items-center justify-center gap-2
               "
             >
-              {isLoading ? '신청 중...' : '거래 신청하기'}
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  신청 중...
+                </>
+              ) : '거래 신청하기'}
             </button>
           </div>
         )}

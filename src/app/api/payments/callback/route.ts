@@ -9,11 +9,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { notifyPaymentComplete } from '@/lib/slack';
+import { appendPaymentToSheet } from '@/lib/google-sheets';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
+const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 
 export async function POST(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -73,15 +76,18 @@ export async function POST(request: NextRequest) {
     const approvedTrxId = approveResponse.data?.trxId || trxId;
     const trackId = approveResponse.data?.trackId || '';
 
-    // 승인 성공 시 DB에 결제 정보 저장 (pgTransactionId 포함)
+    // 승인 성공 시 DynamoDB 직접 업데이트
     if (dealId) {
       try {
         console.log('[Payment Callback] Updating deal in DB:', { dealId, trxId: approvedTrxId });
 
+        const payInfo = approveResponse.data?.payInfo;
+        const cardInfo = payInfo?.cardInfo;
+
         await docClient.send(new UpdateCommand({
           TableName: DEALS_TABLE,
           Key: { did: dealId },
-          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, updatedAt = :updatedAt',
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, pgCardIssuerCode = :issuerCode, pgCardAcquirer = :acquirer, pgCardAcquirerCode = :acquirerCode, pgInstallment = :installment, pgPayMethodTypeCode = :payMethod, pgTransactionDate = :trxDate, updatedAt = :updatedAt, statusHistory = list_append(if_not_exists(statusHistory, :emptyList), :newHistory)',
           ExpressionAttributeNames: {
             '#status': 'status',
           },
@@ -91,11 +97,93 @@ export async function POST(request: NextRequest) {
             ':status': 'reviewing',
             ':pgTrxId': approvedTrxId,
             ':pgTrackId': trackId,
+            ':goodsName': approveResponse.data?.goodsName || '',
+            ':cardIssuer': cardInfo?.issuer || '',
+            ':cardNo': cardInfo?.cardNo || '',
+            ':authCd': payInfo?.authCd || '',
+            ':cardType': cardInfo?.cardType || '',
+            ':issuerCode': cardInfo?.issuerCode || '',
+            ':acquirer': cardInfo?.acquirer || '',
+            ':acquirerCode': cardInfo?.acquirerCode || '',
+            ':installment': cardInfo?.installment || '',
+            ':payMethod': payInfo?.payMethodTypeCode || '',
+            ':trxDate': approveResponse.data?.transactionDate || '',
             ':updatedAt': new Date().toISOString(),
+            ':emptyList': [],
+            ':newHistory': [{ prevStatus: 'awaiting_payment', newStatus: 'reviewing', changedAt: new Date().toISOString(), changedBy: 'system', reason: '결제 승인 완료' }],
           },
         }));
 
-        console.log('[Payment Callback] Deal updated successfully');
+        console.log('[Payment Callback] Deal updated successfully in DB');
+
+        // 거래 정보 조회하여 사용자 월 한도 사용량 업데이트
+        try {
+          const dealResult = await docClient.send(new GetCommand({
+            TableName: DEALS_TABLE,
+            Key: { did: dealId },
+          }));
+          const dealData = dealResult.Item;
+          if (dealData?.uid && dealData?.amount) {
+            await docClient.send(new UpdateCommand({
+              TableName: USERS_TABLE,
+              Key: { uid: dealData.uid },
+              UpdateExpression: 'SET usedAmount = if_not_exists(usedAmount, :zero) + :amount, totalPaymentAmount = if_not_exists(totalPaymentAmount, :zero) + :finalAmount, totalDealCount = if_not_exists(totalDealCount, :zero) + :one, updatedAt = :now',
+              ExpressionAttributeValues: {
+                ':amount': dealData.amount,
+                ':finalAmount': dealData.finalAmount || dealData.amount,
+                ':one': 1,
+                ':zero': 0,
+                ':now': new Date().toISOString(),
+              },
+            }));
+            console.log('[Payment Callback] User usedAmount updated:', dealData.uid);
+
+            // Slack 알림 전송 (비동기, 실패해도 무시)
+            const userResult = await docClient.send(new GetCommand({ TableName: USERS_TABLE, Key: { uid: dealData.uid } }));
+            const userData = userResult.Item;
+            notifyPaymentComplete({
+              dealId,
+              dealType: dealData.dealName || '',
+              amount: dealData.amount || 0,
+              feeRate: dealData.feeRate || 0,
+              feeAmount: dealData.feeAmount || 0,
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              recipientBank: dealData.recipient?.bank || '',
+              recipientHolder: dealData.recipient?.accountHolder || '',
+              recipientAccount: dealData.recipient?.accountNumber || '',
+              senderName: dealData.senderName || '',
+              userName: userData?.name || '',
+              userPhone: userData?.phone || '',
+              pgTransactionId: approvedTrxId || '',
+              pgAuthCd: approveResponse.data?.payInfo?.authCd || '',
+            }).catch(err => console.error('[Payment Callback] Slack notification failed:', err));
+
+            // Google Sheets 기록 (비동기, 실패해도 무시)
+            appendPaymentToSheet({
+              paidAt: new Date().toISOString(),
+              dealId,
+              pgTransactionId: approvedTrxId || '',
+              pgTrackId: trackId || '',
+              pgAuthCd: approveResponse.data?.payInfo?.authCd || '',
+              dealType: dealData.dealName || '',
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              amount: dealData.amount || 0,
+              feeAmount: dealData.feeAmount || 0,
+              feeRate: dealData.feeRate || 0,
+              recipientHolder: dealData.recipient?.accountHolder || '',
+              recipientBank: dealData.recipient?.bank || '',
+              recipientAccount: dealData.recipient?.accountNumber || '',
+              senderName: dealData.senderName || '',
+              userName: userData?.name || '',
+              userPhone: userData?.phone || '',
+              businessName: userData?.businessInfo?.businessName || '',
+              businessNumber: userData?.businessInfo?.businessNumber || '',
+              representativeName: userData?.businessInfo?.representativeName || '',
+            }).catch(err => console.error('[Payment Callback] Google Sheets failed:', err));
+          }
+        } catch (userError) {
+          console.error('[Payment Callback] Failed to update user usedAmount:', userError);
+        }
       } catch (dbError) {
         // DB 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
         console.error('[Payment Callback] Failed to update deal in DB:', dbError);

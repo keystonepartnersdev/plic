@@ -4,11 +4,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IUser, TUserGrade, IGradeChangeResult } from '@/types';
 import { IRegisteredCard } from '@/types/payment';
-import { authAPI, usersAPI, tokenManager } from '@/lib/api';
+import { usersAPI } from '@/lib/api';
 import {
   processAutoGradeChange as processGradeChange,
   resetMonthlyUsage as resetUsage,
 } from '@/lib/gradeUtils';
+import { getErrorMessage } from '@/lib/utils';
+import { secureAuth } from '@/lib/auth';
 
 const sampleUsers: IUser[] = [];
 
@@ -19,6 +21,7 @@ interface IUserState {
   apiError: string | null;
   registeredCards: IRegisteredCard[];
   users: IUser[];
+  _hasHydrated: boolean;
 
   // API 연동 메서드
   login: (email: string, password: string) => Promise<void>;
@@ -51,6 +54,7 @@ interface IUserState {
 
   resetMonthlyUsage: () => void;
   clearApiError: () => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useUserStore = create(
@@ -62,6 +66,7 @@ export const useUserStore = create(
       apiError: null,
       registeredCards: [],
       users: sampleUsers,
+      _hasHydrated: false,
 
       // ============================================
       // API 연동 메서드
@@ -70,33 +75,37 @@ export const useUserStore = create(
       login: async (email, password) => {
         set({ isLoading: true, apiError: null });
         try {
-          const result = await authAPI.login({ email, password });
+          // httpOnly 쿠키 기반 보안 로그인 사용
+          const result = await secureAuth.login(email, password);
 
           // API에서 받은 사용자 정보로 상태 업데이트
+          // BFF 응답 형식 양쪽 호환: result.user (플랫) 또는 result.data.user (중첩)
+          const rawUser = result.user || result.data?.user;
           const user: IUser = {
-            uid: result.user.uid,
-            name: result.user.name,
-            phone: result.user.phone,
-            email: result.user.email,
-            userType: result.user.userType || 'personal',
-            businessInfo: result.user.businessInfo,
-            authType: result.user.authType || 'direct',
-            socialProvider: result.user.socialProvider || 'none',
-            isVerified: result.user.isVerified ?? true,
-            verifiedAt: result.user.verifiedAt,
-            status: result.user.status || 'active',
-            grade: result.user.grade || 'basic',
-            feeRate: result.user.feeRate ?? 2.5,
-            isGradeManual: result.user.isGradeManual ?? false,
-            monthlyLimit: result.user.monthlyLimit ?? 5000000,
-            usedAmount: result.user.usedAmount ?? 0,
-            agreements: result.user.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
-            totalPaymentAmount: result.user.totalPaymentAmount ?? 0,
-            totalDealCount: result.user.totalDealCount ?? 0,
-            lastMonthPaymentAmount: result.user.lastMonthPaymentAmount ?? 0,
-            history: result.user.history || [],
-            createdAt: result.user.createdAt || new Date().toISOString(),
-            updatedAt: result.user.updatedAt || new Date().toISOString(),
+            uid: rawUser.uid,
+            name: rawUser.name,
+            phone: rawUser.phone,
+            email: rawUser.email,
+            userType: rawUser.userType || 'personal',
+            businessInfo: rawUser.businessInfo,
+            authType: rawUser.authType || 'direct',
+            socialProvider: rawUser.socialProvider || null,
+            isVerified: rawUser.isVerified ?? true,
+            verifiedAt: rawUser.verifiedAt,
+            status: rawUser.status || 'active',
+            grade: rawUser.grade || 'basic',
+            feeRate: rawUser.feeRate ?? 3.3,
+            isGradeManual: rawUser.isGradeManual ?? false,
+            monthlyLimit: rawUser.monthlyLimit ?? 20000000,
+            perTransactionLimit: rawUser.perTransactionLimit ?? 2000000,
+            usedAmount: rawUser.usedAmount ?? 0,
+            agreements: rawUser.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
+            totalPaymentAmount: rawUser.totalPaymentAmount ?? 0,
+            totalDealCount: rawUser.totalDealCount ?? 0,
+            lastMonthPaymentAmount: rawUser.lastMonthPaymentAmount ?? 0,
+            history: rawUser.history || [],
+            createdAt: rawUser.createdAt || new Date().toISOString(),
+            updatedAt: rawUser.updatedAt || new Date().toISOString(),
           };
 
           // users 배열에도 추가/업데이트
@@ -115,23 +124,42 @@ export const useUserStore = create(
             isLoading: false,
             users: updatedUsers,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '로그인에 실패했습니다.',
+            apiError: getErrorMessage(error) || '로그인에 실패했습니다.',
           });
           throw error;
         }
       },
 
       fetchCurrentUser: async () => {
-        if (!tokenManager.getAccessToken()) {
-          return;
-        }
-
         set({ isLoading: true, apiError: null });
         try {
-          const userData = await usersAPI.getMe();
+          // httpOnly 쿠키로 인증 상태 확인
+          const meResult = await secureAuth.getMe();
+          if (!meResult.success) {
+            // 서버에서 인증 실패 → 로그인 상태였으면 강제 로그아웃
+            if (get().isLoggedIn) {
+              set({ currentUser: null, isLoggedIn: false, isLoading: false });
+              try { await secureAuth.logout(); } catch {}
+            } else {
+              set({ isLoading: false });
+            }
+            return;
+          }
+          // BFF 응답 형식 양쪽 호환: meResult.user (플랫) 또는 meResult.data (중첩)
+          const userData = meResult.user || meResult.data?.user || meResult.data;
+          if (!userData?.uid) {
+            // 사용자 데이터 없음 → 로그인 상태였으면 강제 로그아웃
+            if (get().isLoggedIn) {
+              set({ currentUser: null, isLoggedIn: false, isLoading: false });
+              try { await secureAuth.logout(); } catch {}
+            } else {
+              set({ isLoading: false });
+            }
+            return;
+          }
 
           const user: IUser = {
             uid: userData.uid,
@@ -141,14 +169,15 @@ export const useUserStore = create(
             userType: userData.userType || 'personal',
             businessInfo: userData.businessInfo,
             authType: userData.authType || 'direct',
-            socialProvider: userData.socialProvider || 'none',
+            socialProvider: userData.socialProvider || null,
             isVerified: userData.isVerified ?? true,
             verifiedAt: userData.verifiedAt,
             status: userData.status || 'active',
             grade: userData.grade || 'basic',
-            feeRate: userData.feeRate ?? 2.5,
+            feeRate: userData.feeRate ?? 3.3,
             isGradeManual: userData.isGradeManual ?? false,
-            monthlyLimit: userData.monthlyLimit ?? 5000000,
+            monthlyLimit: userData.monthlyLimit ?? 20000000,
+            perTransactionLimit: userData.perTransactionLimit ?? 2000000,
             usedAmount: userData.usedAmount ?? 0,
             agreements: userData.agreements || { service: true, privacy: true, thirdParty: true, marketing: false },
             totalPaymentAmount: userData.totalPaymentAmount ?? 0,
@@ -159,6 +188,13 @@ export const useUserStore = create(
             updatedAt: userData.updatedAt || new Date().toISOString(),
           };
 
+          // 탈퇴 회원이면 강제 로그아웃
+          if (user.status === 'withdrawn') {
+            set({ currentUser: null, isLoggedIn: false, isLoading: false });
+            try { await secureAuth.logout(); } catch {}
+            return;
+          }
+
           // users 배열에도 추가/업데이트
           const existingIndex = get().users.findIndex(u => u.uid === user.uid);
           let updatedUsers = get().users;
@@ -175,11 +211,17 @@ export const useUserStore = create(
             isLoading: false,
             users: updatedUsers,
           });
-        } catch (error: any) {
-          set({
-            isLoading: false,
-            apiError: error.message || '사용자 정보를 불러오는데 실패했습니다.',
-          });
+        } catch (error: unknown) {
+          // API 에러 (401 등) → 로그인 상태였으면 강제 로그아웃
+          if (get().isLoggedIn) {
+            set({ currentUser: null, isLoggedIn: false, isLoading: false });
+            try { await secureAuth.logout(); } catch {}
+          } else {
+            set({
+              isLoading: false,
+              apiError: getErrorMessage(error) || '사용자 정보를 불러오는데 실패했습니다.',
+            });
+          }
         }
       },
 
@@ -187,15 +229,16 @@ export const useUserStore = create(
         set({ isLoading: true, apiError: null });
         try {
           // API 호출
-          const result = await usersAPI.updateMe({
+          await usersAPI.updateMe({
             name: updates.name,
             phone: updates.phone,
             agreements: updates.agreements ? { marketing: updates.agreements.marketing } : undefined,
           });
 
           // 로컬 상태 업데이트
-          const updatedUser = get().currentUser
-            ? { ...get().currentUser, ...updates, updatedAt: new Date().toISOString() }
+          const currentUser = get().currentUser;
+          const updatedUser: IUser | null = currentUser
+            ? { ...currentUser, ...updates, updatedAt: new Date().toISOString() } as IUser
             : null;
 
           let updatedUsers = get().users;
@@ -212,10 +255,10 @@ export const useUserStore = create(
             users: updatedUsers,
             isLoading: false,
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({
             isLoading: false,
-            apiError: error.message || '사용자 정보 업데이트에 실패했습니다.',
+            apiError: getErrorMessage(error) || '사용자 정보 업데이트에 실패했습니다.',
           });
           throw error;
         }
@@ -223,11 +266,10 @@ export const useUserStore = create(
 
       logoutWithAPI: async () => {
         try {
-          await authAPI.logout();
+          await secureAuth.logout();
         } catch (error) {
           console.error('로그아웃 API 오류:', error);
         } finally {
-          tokenManager.clearTokens();
           set({
             currentUser: null,
             isLoggedIn: false,
@@ -237,6 +279,7 @@ export const useUserStore = create(
       },
 
       clearApiError: () => set({ apiError: null }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
 
       // ============================================
       // 로컬 메서드 (기존 호환용)
@@ -277,7 +320,7 @@ export const useUserStore = create(
       }),
 
       logout: () => {
-        tokenManager.clearTokens();
+        // httpOnly 쿠키는 secureAuth.logout()으로 삭제됨 (호출하는 곳에서 처리)
         set({
           currentUser: null,
           isLoggedIn: false,
@@ -375,6 +418,15 @@ export const useUserStore = create(
     {
       name: 'plic-user-storage',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        // localStorage에서 hydration 완료 후 호출
+        state?.setHasHydrated(true);
+      },
+      partialize: (state) => {
+        // _hasHydrated는 localStorage에 저장하지 않음
+        const { _hasHydrated, ...rest } = state;
+        return rest as IUserState;
+      },
     }
   )
 );

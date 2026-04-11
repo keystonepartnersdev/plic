@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getErrorMessage } from '@/lib/utils';
+
+// 프로덕션 환경에서는 시드 API 비활성화
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // FAQ 데이터 (FAQ_CONTENT.md 기반)
 const faqData = [
@@ -199,7 +203,7 @@ const faqData = [
   {
     category: 'transfer',
     question: '송금은 얼마나 걸리나요?',
-    answer: '결제가 완료되면 운영팀 검토 후 D+3일(영업일 기준) 이내에 송금됩니다. 은행 점검 시간(23:30~00:30)에는 점검 종료 후 순차적으로 처리됩니다.',
+    answer: '결제가 완료되면 운영팀 검수 후 수취인에게 원금이 송금됩니다. 은행 점검 시간(23:30~00:30)에는 점검 종료 후 순차적으로 처리됩니다.',
     isHomeFeatured: true,
   },
   {
@@ -300,6 +304,11 @@ const categoryMap: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  // 프로덕션 환경에서는 404 반환
+  if (IS_PRODUCTION) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
+
   try {
     // 백엔드 API URL
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.plic.kr';
@@ -344,10 +353,10 @@ export async function POST(request: NextRequest) {
             error: errorData.message || `HTTP ${response.status}`,
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         results.failed.push({
           question: faq.question,
-          error: error.message,
+          error: getErrorMessage(error),
         });
       }
     }
@@ -358,10 +367,10 @@ export async function POST(request: NextRequest) {
       success: results.success.length,
       failed: results.failed,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('FAQ seed error:', error);
     return NextResponse.json(
-      { error: error.message || 'FAQ 시드 중 오류가 발생했습니다.' },
+      { error: getErrorMessage(error) || 'FAQ 시드 중 오류가 발생했습니다.' },
       { status: 500 }
     );
   }
@@ -369,6 +378,11 @@ export async function POST(request: NextRequest) {
 
 // GET으로 FAQ 데이터 확인
 export async function GET() {
+  // 프로덕션 환경에서는 404 반환
+  if (IS_PRODUCTION) {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
+
   return NextResponse.json({
     message: 'FAQ 시드 데이터',
     count: faqData.length,

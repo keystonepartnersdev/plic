@@ -1,8 +1,11 @@
 'use client';
+import { getErrorMessage } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
-import { Users, FileText, CreditCard, TrendingUp, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { Users, FileText, CreditCard, CheckCircle, Clock, XCircle, RefreshCw, AlertCircle, ChevronRight } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
+import { DealHelper } from '@/classes';
 import { IUser, IDeal } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -22,9 +25,9 @@ export default function AdminDashboardPage() {
       ]);
       setUsers(usersResponse.users || []);
       setDeals(dealsResponse.deals || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('대시보드 데이터 로드 실패:', err);
-      setError(err.message || '데이터를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -37,11 +40,15 @@ export default function AdminDashboardPage() {
   // 통계 계산
   const totalUsers = users.length;
   const totalDeals = deals.length;
-  const pendingDeals = deals.filter((d) =>
-    d.status && ['pending', 'reviewing', 'hold'].includes(d.status)
-  ).length;
-  const completedDeals = deals.filter((d) => d.status && d.status === 'completed');
+  const completedDeals = deals.filter((d) => d.status === 'completed');
+  const completedDealsCount = completedDeals.length;
+  const pendingDealsCount = deals.filter((d) => d.status && ['draft', 'awaiting_payment'].includes(d.status)).length;
+  const cancelledDealsCount = deals.filter((d) => d.status === 'cancelled').length;
   const totalPaymentAmount = completedDeals.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
+
+  // 대기 목록 계산
+  const pendingVerificationUsers = users.filter((u) => u.businessInfo?.verificationStatus === 'pending');
+  const pendingReviewDeals = deals.filter((d) => d.status === 'reviewing');
 
   const stats = [
     {
@@ -57,10 +64,22 @@ export default function AdminDashboardPage() {
       color: 'bg-green-50 text-green-600',
     },
     {
-      label: '진행중 거래',
-      value: pendingDeals.toLocaleString(),
-      icon: TrendingUp,
+      label: '총 거래완료 건수',
+      value: completedDealsCount.toLocaleString(),
+      icon: CheckCircle,
       color: 'bg-yellow-50 text-yellow-600',
+    },
+    {
+      label: '총 대기 건수',
+      value: pendingDealsCount.toLocaleString(),
+      icon: Clock,
+      color: 'bg-orange-50 text-orange-600',
+    },
+    {
+      label: '총 취소 건수',
+      value: cancelledDealsCount.toLocaleString(),
+      icon: XCircle,
+      color: 'bg-red-50 text-red-600',
     },
     {
       label: '총 결제 금액',
@@ -96,9 +115,9 @@ export default function AdminDashboardPage() {
       )}
 
       {/* 통계 카드 - PLIC 디자인 시스템 적용 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
         {loading ? (
-          Array(4).fill(0).map((_, i) => (
+          Array(6).fill(0).map((_, i) => (
             <div key={i} className="bg-white rounded-2xl p-6 shadow-sm animate-pulse border border-gray-100">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-gray-200 rounded-2xl" />
@@ -127,6 +146,117 @@ export default function AdminDashboardPage() {
             );
           })
         )}
+      </div>
+
+      {/* 대기 목록 (사업자 인증 대기 & 거래 검수 대기) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* 사업자 인증 대기 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-orange-50">
+                <Clock className="w-4 h-4 text-orange-500" strokeWidth={2} />
+              </div>
+              사업자 인증 대기
+              {!loading && pendingVerificationUsers.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs font-bold rounded-full bg-orange-100 text-orange-700">
+                  {pendingVerificationUsers.length}
+                </span>
+              )}
+            </h3>
+            <Link href="/admin/users?status=pending_verification" className="text-sm text-[#2563EB] hover:text-blue-700 font-medium flex items-center gap-0.5">
+              전체보기 <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {loading ? (
+              Array(3).fill(0).map((_, i) => (
+                <div key={i} className="p-4 animate-pulse">
+                  <div className="h-4 bg-gray-100 rounded w-32 mb-2" />
+                  <div className="h-3 bg-gray-100 rounded w-24" />
+                </div>
+              ))
+            ) : pendingVerificationUsers.length > 0 ? (
+              pendingVerificationUsers.slice(0, 5).map((user) => (
+                <Link
+                  key={user.uid}
+                  href={`/admin/users/${user.uid}`}
+                  className="flex items-center justify-between p-4 hover:bg-blue-50/30 transition-colors duration-300"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{user.name}</p>
+                    <p className="text-sm text-gray-500">{user.businessInfo?.businessName || user.email}</p>
+                  </div>
+                  <div className="text-right flex items-center gap-2">
+                    <p className="text-xs text-gray-400">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('ko-KR') : '-'}
+                    </p>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-400 font-medium">
+                대기중인 회원이 없습니다
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 거래 검수 대기 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-purple-50">
+                <AlertCircle className="w-4 h-4 text-purple-500" strokeWidth={2} />
+              </div>
+              거래 검수 대기
+              {!loading && pendingReviewDeals.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs font-bold rounded-full bg-purple-100 text-purple-700">
+                  {pendingReviewDeals.length}
+                </span>
+              )}
+            </h3>
+            <Link href="/admin/deals?status=reviewing" className="text-sm text-[#2563EB] hover:text-blue-700 font-medium flex items-center gap-0.5">
+              전체보기 <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {loading ? (
+              Array(3).fill(0).map((_, i) => (
+                <div key={i} className="p-4 animate-pulse">
+                  <div className="h-4 bg-gray-100 rounded w-32 mb-2" />
+                  <div className="h-3 bg-gray-100 rounded w-24" />
+                </div>
+              ))
+            ) : pendingReviewDeals.length > 0 ? (
+              pendingReviewDeals.slice(0, 5).map((deal) => (
+                <Link
+                  key={deal.did}
+                  href={`/admin/deals/${deal.did}`}
+                  className="flex items-center justify-between p-4 hover:bg-blue-50/30 transition-colors duration-300"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{deal.dealName || '-'}</p>
+                    <p className="text-sm text-gray-500">
+                      {deal.senderName || '-'} · {(deal.amount || 0).toLocaleString()}원
+                    </p>
+                  </div>
+                  <div className="text-right flex items-center gap-2">
+                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700">
+                      검수대기
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-400 font-medium">
+                대기중인 거래가 없습니다
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 최근 거래 - PLIC 디자인 시스템 적용 */}
@@ -159,18 +289,22 @@ export default function AdminDashboardPage() {
                       {(deal.amount || 0).toLocaleString()}원
                     </td>
                     <td className="py-4">
-                      <span className={`
-                        inline-flex px-3 py-1 text-xs font-bold rounded-full
-                        ${deal.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          deal.status === 'pending' ? 'bg-blue-100 text-blue-700' :
-                          deal.status === 'need_revision' ? 'bg-red-100 text-red-700' :
-                          'bg-gray-100 text-gray-700'}
-                      `}>
-                        {deal.status === 'completed' ? '완료' :
-                          deal.status === 'pending' ? '진행중' :
-                          deal.status === 'need_revision' ? '보완필요' :
-                          deal.status || '-'}
-                      </span>
+                      {(() => {
+                        const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid);
+                        const colorMap: Record<string, string> = {
+                          blue: 'bg-blue-100 text-blue-700',
+                          yellow: 'bg-yellow-100 text-yellow-700',
+                          orange: 'bg-orange-100 text-orange-700',
+                          red: 'bg-red-100 text-red-700',
+                          gray: 'bg-gray-100 text-gray-700',
+                          green: 'bg-green-100 text-green-700',
+                        };
+                        return (
+                          <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${colorMap[statusConfig.color] || 'bg-gray-100 text-gray-700'}`}>
+                            {statusConfig.name}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-4 text-sm text-gray-500 font-medium">
                       {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString('ko-KR') : '-'}

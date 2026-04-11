@@ -19,9 +19,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
-import { useAdminUserStore } from '@/stores';
+// useAdminUserStore 제거 — 모든 사용자 데이터는 DynamoDB API에서 직접 조회
 import { IDiscount, IDiscountCreateInput, TDiscountType, TUserGrade, IUser } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 // 등급 라벨 맵
 const GRADE_LABELS: Record<TUserGrade, string> = {
@@ -36,7 +36,6 @@ const ALL_GRADES: TUserGrade[] = ['basic', 'platinum', 'b2b', 'employee'];
 type TabType = 'code' | 'coupon';
 
 export default function AdminCodesPage() {
-  const { users, searchUsers } = useAdminUserStore();
 
   // API 데이터 상태
   const [discounts, setDiscounts] = useState<IDiscount[]>([]);
@@ -44,7 +43,7 @@ export default function AdminCodesPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<TabType>('code');
+  const [activeTab, setActiveTab] = useState<TabType>('coupon');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<IDiscount | null>(null);
@@ -57,9 +56,9 @@ export default function AdminCodesPage() {
     try {
       const response = await adminAPI.getDiscounts();
       setDiscounts(response.discounts || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 목록 로드 실패:', err);
-      setError(err.message || '할인 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '할인 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -100,9 +99,9 @@ export default function AdminCodesPage() {
       await adminAPI.deleteDiscount(discount.id);
       await fetchDiscounts();
       setDeleteTarget(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 삭제 실패:', err);
-      alert(err.message || '할인 삭제에 실패했습니다.');
+      alert(getErrorMessage(err) || '할인 삭제에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -113,9 +112,35 @@ export default function AdminCodesPage() {
     try {
       await adminAPI.updateDiscount(discount.id, { isActive: !discount.isActive });
       await fetchDiscounts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 상태 변경 실패:', err);
-      alert(err.message || '할인 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '할인 상태 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRevoke = async (discount: IDiscount, revokeAll: boolean) => {
+    const msg = revokeAll
+      ? '이 쿠폰을 전체 회수하시겠습니까? (사용완료 건 제외)'
+      : '선택한 사용자의 쿠폰을 회수하시겠습니까?';
+    if (!confirm(msg)) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/coupons/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discountId: discount.id, revokeAll }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        alert(result.data.message);
+      } else {
+        alert(result.error || '회수 실패');
+      }
+    } catch (err: unknown) {
+      alert(getErrorMessage(err) || '회수 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -124,17 +149,55 @@ export default function AdminCodesPage() {
   const handleSave = async (data: IDiscountCreateInput) => {
     setIsSaving(true);
     try {
+      const extData = data as typeof data & { issueMethods?: string[] };
+      const methods = extData.issueMethods || [data.issueMethod || 'manual'];
+
       if (editingDiscount) {
         await adminAPI.updateDiscount(editingDiscount.id, data);
+        const discountId = editingDiscount.id;
+
+        // 선택된 지급 방식별로 쿠폰 실제 지급
+        let totalIssued = 0;
+        let totalSkipped = 0;
+
+        for (const method of methods) {
+          if (method === 'signup_auto') continue; // 가입 시 자동은 즉시 지급 아님
+
+          try {
+            const issueRes = await fetch('/api/admin/coupons/issue', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                discountId,
+                issueMethod: method,
+                targetUserIds: method === 'manual' ? data.targetUserIds : undefined,
+                targetGrades: method === 'grade' ? data.targetGrades : undefined,
+              }),
+            });
+            const issueData = await issueRes.json();
+            if (issueData.success) {
+              totalIssued += issueData.data.issuedCount || 0;
+              totalSkipped += issueData.data.skippedCount || 0;
+            }
+          } catch {
+            console.error(`쿠폰 지급 실패 (${method})`);
+          }
+        }
+
+        if (totalIssued > 0) {
+          alert(`${totalIssued}명에게 쿠폰이 지급되었습니다.${totalSkipped > 0 ? ` (${totalSkipped}명 중복 제외)` : ''}`);
+        } else if (totalSkipped > 0) {
+          alert('대상 사용자에게 이미 지급된 쿠폰입니다.');
+        }
       } else {
         await adminAPI.createDiscount(data);
       }
       await fetchDiscounts();
       setShowCreateModal(false);
       setEditingDiscount(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('할인 저장 실패:', err);
-      alert(err.message || '할인 저장에 실패했습니다.');
+      alert(getErrorMessage(err) || '할인 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -204,27 +267,6 @@ export default function AdminCodesPage() {
       <div className="bg-white rounded-xl shadow-sm mb-6">
         <div className="flex border-b border-gray-100">
           <button
-            onClick={() => setActiveTab('code')}
-            className={cn(
-              'flex items-center gap-2 px-6 py-4 font-medium transition-colors relative',
-              activeTab === 'code' ? 'text-primary-400' : 'text-gray-400 hover:text-gray-600'
-            )}
-          >
-            <Tag className="w-5 h-5" />
-            할인코드
-            <span
-              className={cn(
-                'ml-1 text-sm',
-                activeTab === 'code' ? 'text-primary-400' : 'text-gray-400'
-              )}
-            >
-              {codeStats.total}
-            </span>
-            {activeTab === 'code' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400" />
-            )}
-          </button>
-          <button
             onClick={() => setActiveTab('coupon')}
             className={cn(
               'flex items-center gap-2 px-6 py-4 font-medium transition-colors relative',
@@ -244,6 +286,14 @@ export default function AdminCodesPage() {
             {activeTab === 'coupon' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400" />
             )}
+          </button>
+          <button
+            disabled
+            className="flex items-center gap-2 px-6 py-4 font-medium text-gray-300 cursor-not-allowed relative"
+          >
+            <Tag className="w-5 h-5" />
+            할인코드
+            <span className="ml-1 text-sm text-gray-300">{codeStats.total}</span>
           </button>
         </div>
 
@@ -300,6 +350,7 @@ export default function AdminCodesPage() {
                     onEdit={() => setEditingDiscount(discount)}
                     onDelete={() => setDeleteTarget(discount)}
                     onToggle={() => handleToggle(discount)}
+                    onRevoke={discount.type === 'coupon' ? () => handleRevoke(discount, true) : undefined}
                   />
                 ))
               ) : (
@@ -323,8 +374,6 @@ export default function AdminCodesPage() {
         <DiscountModal
           type={activeTab}
           discount={editingDiscount}
-          users={users}
-          searchUsers={searchUsers}
           isSaving={isSaving}
           onClose={() => {
             setShowCreateModal(false);
@@ -354,12 +403,14 @@ function DiscountRow({
   onEdit,
   onDelete,
   onToggle,
+  onRevoke,
 }: {
   discount: IDiscount;
   isSaving: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onRevoke?: () => void;
 }) {
   const isExpired = new Date(discount.expiry) < new Date();
 
@@ -423,11 +474,6 @@ function DiscountRow({
               : '조건 없음'}
           </p>
           <div className="flex flex-wrap gap-1 mt-1">
-            {discount.canStack && (
-              <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
-                중복가능
-              </span>
-            )}
             {discount.isReusable && (
               <span className="text-xs px-1.5 py-0.5 bg-green-50 text-green-600 rounded">
                 재사용
@@ -482,6 +528,16 @@ function DiscountRow({
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
+          {onRevoke && (
+            <button
+              onClick={onRevoke}
+              disabled={isSaving}
+              title="전체 회수"
+              className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <UserMinus className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onEdit}
             disabled={isSaving}
@@ -506,16 +562,12 @@ function DiscountRow({
 function DiscountModal({
   type,
   discount,
-  users,
-  searchUsers,
   isSaving,
   onClose,
   onSave,
 }: {
   type: TDiscountType;
   discount: IDiscount | null;
-  users: IUser[];
-  searchUsers: (query: string) => IUser[];
   isSaving: boolean;
   onClose: () => void;
   onSave: (data: IDiscountCreateInput) => void;
@@ -530,9 +582,15 @@ function DiscountModal({
     startDate: discount?.startDate || new Date().toISOString().split('T')[0],
     expiry: discount?.expiry || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     canStack: discount?.canStack || false,
-    isReusable: discount?.isReusable || false,
+    isReusable: discount?.isReusable ?? false,
     description: discount?.description || '',
-    // 등급 및 사용자 설정 - 기본값: 빈 배열 (아무 등급도 선택되지 않음)
+    usageType: discount?.usageType || 'single',
+    maxUsagePerUser: discount?.maxUsagePerUser || 1,
+    issueMethod: discount?.issueMethod || 'manual',
+    autoIssueStartDate: discount?.autoIssueStartDate || new Date().toISOString().split('T')[0],
+    autoIssueEndDate: discount?.autoIssueEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    usageExpiryDays: discount?.usageExpiryDays || 0,
+    applicableDealTypes: discount?.applicableDealTypes || [],
     allowedGrades: discount?.allowedGrades || [],
     targetGrades: discount?.targetGrades || [],
     targetUserIds: discount?.targetUserIds || [],
@@ -540,20 +598,69 @@ function DiscountModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 지급 방식 복수 선택 (수동+등급 등 조합 가능)
+  const [issueMethods, setIssueMethods] = useState<string[]>(() => {
+    return discount?.issueMethod ? [discount.issueMethod] : ['manual'];
+  });
+  const toggleIssueMethod = (method: string) => {
+    setIssueMethods(prev =>
+      prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+    );
+  };
+
   // 사용자 검색 관련 상태
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [searchedUsers, setSearchedUsers] = useState<IUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // 검색된 사용자 목록
-  const searchedUsers = useMemo(() => {
-    if (!userSearchQuery.trim()) return [];
-    return searchUsers(userSearchQuery).slice(0, 10); // 최대 10명
-  }, [userSearchQuery, searchUsers]);
+  // DynamoDB 직접 조회로 사용자 검색 (신규 가입자 포함)
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setSearchedUsers([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(userSearchQuery.trim())}`);
+        const data = await res.json();
+        if (data.success) {
+          setSearchedUsers(data.data.users || []);
+        }
+      } catch {
+        setSearchedUsers([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [userSearchQuery]);
 
-  // 선택된 사용자 목록
-  const selectedUsers = useMemo(() => {
-    return users.filter(u => formData.targetUserIds?.includes(u.uid));
-  }, [users, formData.targetUserIds]);
+  // 선택된 사용자 목록 (API에서 직접 조회 — localStorage 의존 없음)
+  const [selectedUsersMap, setSelectedUsersMap] = useState<Record<string, IUser>>({});
+
+  // 기존 targetUserIds가 있으면 API에서 사용자 정보 조회
+  useEffect(() => {
+    const existingIds = formData.targetUserIds || [];
+    if (existingIds.length === 0) return;
+
+    Promise.all(
+      existingIds.map(uid =>
+        fetch(`/api/admin/users/search?q=${encodeURIComponent(uid)}`)
+          .then(r => r.json())
+          .then(d => d.success && d.data.users?.[0] ? d.data.users[0] : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      const map: Record<string, IUser> = {};
+      results.forEach(user => { if (user) map[user.uid] = user; });
+      setSelectedUsersMap(map);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const selectedUsers = (formData.targetUserIds || [])
+    .map(uid => selectedUsersMap[uid])
+    .filter(Boolean);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -583,13 +690,22 @@ function DiscountModal({
       newErrors.allowedGrades = '최소 1개 등급을 선택해주세요.';
     }
 
-    // 쿠폰: 등급 또는 사용자 중 하나는 선택 필요
+    // 쿠폰: 지급 방식에 따른 검증 (복수 선택 지원)
     if (type === 'coupon') {
-      const hasGrades = formData.targetGrades && formData.targetGrades.length > 0;
-      const hasUsers = formData.targetUserIds && formData.targetUserIds.length > 0;
-      if (!hasGrades && !hasUsers) {
-        newErrors.target = '지급 대상 등급 또는 사용자를 선택해주세요.';
+      if (issueMethods.length === 0) {
+        newErrors.target = '최소 1개 지급 방식을 선택해주세요.';
       }
+      if (issueMethods.includes('manual')) {
+        if (!formData.targetUserIds || formData.targetUserIds.length === 0) {
+          newErrors.target = '수동 지급: 대상 사용자를 선택해주세요.';
+        }
+      }
+      if (issueMethods.includes('grade')) {
+        if (!formData.targetGrades || formData.targetGrades.length === 0) {
+          newErrors.target = '등급별 지급: 대상 등급을 선택해주세요.';
+        }
+      }
+      // all, signup_auto는 별도 대상 선택 불필요
     }
 
     setErrors(newErrors);
@@ -598,53 +714,60 @@ function DiscountModal({
 
   const handleSubmit = () => {
     if (validate()) {
-      onSave(formData);
+      // issueMethods를 formData에 반영 (첫번째를 primary로, 전체를 issueMethods로)
+      onSave({
+        ...formData,
+        issueMethod: issueMethods[0] || 'manual',
+        issueMethods, // 복수 선택 전달
+      } as IDiscountCreateInput & { issueMethods: string[] });
     }
   };
 
   // 등급 선택 토글
   const toggleGrade = (grade: TUserGrade, field: 'allowedGrades' | 'targetGrades') => {
-    const currentGrades = formData[field] || [];
-    if (currentGrades.includes(grade)) {
-      setFormData({
-        ...formData,
-        [field]: currentGrades.filter(g => g !== grade),
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [field]: [...currentGrades, grade],
-      });
-    }
+    setFormData(prev => {
+      const currentGrades = prev[field] || [];
+      if (currentGrades.includes(grade)) {
+        return { ...prev, [field]: currentGrades.filter(g => g !== grade) };
+      }
+      return { ...prev, [field]: [...currentGrades, grade] };
+    });
   };
 
   // 전체 등급 선택/해제
   const toggleAllGrades = (field: 'allowedGrades' | 'targetGrades') => {
-    const currentGrades = formData[field] || [];
-    if (currentGrades.length === ALL_GRADES.length) {
-      setFormData({ ...formData, [field]: [] });
-    } else {
-      setFormData({ ...formData, [field]: [...ALL_GRADES] });
-    }
+    setFormData(prev => {
+      const currentGrades = prev[field] || [];
+      return currentGrades.length === ALL_GRADES.length
+        ? { ...prev, [field]: [] }
+        : { ...prev, [field]: [...ALL_GRADES] };
+    });
   };
 
   // 사용자 추가
   const addUser = (user: IUser) => {
-    if (!formData.targetUserIds?.includes(user.uid)) {
-      setFormData({
-        ...formData,
-        targetUserIds: [...(formData.targetUserIds || []), user.uid],
-      });
-    }
+    setFormData(prev => {
+      if (prev.targetUserIds?.includes(user.uid)) return prev;
+      return {
+        ...prev,
+        targetUserIds: [...(prev.targetUserIds || []), user.uid],
+      };
+    });
+    setSelectedUsersMap(prev => ({ ...prev, [user.uid]: user }));
     setUserSearchQuery('');
     setShowUserSearch(false);
   };
 
   // 사용자 제거
   const removeUser = (userId: string) => {
-    setFormData({
-      ...formData,
-      targetUserIds: formData.targetUserIds?.filter(id => id !== userId) || [],
+    setFormData(prev => ({
+      ...prev,
+      targetUserIds: prev.targetUserIds?.filter(id => id !== userId) || [],
+    }));
+    setSelectedUsersMap(prev => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
     });
   };
 
@@ -707,45 +830,56 @@ function DiscountModal({
           {/* 할인 유형 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">할인 유형</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, discountType: 'amount' })}
-                className={cn(
-                  'flex-1 h-10 px-4 rounded-lg border font-medium transition-colors',
-                  formData.discountType === 'amount'
-                    ? 'bg-primary-400 text-white border-primary-400'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
-                )}
-              >
-                금액 할인
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, discountType: 'feePercent' })}
-                className={cn(
-                  'flex-1 h-10 px-4 rounded-lg border font-medium transition-colors',
-                  formData.discountType === 'feePercent'
-                    ? 'bg-primary-400 text-white border-primary-400'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
-                )}
-              >
-                수수료 % 할인
-              </button>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: 'feeOverride', label: '수수료율 대체' },
+                { value: 'feeDiscount', label: '수수료율 차감' },
+                { value: 'amount', label: '수수료금액 할인' },
+                { value: 'feePercent', label: '수수료 % 할인' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, discountType: opt.value })}
+                  className={cn(
+                    'h-10 px-3 rounded-lg border font-medium text-sm transition-colors',
+                    formData.discountType === opt.value
+                      ? 'bg-primary-400 text-white border-primary-400'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {formData.discountType === 'feeOverride' && '수수료율 자체를 지정한 값으로 대체합니다. (예: 1.8% → 수수료율 1.8%)'}
+              {formData.discountType === 'feeDiscount' && '수수료율에서 지정한 값을 차감합니다. 최소 1%까지만 차감 가능합니다.'}
+              {formData.discountType === 'amount' && '수수료 금액에서 고정 금액을 차감합니다.'}
+              {formData.discountType === 'feePercent' && '수수료 금액의 지정 비율만큼 차감합니다.'}
+            </p>
           </div>
 
           {/* 할인 값 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {formData.discountType === 'amount' ? '할인 금액' : '할인율'} <span className="text-red-500">*</span>
+              {formData.discountType === 'amount' ? '할인 금액'
+                : formData.discountType === 'feeOverride' ? '대체 수수료율'
+                : formData.discountType === 'feeDiscount' ? '차감 수수료율'
+                : '할인율'} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type="number"
+                step={formData.discountType === 'amount' ? '1' : '0.1'}
                 value={formData.discountValue || ''}
-                onChange={(e) => setFormData({ ...formData, discountValue: parseInt(e.target.value) || 0 })}
-                placeholder={formData.discountType === 'amount' ? '5000' : '30'}
+                onChange={(e) => setFormData({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
+                placeholder={
+                  formData.discountType === 'amount' ? '5000'
+                    : formData.discountType === 'feeOverride' ? '1.8'
+                    : formData.discountType === 'feeDiscount' ? '1.0'
+                    : '30'
+                }
                 className={cn(
                   'w-full h-10 px-4 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400',
                   errors.discountValue ? 'border-red-300' : 'border-gray-200'
@@ -846,11 +980,121 @@ function DiscountModal({
             </div>
           )}
 
+          {/* 쿠폰: 사용 횟수/지급 방식/기한 설정 */}
+          {type === 'coupon' && (
+            <>
+              {/* 사용 횟수 유형 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용 횟수</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'single', label: '1회용' },
+                    { value: 'period', label: '기간 무제한' },
+                    { value: 'limited', label: 'N회 제한' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, usageType: opt.value })}
+                      className={cn(
+                        'flex-1 h-10 px-3 rounded-lg border text-sm font-medium transition-colors',
+                        formData.usageType === opt.value
+                          ? 'bg-primary-400 text-white border-primary-400'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {formData.usageType === 'limited' && (
+                  <div className="mt-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.maxUsagePerUser || 1}
+                      onChange={(e) => setFormData({ ...formData, maxUsagePerUser: parseInt(e.target.value) || 1 })}
+                      className="w-32 h-9 px-3 border border-gray-200 rounded-lg text-sm"
+                      placeholder="최대 사용 횟수"
+                    />
+                    <span className="text-sm text-gray-500 ml-2">회</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 사용 기한 (지급일 기준) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">사용 기한 (지급일 기준)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.usageExpiryDays || 0}
+                    onChange={(e) => setFormData({ ...formData, usageExpiryDays: parseInt(e.target.value) || 0 })}
+                    className="w-24 h-10 px-3 border border-gray-200 rounded-lg text-sm"
+                  />
+                  <span className="text-sm text-gray-500">일 (0 = 쿠폰 종료일 기준)</span>
+                </div>
+              </div>
+
+              {/* 지급 방식 (복수 선택 가능) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">지급 방식 (복수 선택 가능)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: 'manual', label: '수동 지급' },
+                    { value: 'grade', label: '등급별 지급' },
+                    { value: 'all', label: '전체 지급' },
+                    { value: 'signup_auto', label: '가입 시 자동' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleIssueMethod(opt.value)}
+                      className={cn(
+                        'h-10 px-3 rounded-lg border text-sm font-medium transition-colors',
+                        issueMethods.includes(opt.value)
+                          ? 'bg-primary-400 text-white border-primary-400'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">여러 방식을 동시에 선택할 수 있습니다.</p>
+              </div>
+
+              {/* 가입 시 자동 지급 기간 */}
+              {issueMethods.includes('signup_auto') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">자동 지급 기간</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={formData.autoIssueStartDate || ''}
+                      onChange={(e) => setFormData({ ...formData, autoIssueStartDate: e.target.value })}
+                      className="h-10 px-3 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <span className="text-gray-400">~</span>
+                    <input
+                      type="date"
+                      value={formData.autoIssueEndDate || ''}
+                      onChange={(e) => setFormData({ ...formData, autoIssueEndDate: e.target.value })}
+                      className="h-10 px-3 border border-gray-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">이 기간 내 가입하는 사용자에게 자동으로 쿠폰이 지급됩니다.</p>
+                </div>
+              )}
+            </>
+          )}
+
           {/* 쿠폰: 지급 대상 설정 */}
           {type === 'coupon' && (
             <>
-              {/* 등급별 지급 */}
-              <div>
+              {/* 등급별 지급 — grade 선택 시에만 표시 */}
+              {issueMethods.includes('grade') && <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
                     지급 대상 등급
@@ -881,10 +1125,10 @@ function DiscountModal({
                   ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">선택한 등급의 사용자에게 쿠폰이 자동 지급됩니다.</p>
-              </div>
+              </div>}
 
-              {/* 개별 사용자 지급 */}
-              <div>
+              {/* 개별 사용자 지급 — manual 선택 시에만 표시 */}
+              {issueMethods.includes('manual') && <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   개별 사용자 지급
                 </label>
@@ -983,7 +1227,7 @@ function DiscountModal({
                 <p className="text-xs text-gray-500 mt-1">
                   등급과 별개로 특정 사용자에게 직접 쿠폰을 지급할 수 있습니다.
                 </p>
-              </div>
+              </div>}
 
               {errors.target && <p className="text-xs text-red-500">{errors.target}</p>}
             </>
@@ -992,18 +1236,6 @@ function DiscountModal({
           {/* 옵션 */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">옵션</label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.canStack}
-                onChange={(e) => setFormData({ ...formData, canStack: e.target.checked })}
-                className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
-              />
-              <div>
-                <p className="text-sm text-gray-700">중복 사용 가능</p>
-                <p className="text-xs text-gray-500">다른 할인과 함께 적용 가능</p>
-              </div>
-            </label>
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"

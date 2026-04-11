@@ -2,9 +2,10 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { TUserGrade } from '@/types';
+import { TUserGrade, TDealType } from '@/types';
+import { getErrorMessage } from '@/lib/utils';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = '/api';
 
 // 등급별 설정
 export interface IGradeSettings {
@@ -20,9 +21,18 @@ export interface IGradeCriteria {
   basicThreshold: number;
 }
 
+// 거래 유형별 수수료 설정
+export interface IFeeSettings {
+  defaultFeeRate: number;                          // 기본 수수료 (%)
+  dealTypeFeeRates: Partial<Record<TDealType, number>>;  // 거래 유형별 수수료 (%)
+}
+
 export interface ISystemSettings {
   // 등급별 수수료/한도 설정
   gradeSettings: Record<TUserGrade, IGradeSettings>;
+
+  // 수수료 설정
+  feeSettings: IFeeSettings;
 
   // 자동 등급 기준 (베이직 ↔ 플래티넘)
   gradeCriteria: IGradeCriteria;
@@ -46,10 +56,16 @@ export interface ISystemSettings {
 
 export const defaultSettings: ISystemSettings = {
   gradeSettings: {
-    basic: { feeRate: 4.0, monthlyLimit: 10000000 },
-    platinum: { feeRate: 3.5, monthlyLimit: 30000000 },
-    b2b: { feeRate: 3.0, monthlyLimit: 100000000 },
+    basic: { feeRate: 3.3, monthlyLimit: 20000000 },
+    platinum: { feeRate: 3.0, monthlyLimit: 30000000 },
+    b2b: { feeRate: 2.5, monthlyLimit: 100000000 },
     employee: { feeRate: 1.0, monthlyLimit: 100000000 },
+  },
+  feeSettings: {
+    defaultFeeRate: 3.3,
+    dealTypeFeeRates: {
+      monthly_rent: 2.9,
+    },
   },
   gradeCriteria: {
     platinumThreshold: 10000000,  // 전월 1천만원 이상 → 플래티넘
@@ -100,6 +116,11 @@ export const useSettingsStore = create<SettingsStore>()(
               ...defaultSettings.gradeSettings,
               ...(state.settings?.gradeSettings || {}),
               ...(newSettings.gradeSettings || {}),
+            },
+            feeSettings: {
+              ...defaultSettings.feeSettings,
+              ...(state.settings?.feeSettings || {}),
+              ...(newSettings.feeSettings || {}),
             },
           },
         })),
@@ -159,14 +180,18 @@ export const useSettingsStore = create<SettingsStore>()(
                   ...defaultSettings.gradeSettings,
                   ...(data.data.settings?.gradeSettings || {}),
                 },
+                feeSettings: {
+                  ...defaultSettings.feeSettings,
+                  ...(data.data.settings?.feeSettings || {}),
+                },
               },
               isLoading: false,
             });
           } else {
             set({ error: data.error, isLoading: false });
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
         }
       },
 
@@ -190,8 +215,8 @@ export const useSettingsStore = create<SettingsStore>()(
             set({ error: data.error, isLoading: false });
             return false;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return false;
         }
       },
@@ -200,7 +225,7 @@ export const useSettingsStore = create<SettingsStore>()(
       name: 'plic-settings',
       storage: createJSONStorage(() => localStorage),
       // 데이터 마이그레이션: gradeSettings가 없거나 불완전한 경우 기본값으로 채움
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState) => {
         if (persistedState && typeof persistedState === 'object') {
           const state = persistedState as { settings?: ISystemSettings };
           if (state.settings) {

@@ -9,6 +9,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, DeleteCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+
+const CONTENTS_TABLE = process.env.CONTENTS_TABLE || 'plic-contents';
 import { v4 as uuidv4 } from 'uuid';
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
@@ -16,27 +18,39 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || '';
-const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
+const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID || process.env.COGNITO_CLIENT_ID || '';
 const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 const KAKAO_VERIFICATIONS_TABLE = 'plic-kakao-verifications';
 
-// CORS 헤더
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS',
-};
+// CORS 헤더 (httpOnly 쿠키 지원)
+const ALLOWED_ORIGINS = [
+  'https://plic.kr',
+  'https://www.plic.kr',
+  'https://plic.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
 
-// 응답 헬퍼
-const response = (statusCode: number, body: Record<string, unknown>) => ({
+function getCorsHeaders(origin?: string): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,Cookie',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+// 응답 헬퍼 (CORS 지원)
+const response = (statusCode: number, body: Record<string, unknown>, origin?: string) => ({
   statusCode,
-  headers: corsHeaders,
+  headers: getCorsHeaders(origin),
   body: JSON.stringify(body),
 });
 
 interface SignupRequest {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   phone: string;
   userType: 'personal' | 'business';
@@ -57,12 +71,27 @@ interface SignupRequest {
   kakaoId?: number;
   // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
   kakaoVerificationKey?: string;
+  // 소셜 로그인 가입
+  authType?: 'direct' | 'kakao';
+  socialProvider?: 'kakao' | null;
+}
+
+// 카카오 소셜 가입 시 Cognito용 랜덤 비밀번호 생성 (사용자가 직접 사용하지 않음)
+function generateRandomPassword(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let pw = 'Kk1!'; // 최소 요구사항 보장 (대문자, 소문자, 숫자, 특수문자)
+  for (let i = 0; i < 20; i++) {
+    pw += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pw;
 }
 
 export const handler: APIGatewayProxyHandler = async (event) => {
+  const origin = event.headers?.origin || event.headers?.Origin;
+
   // OPTIONS 요청 처리 (CORS)
   if (event.httpMethod === 'OPTIONS') {
-    return response(200, {});
+    return response(200, {}, origin);
   }
 
   try {
@@ -75,8 +104,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     const body: SignupRequest = JSON.parse(event.body);
-    const { email, password, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
+    const { email, name, phone, userType, businessInfo, agreements, kakaoVerificationKey } = body;
     let { kakaoVerified, kakaoId } = body;
+    const isSocialSignup = body.authType === 'kakao';
+    // 카카오 소셜 가입이면 랜덤 비밀번호 생성 (Cognito 필수값)
+    const password = isSocialSignup ? generateRandomPassword() : body.password;
 
     // kakaoVerificationKey가 있으면 DynamoDB에서 직접 카카오 인증 정보 조회
     if (kakaoVerificationKey) {
@@ -100,10 +132,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     // 필수 필드 검증
-    if (!email || !password || !name || !phone) {
+    if (!email || !name || !phone) {
       return response(400, {
         success: false,
-        error: '필수 필드가 누락되었습니다: email, password, name, phone',
+        error: '필수 필드가 누락되었습니다: email, name, phone',
+      });
+    }
+
+    // 직접 가입은 비밀번호 필수
+    if (!isSocialSignup && !password) {
+      return response(400, {
+        success: false,
+        error: '비밀번호를 입력해주세요.',
       });
     }
 
@@ -116,8 +156,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       });
     }
 
-    // 비밀번호 길이 검증
-    if (password.length < 8) {
+    // 비밀번호 길이 검증 (직접 가입만)
+    if (!isSocialSignup && password && password.length < 8) {
       return response(400, {
         success: false,
         error: '비밀번호는 8자 이상이어야 합니다.',
@@ -163,8 +203,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           { Name: 'email', Value: email },
           { Name: 'name', Value: name },
           { Name: 'phone_number', Value: `+82${phone.slice(1)}` }, // 국제 형식으로 변환
-          { Name: 'custom:uid', Value: uid },
-          { Name: 'custom:userType', Value: userType || 'personal' },
         ],
       });
 
@@ -216,15 +254,33 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                 { Name: 'email', Value: email },
                 { Name: 'name', Value: name },
                 { Name: 'phone_number', Value: `+82${phone.slice(1)}` },
-                { Name: 'custom:uid', Value: uid },
-                { Name: 'custom:userType', Value: userType || 'personal' },
               ],
             });
 
             await cognitoClient.send(retrySignUpCommand);
             // 성공 - 아래 DynamoDB 저장으로 계속 진행
           } else {
-            // CONFIRMED 상태면 실제로 이미 가입된 계정
+            // CONFIRMED 상태면 DynamoDB에서 탈퇴 여부 확인
+            try {
+              const queryResult = await docClient.send(new QueryCommand({
+                TableName: USERS_TABLE,
+                IndexName: 'email-index',
+                KeyConditionExpression: 'email = :email',
+                ExpressionAttributeValues: { ':email': email },
+              }));
+
+              // DynamoDB에 없음 = 탈퇴한 계정 (Cognito만 남아있음)
+              // DynamoDB에 withdrawn = 탈퇴한 계정
+              if (!queryResult.Items || queryResult.Items.length === 0 || queryResult.Items[0].status === 'withdrawn') {
+                return response(409, {
+                  success: false,
+                  error: '탈퇴한 회원입니다.',
+                });
+              }
+            } catch (dbQueryError) {
+              console.error('[Signup] DynamoDB 조회 실패:', dbQueryError);
+            }
+
             return response(409, {
               success: false,
               error: '이미 등록된 이메일입니다.',
@@ -261,15 +317,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       name,
       phone,
       userType: userType || 'personal',
-      authType: kakaoVerified ? 'kakao' : 'direct',
-      socialProvider: kakaoVerified ? 'kakao' : 'none',
+      authType: isSocialSignup ? 'kakao' : (kakaoVerified ? 'kakao' : 'direct'),
+      socialProvider: isSocialSignup ? 'kakao' : (kakaoVerified ? 'kakao' : 'none'),
       kakaoId: kakaoId || null,
       isVerified: false,
-      status: 'pending',
+      status: 'pending_verification',
       grade: 'basic',
-      feeRate: 2.5,
+      feeRate: 3.3,
       isGradeManual: false,
-      monthlyLimit: 5000000,
+      monthlyLimit: 20000000,
+      perTransactionLimit: 2000000,
       usedAmount: 0,
       agreements: {
         service: agreements.service,
@@ -307,7 +364,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         }));
         console.log(`[Signup] 카카오 사용자 자동 확인 완료: ${email}`);
         userItem.isVerified = true;
-        userItem.status = 'active';
+        userItem.status = 'pending_verification';
       } catch (confirmError: any) {
         console.error('[Signup] 카카오 사용자 자동 확인 실패:', confirmError);
         // 실패해도 계속 진행 (나중에 수동 인증 가능)
@@ -322,6 +379,37 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const successMessage = kakaoVerified
       ? '회원가입이 완료되었습니다. 바로 로그인할 수 있습니다.'
       : '회원가입이 완료되었습니다. 이메일로 전송된 인증코드를 확인해주세요.';
+
+    // Slack 알림 전송 (비동기, 실패해도 무시)
+    try {
+      const settingsResult = await docClient.send(new GetCommand({
+        TableName: CONTENTS_TABLE,
+        Key: { pk: 'SETTINGS', sk: 'system' },
+      }));
+      const slackWebhookUrl = settingsResult.Item?.settings?.slackWebhookUrl;
+      if (slackWebhookUrl) {
+        const signupDate = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+        const lines = [
+          `🎉 신규회원가입!`,
+          ``,
+          `가입일: ${signupDate}`,
+          `이름: ${name}`,
+          `연락처: ${phone}`,
+          `이메일: ${email}`,
+          `사업자상호: ${businessInfo?.businessName || '-'}`,
+          `사업자등록번호: ${businessInfo?.businessNumber || '-'}`,
+          `대표자명: ${businessInfo?.representativeName || '-'}`,
+        ];
+        await fetch(slackWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: lines.join('\n') }),
+        });
+        console.log('[Signup] Slack notification sent');
+      }
+    } catch (slackError) {
+      console.error('[Signup] Slack notification failed:', slackError);
+    }
 
     return response(200, {
       success: true,

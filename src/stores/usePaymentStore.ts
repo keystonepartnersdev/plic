@@ -3,8 +3,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { IPayment, TPaymentStatus } from '@/types';
+import { getErrorMessage } from '@/lib/utils';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+// Next.js 프록시 사용으로 CORS 우회
 
 interface IPaymentState {
   payments: IPayment[];
@@ -20,10 +21,10 @@ interface IPaymentState {
   getPaymentsByUid: (uid: string) => IPayment[];
   getPaymentsByStatus: (status: TPaymentStatus) => IPayment[];
 
-  // API operations
-  fetchPayments: (token: string) => Promise<void>;
-  createPayment: (token: string, data: { did: string; amount: number; method?: string; metadata?: Record<string, any> }) => Promise<IPayment | null>;
-  updatePaymentAPI: (token: string, paymentId: string, updates: { status?: TPaymentStatus; metadata?: Record<string, any> }) => Promise<boolean>;
+  // API operations (프록시 사용, token은 httpOnly 쿠키로 자동 전송)
+  fetchPayments: () => Promise<void>;
+  createPayment: (data: { did: string; amount: number; method?: string; metadata?: Record<string, unknown> }) => Promise<IPayment | null>;
+  updatePaymentAPI: (paymentId: string, updates: { status?: TPaymentStatus; metadata?: Record<string, unknown> }) => Promise<boolean>;
 }
 
 export const usePaymentStore = create(
@@ -63,15 +64,15 @@ export const usePaymentStore = create(
         return get().payments.filter((payment) => payment.status === status);
       },
 
-      // Fetch payments from API
-      fetchPayments: async (token: string) => {
+      // Fetch payments from API (프록시 사용)
+      fetchPayments: async () => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${API_BASE_URL}/users/me/payments`, {
+          const response = await fetch('/api/users/me/payments', {
             headers: {
-              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
+            credentials: 'include',
           });
           const data = await response.json();
           if (data.success) {
@@ -79,21 +80,21 @@ export const usePaymentStore = create(
           } else {
             set({ error: data.error, isLoading: false });
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
         }
       },
 
-      // Create payment via API
-      createPayment: async (token: string, paymentData) => {
+      // Create payment via API (프록시 사용)
+      createPayment: async (paymentData) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${API_BASE_URL}/users/me/payments`, {
+          const response = await fetch('/api/users/me/payments', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(paymentData),
           });
           const data = await response.json();
@@ -108,22 +109,22 @@ export const usePaymentStore = create(
             set({ error: data.error, isLoading: false });
             return null;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return null;
         }
       },
 
-      // Update payment via API
-      updatePaymentAPI: async (token: string, paymentId: string, updates) => {
+      // Update payment via API (프록시 사용)
+      updatePaymentAPI: async (paymentId: string, updates) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(`${API_BASE_URL}/users/me/payments/${paymentId}`, {
+          const response = await fetch(`/api/users/me/payments/${paymentId}`, {
             method: 'PUT',
             headers: {
-              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(updates),
           });
           const data = await response.json();
@@ -139,8 +140,8 @@ export const usePaymentStore = create(
             set({ error: data.error, isLoading: false });
             return false;
           }
-        } catch (error: any) {
-          set({ error: error.message, isLoading: false });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error), isLoading: false });
           return false;
         }
       },

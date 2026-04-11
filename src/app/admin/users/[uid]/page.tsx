@@ -30,7 +30,7 @@ import { useSettingsStore } from '@/stores';
 import { adminAPI } from '@/lib/api';
 import { TUserGrade, TUserStatus, IUserHistory, IDeal, TDealStatus, IUser } from '@/types';
 import { DealHelper } from '@/classes';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 const GRADE_LABELS: Record<TUserGrade, string> = {
   basic: '베이직',
@@ -71,6 +71,7 @@ const FIELD_LABELS: Record<string, string> = {
   grade: '회원 등급',
   feeRate: '수수료율',
   monthlyLimit: '월 한도',
+  perTransactionLimit: '1회 결제 한도',
   name: '이름',
   email: '이메일',
   phone: '연락처',
@@ -103,6 +104,9 @@ export default function AdminUserDetailPage() {
   const [editData, setEditData] = useState({
     grade: 'basic' as TUserGrade,
     status: 'active' as TUserStatus,
+    feeRate: 3.3,
+    monthlyLimit: 20000000,
+    perTransactionLimit: 2000000,
   });
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -111,6 +115,13 @@ export default function AdminUserDetailPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<TUserStatus>('active');
   const [statusChangeReason, setStatusChangeReason] = useState('');
+  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
+  const [isSavingBusiness, setIsSavingBusiness] = useState(false);
+  const [businessEditData, setBusinessEditData] = useState({
+    businessName: '',
+    businessNumber: '',
+    representativeName: '',
+  });
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [editInfoData, setEditInfoData] = useState({
     name: '',
@@ -123,22 +134,30 @@ export default function AdminUserDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminAPI.getUser(uid);
-      setUser(response.user);
-      setUserDeals(response.recentDeals || []);
+      // 회원 정보 + 전체 거래 목록을 병렬 조회
+      const [userResponse, dealsResponse] = await Promise.all([
+        adminAPI.getUser(uid),
+        adminAPI.getDeals({ uid }),
+      ]);
+      setUser(userResponse.user);
+      // recentDeals(20건 제한) 대신 전체 거래 목록 사용
+      setUserDeals(dealsResponse.deals || userResponse.recentDeals || []);
       // 편집 데이터 초기화
       setEditData({
-        grade: response.user.grade || 'basic',
-        status: response.user.status || 'active',
+        grade: userResponse.user.grade || 'basic',
+        status: userResponse.user.status || 'active',
+        feeRate: userResponse.user.feeRate ?? 3.3,
+        monthlyLimit: userResponse.user.monthlyLimit ?? 20000000,
+        perTransactionLimit: userResponse.user.perTransactionLimit ?? 2000000,
       });
       setEditInfoData({
-        name: response.user.name || '',
-        email: response.user.email || '',
-        phone: response.user.phone || '',
+        name: userResponse.user.name || '',
+        email: userResponse.user.email || '',
+        phone: userResponse.user.phone || '',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('회원 정보 로드 실패:', err);
-      setError(err.message || '회원 정보를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '회원 정보를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -146,17 +165,31 @@ export default function AdminUserDetailPage() {
 
   useEffect(() => {
     fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // 거래 통계 계산
+  // 거래 통계: 실제 거래 데이터에서 계산 (DB 값은 보정 스크립트로 동기화)
   const dealStats = useMemo(() => {
-    const completed = userDeals.filter(d => d.status && d.status === 'completed');
-    const pending = userDeals.filter(d => d.status && ['pending', 'reviewing', 'awaiting_payment'].includes(d.status));
+    const completed = userDeals.filter(d => d.status === 'completed');
+    const pending = userDeals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status));
+    const cancelled = userDeals.filter(d => d.status === 'cancelled');
+    // finalAmount = 실제 카드 결제금액(할인 적용 후), totalAmount = 할인 전 금액
+    const totalPaymentAmount = completed.reduce((sum, d) => sum + (d.finalAmount || d.totalAmount || 0), 0);
+    const totalAmount = completed.reduce((sum, d) => sum + (d.amount || 0), 0);
+    // 이번 달 사용 금액
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const usedAmount = completed
+      .filter(d => d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
     return {
       total: userDeals.length,
       completed: completed.length,
       pending: pending.length,
-      totalAmount: completed.reduce((sum, d) => sum + (d.amount || 0), 0),
+      cancelled: cancelled.length,
+      totalAmount,
+      totalPaymentAmount,
+      usedAmount,
     };
   }, [userDeals]);
 
@@ -202,12 +235,27 @@ export default function AdminUserDetailPage() {
         await adminAPI.updateUserStatus(user.uid, editData.status);
       }
 
+      // 수수료율/월한도/1회한도 변경
+      const settingsUpdate: { feeRate?: number; monthlyLimit?: number; perTransactionLimit?: number } = {};
+      if (editData.feeRate !== user.feeRate) {
+        settingsUpdate.feeRate = editData.feeRate;
+      }
+      if (editData.monthlyLimit !== user.monthlyLimit) {
+        settingsUpdate.monthlyLimit = editData.monthlyLimit;
+      }
+      if (editData.perTransactionLimit !== (user.perTransactionLimit ?? 2000000)) {
+        settingsUpdate.perTransactionLimit = editData.perTransactionLimit;
+      }
+      if (Object.keys(settingsUpdate).length > 0) {
+        await adminAPI.updateUserSettings(user.uid, settingsUpdate);
+      }
+
       // 데이터 다시 로드
       await fetchUser();
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('회원 정보 수정 실패:', err);
-      alert(err.message || '회원 정보 수정에 실패했습니다.');
+      alert(getErrorMessage(err) || '회원 정보 수정에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -217,6 +265,9 @@ export default function AdminUserDetailPage() {
     setEditData({
       grade: user.grade,
       status: user.status,
+      feeRate: user.feeRate ?? 3.3,
+      monthlyLimit: user.monthlyLimit ?? 20000000,
+      perTransactionLimit: user.perTransactionLimit ?? 2000000,
     });
     setIsEditing(false);
   };
@@ -225,11 +276,19 @@ export default function AdminUserDetailPage() {
     setIsSaving(true);
     try {
       await adminAPI.updateUserStatus(user.uid, 'withdrawn', '관리자 회원탈퇴 처리');
-      await fetchUser();
       setShowWithdrawModal(false);
-    } catch (err: any) {
+      alert('회원 탈퇴가 처리되었습니다. 법적 보관 데이터가 분리 저장되었습니다.');
+      await fetchUser();
+    } catch (err: unknown) {
       console.error('회원 탈퇴 처리 실패:', err);
-      alert(err.message || '회원 탈퇴 처리에 실패했습니다.');
+      const errorMsg = getErrorMessage(err) || '회원 탈퇴 처리에 실패했습니다.';
+      // 진행 중 거래가 있는 경우 경고
+      if (errorMsg.includes('진행 중인 거래')) {
+        setShowWithdrawModal(false);
+        alert(errorMsg);
+      } else {
+        alert(errorMsg);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -241,9 +300,9 @@ export default function AdminUserDetailPage() {
       await adminAPI.updateBusinessVerification(user.uid, 'verified');
       await fetchUser();
       alert('사업자 인증이 승인되었습니다.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('사업자 승인 실패:', err);
-      alert(err.message || '사업자 승인에 실패했습니다.');
+      alert(getErrorMessage(err) || '사업자 승인에 실패했습니다.');
     } finally {
       setIsApprovingBusiness(false);
     }
@@ -261,9 +320,9 @@ export default function AdminUserDetailPage() {
       setShowRejectModal(false);
       setRejectMemo('');
       alert('사업자 인증이 거절되었습니다.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('사업자 거절 실패:', err);
-      alert(err.message || '사업자 거절에 실패했습니다.');
+      alert(getErrorMessage(err) || '사업자 거절에 실패했습니다.');
     } finally {
       setIsApprovingBusiness(false);
     }
@@ -282,9 +341,9 @@ export default function AdminUserDetailPage() {
       setShowStatusModal(false);
       setStatusChangeReason('');
       alert(`회원 상태가 "${STATUS_LABELS[newStatus]}"(으)로 변경되었습니다.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('상태 변경 실패:', err);
-      alert(err.message || '상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '상태 변경에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -369,25 +428,31 @@ export default function AdminUserDetailPage() {
             {GRADE_LABELS[user.grade]}
             {user.isGradeManual && <span className="ml-1 text-xs">(수동)</span>}
           </span>
-          <button
-            onClick={openStatusModal}
-            disabled={isSaving}
-            className={cn(
-              'px-3 py-1.5 text-sm font-medium rounded-lg flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer',
-              STATUS_COLORS[user.status]
-            )}
-          >
-            {STATUS_LABELS[user.status]}
-            <Edit2 className="w-3 h-3" />
-          </button>
-          {user.status !== 'withdrawn' && (
-            <button
-              onClick={() => setShowWithdrawModal(true)}
-              disabled={isSaving}
-              className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-            >
-              회원탈퇴
-            </button>
+          {user.isWithdrawn || user.status === 'withdrawn' ? (
+            <span className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 text-gray-500">
+              탈퇴 (읽기전용)
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={openStatusModal}
+                disabled={isSaving}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-lg flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer',
+                  STATUS_COLORS[user.status]
+                )}
+              >
+                {STATUS_LABELS[user.status]}
+                <Edit2 className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => setShowWithdrawModal(true)}
+                disabled={isSaving}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              >
+                회원탈퇴
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -538,29 +603,29 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
 
-          {/* 거래 통계 */}
+          {/* 거래 통계 - 실제 거래 데이터에서 계산 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">거래 통계</h2>
             <div className="grid grid-cols-4 gap-4">
               <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900">{user.totalDealCount}</p>
-                <p className="text-sm text-gray-500">총 거래 건수</p>
+                <p className="text-2xl font-bold text-gray-900">{dealStats.completed}</p>
+                <p className="text-sm text-gray-500">완료 거래 건수</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-primary-400">
-                  {(user.totalPaymentAmount / 10000).toLocaleString()}만
+                  {dealStats.totalPaymentAmount.toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">누적 결제금액</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">
-                  {((user.lastMonthPaymentAmount || 0) / 10000).toLocaleString()}만
+                  {(user.lastMonthPaymentAmount || 0).toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">전월 결제금액</p>
               </div>
               <div className="text-center p-4 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-gray-900">
-                  {(user.usedAmount / 10000).toLocaleString()}만
+                  {dealStats.usedAmount.toLocaleString()}원
                 </p>
                 <p className="text-sm text-gray-500">이번 달 사용</p>
               </div>
@@ -580,7 +645,7 @@ export default function AdminUserDetailPage() {
             </div>
 
             {/* 거래 통계 미니 */}
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-5 gap-3 mb-4">
               <div className="p-3 bg-gray-50 rounded-lg text-center">
                 <p className="text-lg font-bold text-gray-900">{dealStats.total}</p>
                 <p className="text-xs text-gray-500">전체</p>
@@ -593,8 +658,12 @@ export default function AdminUserDetailPage() {
                 <p className="text-lg font-bold text-yellow-600">{dealStats.pending}</p>
                 <p className="text-xs text-gray-500">진행중</p>
               </div>
+              <div className="p-3 bg-red-50 rounded-lg text-center">
+                <p className="text-lg font-bold text-red-600">{dealStats.cancelled}</p>
+                <p className="text-xs text-gray-500">취소</p>
+              </div>
               <div className="p-3 bg-primary-50 rounded-lg text-center">
-                <p className="text-lg font-bold text-primary-400">{(dealStats.totalAmount / 10000).toFixed(0)}만</p>
+                <p className="text-lg font-bold text-primary-400">{dealStats.totalAmount.toLocaleString()}원</p>
                 <p className="text-xs text-gray-500">총 송금액</p>
               </div>
             </div>
@@ -615,7 +684,7 @@ export default function AdminUserDetailPage() {
                   </thead>
                   <tbody>
                     {userDeals.slice(0, 5).map((deal) => {
-                      const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+                      const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
                       const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
                       return (
                         <tr key={deal.did} className="border-b border-gray-50 hover:bg-gray-50">
@@ -773,9 +842,77 @@ export default function AdminUserDetailPage() {
           {/* 사업자 인증 관리 */}
           {user.userType === 'business' && user.businessInfo && (
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Building className="w-5 h-5 text-gray-400" />
-                <h2 className="text-lg font-semibold text-gray-900">사업자 인증</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-gray-400" />
+                  <h2 className="text-lg font-semibold text-gray-900">사업자 인증</h2>
+                </div>
+                {!isEditingBusiness ? (
+                  <button
+                    onClick={() => {
+                      setBusinessEditData({
+                        businessName: user.businessInfo?.businessName || '',
+                        businessNumber: user.businessInfo?.businessNumber || '',
+                        representativeName: user.businessInfo?.representativeName || '',
+                      });
+                      setIsEditingBusiness(true);
+                    }}
+                    className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    수정
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsEditingBusiness(false)}
+                      disabled={isSavingBusiness}
+                      className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setIsSavingBusiness(true);
+                        try {
+                          const adminToken = localStorage.getItem('plic_admin_token');
+                          const res = await fetch(`/api/admin/users/${uid}/business`, {
+                            method: 'PATCH',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${adminToken}`,
+                            },
+                            body: JSON.stringify(businessEditData),
+                          });
+                          const result = await res.json();
+                          if (result.success) {
+                            alert('사업자 정보가 수정되었습니다.');
+                            setIsEditingBusiness(false);
+                            // 사용자 데이터 리로드
+                            const reloadRes = await fetch(`/api/admin/users/${uid}`, {
+                              headers: { 'Authorization': `Bearer ${adminToken}` },
+                            });
+                            const reloadData = await reloadRes.json();
+                            if (reloadData.success) {
+                              setUser(reloadData.data?.user || reloadData.user);
+                            }
+                          } else {
+                            alert(result.error || '수정에 실패했습니다.');
+                          }
+                        } catch {
+                          alert('수정 중 오류가 발생했습니다.');
+                        } finally {
+                          setIsSavingBusiness(false);
+                        }
+                      }}
+                      disabled={isSavingBusiness}
+                      className="flex items-center gap-1 text-sm bg-primary-400 hover:bg-primary-500 text-white px-3 py-1 rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {isSavingBusiness ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+                      저장
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 인증 상태 배지 */}
@@ -798,32 +935,78 @@ export default function AdminUserDetailPage() {
 
               {/* 사업자 정보 */}
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-500">상호</span>
-                  <span className="font-medium text-gray-900">{user.businessInfo.businessName}</span>
+                  {isEditingBusiness ? (
+                    <input
+                      type="text"
+                      value={businessEditData.businessName}
+                      onChange={(e) => setBusinessEditData({ ...businessEditData, businessName: e.target.value })}
+                      className="w-48 h-8 px-3 text-right border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-sm"
+                    />
+                  ) : (
+                    <span className="font-medium text-gray-900">{user.businessInfo.businessName}</span>
+                  )}
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-500">사업자등록번호</span>
-                  <span className="font-medium text-gray-900 font-mono">
-                    {user.businessInfo.businessNumber.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3')}
-                  </span>
+                  {isEditingBusiness ? (
+                    <input
+                      type="text"
+                      value={businessEditData.businessNumber}
+                      onChange={(e) => setBusinessEditData({ ...businessEditData, businessNumber: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) })}
+                      placeholder="숫자 10자리"
+                      className="w-48 h-8 px-3 text-right border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-sm font-mono"
+                    />
+                  ) : (
+                    <span className="font-medium text-gray-900 font-mono">
+                      {user.businessInfo.businessNumber.replace(/(\d{3})(\d{2})(\d{5})/, '$1-$2-$3')}
+                    </span>
+                  )}
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-500">대표자명</span>
-                  <span className="font-medium text-gray-900">{user.businessInfo.representativeName}</span>
+                  {isEditingBusiness ? (
+                    <input
+                      type="text"
+                      value={businessEditData.representativeName}
+                      onChange={(e) => setBusinessEditData({ ...businessEditData, representativeName: e.target.value })}
+                      className="w-48 h-8 px-3 text-right border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 text-sm"
+                    />
+                  ) : (
+                    <span className="font-medium text-gray-900">{user.businessInfo.representativeName}</span>
+                  )}
                 </div>
                 {user.businessInfo.businessLicenseKey && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500">사업자등록증</span>
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_S3_URL || 'https://plic-uploads-prod.s3.ap-northeast-2.amazonaws.com'}/${user.businessInfo.businessLicenseKey}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={async () => {
+                        try {
+                          const adminToken = localStorage.getItem('plic_admin_token');
+                          const res = await fetch('/api/uploads/download-url', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${adminToken}`,
+                            },
+                            body: JSON.stringify({ fileKey: user.businessInfo?.businessLicenseKey }),
+                          });
+                          const result = await res.json();
+                          if (result.success) {
+                            window.open(result.data.downloadUrl, '_blank');
+                          } else {
+                            alert(result.error || '파일을 불러올 수 없습니다.');
+                          }
+                        } catch {
+                          alert('파일을 불러오는 중 오류가 발생했습니다.');
+                        }
+                      }}
                       className="flex items-center gap-1 text-primary-400 hover:text-primary-500 font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       파일 보기
-                    </a>
+                    </button>
                   </div>
                 )}
                 {user.businessInfo.verificationMemo && (
@@ -932,25 +1115,105 @@ export default function AdminUserDetailPage() {
                 )}
               </div>
 
-              {/* 수수료율 - 읽기 전용 */}
+              {/* 수수료율 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">수수료율</label>
-                <p className="font-medium text-gray-900">{user.feeRate}%</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {GRADE_LABELS[user.grade]} 등급 기준: {getGradeSettings(user.grade)?.feeRate || 0}%
-                </p>
+                {isEditing ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editData.feeRate}
+                        onChange={(e) => setEditData({ ...editData, feeRate: parseFloat(e.target.value) || 0 })}
+                        className="w-full h-10 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                      />
+                      <span className="text-gray-500 font-medium">%</span>
+                    </div>
+                    {editData.feeRate !== user.feeRate && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {user.feeRate}% → {editData.feeRate}%
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-gray-900">{user.feeRate}%</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {GRADE_LABELS[user.grade]} 등급 기준: {getGradeSettings(user.grade)?.feeRate || 0}%
+                    </p>
+                  </>
+                )}
               </div>
 
-              {/* 월 한도 - 읽기 전용 */}
+              {/* 월 한도 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">월 한도</label>
-                <p className="font-medium text-gray-900">{user.monthlyLimit.toLocaleString()}원</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  사용: {user.usedAmount.toLocaleString()}원 ({Math.round(user.usedAmount / user.monthlyLimit * 100)}%)
-                </p>
-                <p className="text-xs text-gray-500">
-                  {GRADE_LABELS[user.grade]} 등급 기준: {(getGradeSettings(user.grade)?.monthlyLimit || 0).toLocaleString()}원
-                </p>
+                {isEditing ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editData.monthlyLimit}
+                        onChange={(e) => setEditData({ ...editData, monthlyLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full h-10 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+                        step="1000000"
+                        min="0"
+                      />
+                      <span className="text-gray-500 font-medium text-sm whitespace-nowrap">원</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      = {(editData.monthlyLimit / 10000).toLocaleString()}만원
+                    </p>
+                    {editData.monthlyLimit !== user.monthlyLimit && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {(user.monthlyLimit / 10000).toLocaleString()}만원 → {(editData.monthlyLimit / 10000).toLocaleString()}만원
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium text-gray-900">{user.monthlyLimit.toLocaleString()}원</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      사용: {dealStats.usedAmount.toLocaleString()}원 ({Math.round(dealStats.usedAmount / user.monthlyLimit * 100)}%)
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {GRADE_LABELS[user.grade]} 등급 기준: {(getGradeSettings(user.grade)?.monthlyLimit || 0).toLocaleString()}원
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* 1회 결제 한도 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1회 결제 한도</label>
+                {isEditing ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editData.perTransactionLimit}
+                        onChange={(e) => setEditData({ ...editData, perTransactionLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full h-10 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 bg-white"
+                        step="100000"
+                        min="0"
+                      />
+                      <span className="text-gray-500 font-medium text-sm whitespace-nowrap">원</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      = {(editData.perTransactionLimit / 10000).toLocaleString()}만원
+                    </p>
+                    {editData.perTransactionLimit !== (user.perTransactionLimit ?? 2000000) && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {((user.perTransactionLimit ?? 2000000) / 10000).toLocaleString()}만원 → {(editData.perTransactionLimit / 10000).toLocaleString()}만원
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="font-medium text-gray-900">{(user.perTransactionLimit ?? 2000000).toLocaleString()}원</p>
+                )}
               </div>
 
               {/* 상태 */}
@@ -980,31 +1243,31 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
 
-          {/* 한도 현황 */}
+          {/* 한도 현황 - 실제 거래 데이터에서 계산 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">이번 달 한도 현황</h2>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">사용</span>
-                <span className="font-medium text-gray-900">{user.usedAmount.toLocaleString()}원</span>
+                <span className="font-medium text-gray-900">{dealStats.usedAmount.toLocaleString()}원</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-3">
                 <div
                   className={cn(
                     'h-3 rounded-full transition-all',
-                    user.usedAmount / user.monthlyLimit >= 0.9 ? 'bg-red-400' :
-                    user.usedAmount / user.monthlyLimit >= 0.7 ? 'bg-yellow-400' : 'bg-primary-400'
+                    dealStats.usedAmount / user.monthlyLimit >= 0.9 ? 'bg-red-400' :
+                    dealStats.usedAmount / user.monthlyLimit >= 0.7 ? 'bg-yellow-400' : 'bg-primary-400'
                   )}
-                  style={{ width: `${Math.min(user.usedAmount / user.monthlyLimit * 100, 100)}%` }}
+                  style={{ width: `${Math.min(dealStats.usedAmount / user.monthlyLimit * 100, 100)}%` }}
                 />
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">잔여</span>
                 <span className="font-medium text-gray-900">
-                  {Math.max(user.monthlyLimit - user.usedAmount, 0).toLocaleString()}원
+                  {Math.max(user.monthlyLimit - dealStats.usedAmount, 0).toLocaleString()}원
                 </span>
               </div>
-              {user.usedAmount >= user.monthlyLimit && (
+              {dealStats.usedAmount >= user.monthlyLimit && (
                 <div className="mt-2 p-2 bg-red-50 rounded-lg">
                   <p className="text-xs text-red-600 font-medium">월 한도를 초과하여 새로운 거래가 제한됩니다.</p>
                 </div>
@@ -1020,7 +1283,7 @@ export default function AdminUserDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">전월 결제금액</span>
                   <span className="font-medium text-gray-900">
-                    {((user.lastMonthPaymentAmount || 0) / 10000).toLocaleString()}만원
+                    {(user.lastMonthPaymentAmount || 0).toLocaleString()}원
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -1054,7 +1317,7 @@ export default function AdminUserDetailPage() {
             <p className="text-gray-600 text-sm leading-relaxed mb-6">
               <strong className="text-gray-900">{user.name}</strong>님을 정말 탈퇴 처리하시겠습니까?
               <br /><br />
-              탈퇴 후에도 회원 정보는 유지되지만, 해당 회원은 로그인할 수 없게 됩니다.
+              탈퇴 시 회원 정보는 법적 보관 테이블로 분리 저장되며, 해당 회원은 로그인 및 동일 계정 재가입이 불가합니다.
             </p>
             <div className="flex gap-3">
               <button

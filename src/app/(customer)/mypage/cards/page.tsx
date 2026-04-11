@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, Plus, Trash2, Star, AlertCircle, Loader2 } from 'lucide-react';
-import { Header } from '@/components/common';
+import { Header, ModalPortal } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { IRegisteredCard } from '@/types/payment';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ const CARD_COMPANIES = [
 function CardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, isLoggedIn, registeredCards, addCard, removeCard, setDefaultCard } = useUserStore();
+  const { currentUser, isLoggedIn, registeredCards, addCard, removeCard, setDefaultCard, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -89,12 +89,12 @@ function CardsPageContent() {
   }, [mounted, currentUser, searchParams, addCard, registeredCards.length, router]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -117,7 +117,7 @@ function CardsPageContent() {
           payerName: currentUser.name || '',
           payerEmail: currentUser.email || '',
           payerTel: currentUser.phone || '',
-          device: 'mobile',
+          device: /mobile|iphone|android/i.test(navigator.userAgent) ? 'mobile' : 'pc',
           userId: currentUser.uid,
         }),
       });
@@ -355,6 +355,7 @@ function CardsPageContent() {
 
       {/* 카드 추가 모달 */}
       {showAddModal && (
+        <ModalPortal>
         <div className="absolute inset-0 bg-black/50 flex items-end justify-center z-50">
           <div className="bg-white w-full rounded-t-2xl p-6 animate-slide-up max-h-[90%] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
@@ -461,6 +462,7 @@ function CardsPageContent() {
             </p>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

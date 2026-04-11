@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronRight, ChevronDown, Sparkles, Shield, Clock, CreditCard, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import { useUserStore, useContentStore, useDealDraftStore, useDealStore } from '@/stores';
-import { DealHelper, ContentHelper } from '@/classes';
+import { ContentHelper } from '@/classes';
 import { BannerSlider, Modal } from '@/components/common';
 import { cn } from '@/lib/utils';
+import tracking from '@/lib/tracking';
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function HomePage() {
     // 배너, FAQ 데이터 API에서 가져오기
     fetchBanners();
     fetchFaqs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 강제 로그아웃 감지 (탈퇴 처리 등)
@@ -39,18 +41,27 @@ export default function HomePage() {
     }
   }, [mounted, isLoggedIn, router]);
 
-  // 현재 사용자의 작성중 송금
-  const userDrafts = mounted && isLoggedIn && currentUser
-    ? drafts.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'draft')
-    : [];
+  // useMemo로 필터링 최적화
+  const userDrafts = useMemo(() =>
+    mounted && isLoggedIn && currentUser
+      ? drafts.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'draft')
+      : [],
+    [mounted, isLoggedIn, currentUser, drafts]
+  );
 
   // 현재 사용자의 결제대기 송금
-  const userAwaitingDeals = mounted && isLoggedIn && currentUser
-    ? deals.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'awaiting_payment' && !d.isPaid)
-    : [];
+  const userAwaitingDeals = useMemo(() =>
+    mounted && isLoggedIn && currentUser
+      ? deals.filter((d) => d.uid === currentUser.uid && d.status && d.status === 'awaiting_payment' && !d.isPaid)
+      : [],
+    [mounted, isLoggedIn, currentUser, deals]
+  );
 
   const banners = getVisibleBanners();
-  const faqs = getHomeFeaturedFAQs().slice(0, 5);
+  const storeFaqs = useContentStore((state) => state.faqs);
+  // storeFaqs가 변경될 때마다 재계산 (fetchFaqs 완료 시 트리거)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const faqs = useMemo(() => getHomeFeaturedFAQs().slice(0, 5), [storeFaqs]);
 
   const formatAmount = (value: string) => {
     const numericValue = value.replace(/[^\d]/g, '');
@@ -64,25 +75,25 @@ export default function HomePage() {
   };
 
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
-  const feeRate = currentUser?.feeRate || 4.0;
-  const { feeAmount, totalAmount } = DealHelper.calculateTotal(numericAmount, feeRate);
 
-  // 카테고리 이름 가져오기
-  const getCategoryName = (categoryId?: string) => {
+  // useCallback으로 핸들러 최적화
+  const getCategoryName = useCallback((categoryId?: string) => {
     const cat = ContentHelper.FAQ_CATEGORIES.find(c => c.id === categoryId);
     return cat ? cat.name : categoryId || '기타';
-  };
+  }, []);
 
-  // 카테고리 색상 가져오기
-  const getCategoryColor = (categoryId?: string): string => {
-    const colors: Record<string, string> = {
-      service: 'bg-blue-100 text-blue-700',
-      payment: 'bg-green-100 text-green-700',
-      transfer: 'bg-purple-100 text-purple-700',
-      account: 'bg-orange-100 text-orange-700',
-    };
-    return colors[categoryId || ''] || 'bg-gray-100 text-gray-700';
-  };
+  // 카테고리 색상 - 백엔드 API 응답과 일치하도록 한글 카테고리 사용
+  const categoryColors: Record<string, string> = useMemo(() => ({
+    '서비스 이용': 'bg-blue-100 text-blue-700',
+    '결제/수수료': 'bg-green-100 text-green-700',
+    '송금/입금': 'bg-purple-100 text-purple-700',
+    '계정/회원': 'bg-orange-100 text-orange-700',
+    '기타': 'bg-gray-100 text-gray-700',
+  }), []);
+
+  const getCategoryColor = useCallback((categoryId?: string): string => {
+    return categoryColors[categoryId || ''] || 'bg-gray-100 text-gray-700';
+  }, [categoryColors]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -188,19 +199,6 @@ export default function HomePage() {
             <span className="absolute right-0 top-1/2 -translate-y-1/2 text-xl text-gray-400 font-medium">원</span>
           </div>
 
-          {numericAmount > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex justify-between text-sm text-gray-500 mb-1">
-                <span className="font-medium">수수료 ({feeRate}%)</span>
-                <span className="font-semibold">{feeAmount.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between font-bold text-gray-900">
-                <span>총 결제금액</span>
-                <span className="text-[#2563EB] text-lg font-black">{totalAmount.toLocaleString()}원</span>
-              </div>
-            </div>
-          )}
-
           {isLoggedIn ? (
             <button
               onClick={() => {
@@ -211,7 +209,10 @@ export default function HomePage() {
                   return;
                 }
                 const url = numericAmount > 0 ? `/deals/new?amount=${numericAmount}` : '/deals/new';
-                window.location.href = url;
+                tracking.transferFunnel.start();
+                tracking.click('home_transfer', '송금 신청하기');
+                tracking.flush();
+                setTimeout(() => { window.location.href = url; }, 150);
               }}
               className="
                 mt-5 w-full h-14
@@ -230,6 +231,7 @@ export default function HomePage() {
           ) : (
             <Link
               href="/auth/login"
+              data-track="home_login"
               className="
                 mt-5 w-full h-14
                 bg-gradient-to-r from-[#2563EB] to-[#3B82F6]
@@ -332,7 +334,7 @@ export default function HomePage() {
                 {expandedFaq === faq.faqId && (
                   <div className="px-5 pb-5">
                     <div className="pt-2 border-t border-gray-200">
-                      <p className="text-gray-600 leading-relaxed pt-4">{faq.answer}</p>
+                      <p className="text-gray-600 leading-relaxed pt-4 whitespace-pre-line">{faq.answer}</p>
                     </div>
                   </div>
                 )}

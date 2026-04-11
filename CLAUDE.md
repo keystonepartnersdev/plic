@@ -1,5 +1,18 @@
 # PLIC 프로젝트 개발 규칙
 
+## 📋 필수: 프로젝트 현황 참조
+
+- **작업 전 반드시 `docs/PLIC_BETA_STATUS.md`를 읽고 현재 상태를 파악할 것**
+- 이 문서에 구현 완료/미배포/미구현 기능이 구분되어 있음
+- **작업 후 변경사항이 있으면 `docs/PLIC_BETA_STATUS.md`를 자동으로 업데이트할 것**
+  - 새 페이지/컴포넌트 추가 시 → 해당 섹션에 반영
+  - Lambda 배포 시 → 미배포 목록에서 제거, 배포 완료 목록으로 이동
+  - 새 기능 구현 시 → 미구현 목록에서 제거, 구현 완료로 이동
+  - 기술부채 해결 시 → 해당 항목 제거 또는 상태 변경
+  - 최종 업데이트 날짜를 문서 상단에 갱신
+
+---
+
 ## 🚨 필수: 모바일 프레임 레이아웃 규칙
 
 이 프로젝트는 "Fitpetmall 스타일" 데스크톱 레이아웃을 사용합니다.
@@ -178,6 +191,21 @@ src/
 ├── classes/              # Helper 클래스
 └── lib/                  # 유틸리티
 ```
+
+---
+
+## 💳 PG사 연동 정보 (소프트먼트)
+
+| 구분 | 도메인 | Pay Key (환경변수) |
+|------|--------|-------------------|
+| 운영 | `https://papi.softment.co.kr` | `SOFTPAYMENT_PAY_KEY` |
+| 개발 | `https://devpapi.softment.co.kr` | `SOFTPAYMENT_TEST_PAY_KEY` |
+
+- API 문서: `docs/🌟소프트먼트_신용카드인증결제_API연동가이드_1.0.0.docx`
+- 테스트 페이지: `/admin/payment-test` (개발키 사용, DB 저장 없음)
+- 운영 결제 API: `/api/payments/billing` → `/api/payments/callback`
+- 테스트 결제 API: `/api/payment-test/create` → `/api/payment-test/callback`
+- Authorization 헤더에 Pay Key를 직접 전달 (Bearer 없이)
 
 ---
 

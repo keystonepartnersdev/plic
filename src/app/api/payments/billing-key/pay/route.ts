@@ -8,11 +8,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { softpayment } from '@/lib/softpayment';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { handleApiError, successResponse, Errors } from '@/lib/api-error';
+import { notifyPaymentComplete } from '@/lib/slack';
+import { appendPaymentToSheet } from '@/lib/google-sheets';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const DEALS_TABLE = process.env.DEALS_TABLE || 'plic-deals';
+const USERS_TABLE = process.env.USERS_TABLE || 'plic-users';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,10 +37,7 @@ export async function POST(request: NextRequest) {
     // 필수값 검증
     if (!billingKey || !amount || !goodsName) {
       console.log('[BillingKey Pay] Missing required fields');
-      return NextResponse.json(
-        { error: '필수 필드(billingKey, amount, goodsName)가 누락되었습니다.' },
-        { status: 400 }
-      );
+      return Errors.inputMissingField('billingKey, amount, goodsName').toResponse();
     }
 
     const trackId = dealId || softpayment.generateDealNumber();
@@ -75,10 +76,13 @@ export async function POST(request: NextRequest) {
       try {
         console.log('[BillingKey Pay] Updating deal in DB:', { dealId, trxId });
 
+        const payInfo = response.data?.payInfo;
+        const cardInfo = payInfo?.cardInfo;
+
         await docClient.send(new UpdateCommand({
           TableName: DEALS_TABLE,
           Key: { did: dealId },
-          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, updatedAt = :updatedAt',
+          UpdateExpression: 'SET isPaid = :isPaid, paidAt = :paidAt, #status = :status, pgTransactionId = :pgTrxId, pgTrackId = :pgTrackId, pgGoodsName = :goodsName, pgCardIssuer = :cardIssuer, pgCardNo = :cardNo, pgAuthCd = :authCd, pgCardType = :cardType, pgCardIssuerCode = :issuerCode, pgCardAcquirer = :acquirer, pgCardAcquirerCode = :acquirerCode, pgInstallment = :installment, pgPayMethodTypeCode = :payMethod, pgTransactionDate = :trxDate, updatedAt = :updatedAt',
           ExpressionAttributeNames: {
             '#status': 'status',
           },
@@ -88,19 +92,98 @@ export async function POST(request: NextRequest) {
             ':status': 'reviewing',
             ':pgTrxId': trxId,
             ':pgTrackId': resultTrackId,
+            ':goodsName': goodsName || '',
+            ':cardIssuer': cardInfo?.issuer || '',
+            ':cardNo': cardInfo?.cardNo || '',
+            ':authCd': payInfo?.authCd || '',
+            ':cardType': cardInfo?.cardType || '',
+            ':issuerCode': cardInfo?.issuerCode || '',
+            ':acquirer': cardInfo?.acquirer || '',
+            ':acquirerCode': cardInfo?.acquirerCode || '',
+            ':installment': cardInfo?.installment || '',
+            ':payMethod': payInfo?.payMethodTypeCode || '',
+            ':trxDate': response.data?.transactionDate || '',
             ':updatedAt': new Date().toISOString(),
           },
         }));
 
         console.log('[BillingKey Pay] Deal updated successfully');
+
+        // 거래 정보 조회하여 사용자 월 한도 사용량 업데이트
+        try {
+          const dealResult = await docClient.send(new GetCommand({
+            TableName: DEALS_TABLE,
+            Key: { did: dealId },
+          }));
+          const dealData = dealResult.Item;
+          if (dealData?.uid && dealData?.amount) {
+            await docClient.send(new UpdateCommand({
+              TableName: USERS_TABLE,
+              Key: { uid: dealData.uid },
+              UpdateExpression: 'SET usedAmount = if_not_exists(usedAmount, :zero) + :amount, totalPaymentAmount = if_not_exists(totalPaymentAmount, :zero) + :finalAmount, totalDealCount = if_not_exists(totalDealCount, :zero) + :one, updatedAt = :now',
+              ExpressionAttributeValues: {
+                ':amount': dealData.amount,
+                ':finalAmount': dealData.finalAmount || dealData.amount,
+                ':one': 1,
+                ':zero': 0,
+                ':now': new Date().toISOString(),
+              },
+            }));
+            console.log('[BillingKey Pay] User usedAmount updated:', dealData.uid);
+
+            // Slack 알림 전송 (비동기, 실패해도 무시)
+            const userResult = await docClient.send(new GetCommand({ TableName: USERS_TABLE, Key: { uid: dealData.uid } }));
+            const userData = userResult.Item;
+            notifyPaymentComplete({
+              dealId,
+              dealType: dealData.dealName || '',
+              amount: dealData.amount || 0,
+              feeRate: dealData.feeRate || 0,
+              feeAmount: dealData.feeAmount || 0,
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              recipientBank: dealData.recipient?.bank || '',
+              recipientHolder: dealData.recipient?.accountHolder || '',
+              recipientAccount: dealData.recipient?.accountNumber || '',
+              senderName: dealData.senderName || '',
+              userName: userData?.name || '',
+              userPhone: userData?.phone || '',
+              pgTransactionId: trxId || '',
+              pgAuthCd: response.data?.payInfo?.authCd || '',
+            }).catch(err => console.error('[BillingKey Pay] Slack notification failed:', err));
+
+            // Google Sheets 기록 (비동기, 실패해도 무시)
+            appendPaymentToSheet({
+              paidAt: new Date().toISOString(),
+              dealId,
+              pgTransactionId: trxId || '',
+              pgTrackId: resultTrackId || '',
+              pgAuthCd: response.data?.payInfo?.authCd || '',
+              dealType: dealData.dealName || '',
+              finalAmount: dealData.finalAmount || dealData.amount || 0,
+              amount: dealData.amount || 0,
+              feeAmount: dealData.feeAmount || 0,
+              feeRate: dealData.feeRate || 0,
+              recipientHolder: dealData.recipient?.accountHolder || '',
+              recipientBank: dealData.recipient?.bank || '',
+              recipientAccount: dealData.recipient?.accountNumber || '',
+              senderName: dealData.senderName || '',
+              userName: userData?.name || '',
+              userPhone: userData?.phone || '',
+              businessName: userData?.businessInfo?.businessName || '',
+              businessNumber: userData?.businessInfo?.businessNumber || '',
+              representativeName: userData?.businessInfo?.representativeName || '',
+            }).catch(err => console.error('[BillingKey Pay] Google Sheets failed:', err));
+          }
+        } catch (userError) {
+          console.error('[BillingKey Pay] Failed to update user usedAmount:', userError);
+        }
       } catch (dbError) {
         // DB 업데이트 실패해도 결제는 성공했으므로 로그만 남기고 계속 진행
         console.error('[BillingKey Pay] Failed to update deal in DB:', dbError);
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       trxId,
       trackId: resultTrackId,
       amount: response.data?.amount,
@@ -112,9 +195,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[BillingKey Pay] Error:', error);
-    return NextResponse.json(
-      { error: '빌링키 결제 처리 중 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

@@ -52,7 +52,7 @@ export function getKakaoAuthUrl(state?: string): string {
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'profile_nickname account_email', // 닉네임, 이메일만 수집
-    prompt: 'login', // 항상 카카오 로그인 화면 표시 (자동 완료 방지)
+    prompt: 'login', // 캐시된 카카오 세션 무시, 매번 로그인 페이지 표시 (카카오톡 앱 푸시 알림 포함)
   });
 
   if (state) {
@@ -221,12 +221,9 @@ interface VerificationResult {
 }
 
 // DynamoDB 클라이언트 초기화
+// AWS SDK 기본 자격증명 체인 사용 (환경변수 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY 자동 감지)
 const dynamoClient = new DynamoDBClient({
-  region: 'ap-northeast-2',
-  credentials: {
-    accessKeyId: (process.env.AWS_ACCESS_KEY_ID || '').trim(),
-    secretAccessKey: (process.env.AWS_SECRET_ACCESS_KEY || '').trim(),
-  },
+  region: process.env.AWS_REGION || 'ap-northeast-2',
 });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
@@ -252,24 +249,19 @@ export async function saveVerificationResult(key: string, result: VerificationRe
 }
 
 export async function getVerificationResult(key: string): Promise<VerificationResult | null> {
-  try {
-    const response = await docClient.send(new GetCommand({
-      TableName: VERIFICATION_TABLE,
-      Key: { verificationKey: key },
-    }));
+  const response = await docClient.send(new GetCommand({
+    TableName: VERIFICATION_TABLE,
+    Key: { verificationKey: key },
+  }));
 
-    if (!response.Item) return null;
+  if (!response.Item) return null;
 
-    return {
-      kakaoId: response.Item.kakaoId,
-      nickname: response.Item.nickname,
-      email: response.Item.email,
-      verifiedAt: response.Item.verifiedAt,
-    };
-  } catch (error) {
-    console.error('DynamoDB 조회 오류:', error);
-    return null;
-  }
+  return {
+    kakaoId: response.Item.kakaoId,
+    nickname: response.Item.nickname,
+    email: response.Item.email,
+    verifiedAt: response.Item.verifiedAt,
+  };
 }
 
 export async function deleteVerificationResult(key: string): Promise<void> {

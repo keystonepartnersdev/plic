@@ -45,11 +45,15 @@ export type THistoryField =
   | 'grade'            // 회원 등급
   | 'feeRate'          // 수수료율
   | 'monthlyLimit'     // 월 한도
+  | 'perTransactionLimit' // 1회 결제 한도
   | 'name'             // 이름
   | 'email'            // 이메일
   | 'phone'            // 연락처
   | 'thirdParty'       // 제3자 정보제공 동의
-  | 'marketing';       // 마케팅 수신 동의
+  | 'marketing'        // 마케팅 수신 동의
+  | 'businessName'     // 상호
+  | 'businessNumber'   // 사업자등록번호
+  | 'representativeName'; // 대표자명
 
 // 회원 히스토리 항목
 export interface IUserHistory {
@@ -89,6 +93,7 @@ export interface IUser {
 
   // 한도
   monthlyLimit: number;
+  perTransactionLimit?: number; // 1회 결제 한도 (송금액 기준, 기본값 200만원)
   usedAmount: number;
 
   // 동의 항목
@@ -108,6 +113,11 @@ export interface IUser {
 
   // 히스토리
   history: IUserHistory[];
+
+  // 탈퇴 관련 (plic-withdrawn-users에서 조회 시)
+  isWithdrawn?: boolean;
+  withdrawnAt?: string;
+  retentionUntil?: string;
 
   // 일시 정보 (ISO Date String)
   createdAt: string;

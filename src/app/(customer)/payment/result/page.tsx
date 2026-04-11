@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { CheckCircle, XCircle, Home, FileText } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useDealStore, useUserStore } from '@/stores';
+import { dealsAPI } from '@/lib/api';
+import tracking from '@/lib/tracking';
 
 function PaymentResultContent() {
   const router = useRouter();
@@ -14,11 +16,32 @@ function PaymentResultContent() {
   const processedRef = useRef(false);
 
   const { updateDeal, deals } = useDealStore();
-  const { currentUser, updateUser } = useUserStore();
+  const { currentUser, updateUser, isLoggedIn, _hasHydrated } = useUserStore();
+
+  // 인증 체크
+  useEffect(() => {
+    if (mounted && _hasHydrated && !isLoggedIn) {
+      router.replace('/auth/login');
+    }
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
   // URL 파라미터에서 결제 결과 추출
   const success = searchParams.get('success') === 'true';
   const error = searchParams.get('error');
+
+  // 결제 결과 트래킹
+  useEffect(() => {
+    if (!mounted) return;
+    const did = searchParams.get('dealId');
+    const amt = Number(searchParams.get('amount') || 0);
+    if (success) {
+      tracking.paymentFunnel.success(did || undefined, amt);
+      tracking.transferFunnel.paymentComplete(did || undefined);
+    } else {
+      tracking.paymentFunnel.fail(did || undefined, error || '결제 실패');
+    }
+    tracking.flush(); // 결제 결과 즉시 전송
+  }, [mounted, success]); // eslint-disable-line react-hooks/exhaustive-deps
   const trxId = searchParams.get('trxId');
   const trackId = searchParams.get('trackId');
   const amount = searchParams.get('amount');
@@ -31,14 +54,24 @@ function PaymentResultContent() {
     setMounted(true);
   }, []);
 
-  // 결제 성공 시 거래 상태 업데이트
+  // 결제 성공 시 거래 상태 업데이트 (백엔드 DB + 로컬 스토어)
   useEffect(() => {
     if (mounted && success && dealId && !processedRef.current) {
       processedRef.current = true;
 
+      // 백엔드 DB에 거래 상태 업데이트 (핵심)
+      dealsAPI.update(dealId, {
+        isPaid: true,
+        paidAt: new Date().toISOString(),
+        status: 'reviewing',
+        pgTransactionId: trxId || undefined,
+      }).catch((err) => {
+        console.error('[PaymentResult] 백엔드 거래 상태 업데이트 실패:', err);
+      });
+
+      // 로컬 스토어도 업데이트
       const deal = deals.find(d => d.did === dealId);
       if (deal && !deal.isPaid) {
-        // 거래 상태 업데이트
         updateDeal(dealId, {
           isPaid: true,
           paidAt: new Date().toISOString(),
@@ -51,11 +84,11 @@ function PaymentResultContent() {
               description: `${Number(amount || deal.finalAmount).toLocaleString()}원 결제가 완료되었습니다.`,
               actor: 'system',
             },
-            ...deal.history,
+            ...(deal.history || []),
           ],
         });
 
-        // 사용자 한도 업데이트
+        // 사용자 한도 업데이트 (로컬)
         if (currentUser) {
           updateUser({
             usedAmount: currentUser.usedAmount + deal.amount,
@@ -67,7 +100,7 @@ function PaymentResultContent() {
     }
   }, [mounted, success, dealId, deals, updateDeal, currentUser, updateUser, trxId, amount]);
 
-  if (!mounted) {
+  if (!mounted || !_hasHydrated || !isLoggedIn) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAdminStore } from '@/stores';
 import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/common';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -29,14 +30,14 @@ const menuItems = [
   { href: '/admin', icon: LayoutDashboard, label: '대시보드', permission: null, implemented: true },
   { href: '/admin/users', icon: Users, label: '회원정보', permission: 'user.view', implemented: true },
   { href: '/admin/deals', icon: FileText, label: '거래정보', permission: 'deal.view', implemented: true },
-  { href: '/admin/codes', icon: Tag, label: '코드관리', permission: 'code.view', implemented: false }, // 할인코드/쿠폰 적용 기능 미구현
+  { href: '/admin/codes', icon: Tag, label: '코드관리', permission: 'code.view', implemented: true },
   { href: '/admin/contents/banners', icon: Image, label: '배너관리', permission: 'content.banner.manage', implemented: true },
   { href: '/admin/contents/notices', icon: Bell, label: '공지사항', permission: 'content.notice.manage', implemented: true },
   { href: '/admin/contents/faqs', icon: HelpCircle, label: 'FAQ관리', permission: 'content.faq.manage', implemented: true },
   { href: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'analytics.view', implemented: true },
   { href: '/admin/api-logs', icon: Bug, label: 'API Logs', permission: 'analytics.view', implemented: true },
   { href: '/admin/admins', icon: UserCog, label: '어드민관리', permission: 'admin.view', implemented: true },
-  { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view', implemented: false }, // 설정값 저장만 되고 실제 적용 안 됨
+  { href: '/admin/settings', icon: Settings, label: '설정', permission: 'settings.view', implemented: true },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -174,7 +175,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* 메인 콘텐츠 */}
       <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </main>
     </div>
   );

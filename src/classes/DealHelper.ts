@@ -1,6 +1,8 @@
 // src/classes/DealHelper.ts
 
 import { IDeal, TDealType, TDealStatus } from '@/types/deal';
+import { IFeeSettings } from '@/stores/useSettingsStore';
+import { IUser } from '@/types/user';
 
 interface IDealTypeConfig {
   name: string;
@@ -107,12 +109,13 @@ export class DealHelper {
 
   // 거래 상태 설정
   static STATUS_CONFIG: Record<TDealStatus, IStatusConfig> = {
-    draft: { name: '작성중', color: 'orange', tab: 'progress' },
+    draft: { name: '결제대기', color: 'orange', tab: 'progress' },
     awaiting_payment: { name: '결제대기', color: 'orange', tab: 'progress' },
     pending: { name: '진행중', color: 'blue', tab: 'progress' },
     reviewing: { name: '검토중', color: 'yellow', tab: 'progress' },
     hold: { name: '보류', color: 'orange', tab: 'progress' },
     need_revision: { name: '보완필요', color: 'red', tab: 'revision' },
+    approved: { name: '검수완료', color: 'blue', tab: 'progress' },
     cancelled: { name: '거래취소', color: 'gray', tab: 'completed' },
     completed: { name: '거래완료', color: 'green', tab: 'completed' },
   };
@@ -139,10 +142,44 @@ export class DealHelper {
 
   // 수수료 및 총액 계산
   static calculateTotal(amount: number, feeRate: number, discountAmount: number = 0) {
-    const feeAmount = Math.floor(amount * (feeRate / 100));
+    const feeAmountBase = Math.floor(amount * (feeRate / 100)); // 기본 수수료 (부가세 전)
+    const vatAmount = Math.floor(feeAmountBase * 0.1);          // 부가세 (수수료의 10%)
+    const feeAmount = feeAmountBase + vatAmount;                // 수수료 총액 (부가세 포함)
     const totalAmount = amount + feeAmount;
     const finalAmount = totalAmount - discountAmount;
-    return { feeAmount, totalAmount, finalAmount };
+    return { feeAmountBase, vatAmount, feeAmount, totalAmount, finalAmount };
+  }
+
+  /**
+   * 수수료율 결정 (우선순위: 거래유형별 < 회원개별 < 기본 → 최저 적용)
+   * 쿠폰(feeOverride)은 별도 레이어로 사용자 수동 적용
+   */
+  static determineFeeRate(
+    user: Pick<IUser, 'feeRate'>,
+    dealType: TDealType,
+    feeSettings?: IFeeSettings
+  ): { feeRate: number; feeSource: string } {
+    const defaultRate = feeSettings?.defaultFeeRate ?? 3.3;
+
+    // 후보 수집
+    const candidates: { rate: number; source: string }[] = [
+      { rate: defaultRate, source: 'default' },
+    ];
+
+    // 거래 유형별 수수료
+    const dealTypeRate = feeSettings?.dealTypeFeeRates?.[dealType];
+    if (dealTypeRate !== undefined) {
+      candidates.push({ rate: dealTypeRate, source: 'deal_type' });
+    }
+
+    // 회원 개별 수수료 (어드민이 설정한 경우)
+    if (user.feeRate !== undefined && user.feeRate !== defaultRate) {
+      candidates.push({ rate: user.feeRate, source: 'user_custom' });
+    }
+
+    // 고객 유리 원칙: 최저 수수료 적용
+    const best = candidates.reduce((a, b) => a.rate <= b.rate ? a : b);
+    return { feeRate: best.rate, feeSource: best.source };
   }
 
   // 히스토리 추가
@@ -163,7 +200,7 @@ export class DealHelper {
           actor,
           actorId,
         },
-        ...deal.history,
+        ...(deal.history || []),
       ],
       updatedAt: new Date().toISOString(),
     };
@@ -171,11 +208,14 @@ export class DealHelper {
 
   // 거래 종류 설정 반환
   static getDealTypeConfig(dealType: TDealType): IDealTypeConfig {
-    return this.DEAL_TYPE_CONFIG[dealType];
+    return this.DEAL_TYPE_CONFIG[dealType] || { name: '알 수 없음', icon: 'HelpCircle', requiredDocs: [], optionalDocs: [], description: '' };
   }
 
-  // 거래 상태 설정 반환
-  static getStatusConfig(status: TDealStatus): IStatusConfig {
-    return this.STATUS_CONFIG[status];
+  // 거래 상태 설정 반환 (cancelled 상태에서 isPaid 여부에 따라 거래취소/결제취소 구분)
+  static getStatusConfig(status: TDealStatus, isPaid?: boolean): IStatusConfig {
+    if (status === 'cancelled' && isPaid) {
+      return { name: '결제취소', color: 'red', tab: 'completed' };
+    }
+    return this.STATUS_CONFIG[status] || { name: '알 수 없음', color: 'gray', tab: 'progress' };
   }
 }

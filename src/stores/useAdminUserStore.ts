@@ -100,19 +100,10 @@ export const useAdminUserStore = create(
     {
       name: 'plic-admin-user-storage',
       storage: createJSONStorage(() => localStorage),
-      migrate: (persistedState: any, version: number) => {
-        // localStorage를 완전히 초기화
+      migrate: () => {
+        // localStorage를 완전히 초기화 - 새 버전에서는 빈 상태로 시작
         return {
           users: [],
-          setUsers: persistedState?.setUsers || (() => {}),
-          addUser: persistedState?.addUser || (() => {}),
-          updateUser: persistedState?.updateUser || (() => {}),
-          deleteUser: persistedState?.deleteUser || (() => {}),
-          getUserById: persistedState?.getUserById || (() => undefined),
-          getUsersByGrade: persistedState?.getUsersByGrade || (() => []),
-          searchUsers: persistedState?.searchUsers || (() => []),
-          processAutoGradeChange: persistedState?.processAutoGradeChange || (() => []),
-          resetMonthlyUsage: persistedState?.resetMonthlyUsage || (() => {}),
         } as unknown as IAdminUserState;
       },
     }

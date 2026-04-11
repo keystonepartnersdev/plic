@@ -24,18 +24,24 @@ export function BannerSlider() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchBanners = async () => {
       try {
         const response = await contentAPI.getBanners();
-        setBanners(response.banners || []);
+        if (isMounted) setBanners(response.banners || []);
       } catch (error) {
         console.error('배너 로드 실패:', error);
-        setBanners([]);
+        if (isMounted) setBanners([]);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchBanners();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // priority 기준으로 정렬

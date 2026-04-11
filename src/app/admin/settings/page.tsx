@@ -12,12 +12,32 @@ import {
   AlertCircle,
   Check,
   TrendingUp,
+  Lock,
+  ExternalLink,
 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useSettingsStore, useAdminUserStore, defaultSettings } from '@/stores';
 import { TUserGrade, IUserHistory } from '@/types';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+const API_BASE_URL = '';
+
+// 미구현 기능 잠금 오버레이
+function LockedSection({ children, label = '준비 중' }: { children: React.ReactNode; label?: string }) {
+  return (
+    <div className="relative">
+      <div className="pointer-events-none select-none opacity-40 filter grayscale">
+        {children}
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center bg-gray-50/60 rounded-lg">
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+          <Lock className="w-4 h-4" />
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const GRADE_LABELS: Record<TUserGrade, string> = {
   basic: '베이직',
@@ -26,10 +46,10 @@ const GRADE_LABELS: Record<TUserGrade, string> = {
   employee: '임직원',
 };
 
-type TabType = 'grade' | 'operation' | 'notification' | 'security';
+type TabType = 'fee' | 'grade' | 'operation' | 'notification' | 'security';
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('grade');
+  const [activeTab, setActiveTab] = useState<TabType>('fee');
   const { settings, updateSettings, updateGradeSettings, updateGradeCriteria, resetSettings } = useSettingsStore();
   const { users, updateUser } = useAdminUserStore();
 
@@ -84,6 +104,7 @@ export default function AdminSettingsPage() {
     };
 
     loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // 등급별 설정이 변경되었을 때 해당 등급 회원들에게 일괄 적용
@@ -179,6 +200,7 @@ export default function AdminSettingsPage() {
   };
 
   const tabs = [
+    { id: 'fee', label: '수수료 설정', icon: Percent },
     { id: 'grade', label: '등급 설정', icon: TrendingUp },
     { id: 'operation', label: '운영 설정', icon: Clock },
     { id: 'notification', label: '알림 설정', icon: Bell },
@@ -258,6 +280,9 @@ export default function AdminSettingsPage() {
 
       {/* 설정 내용 */}
       <div className="bg-white rounded-xl shadow-sm p-6">
+        {activeTab === 'fee' && (
+          <FeeSettings localSettings={localSettings} setLocalSettings={setLocalSettings} />
+        )}
         {activeTab === 'grade' && (
           <GradeSettings localSettings={localSettings} setLocalSettings={setLocalSettings} />
         )}
@@ -270,6 +295,139 @@ export default function AdminSettingsPage() {
         {activeTab === 'security' && (
           <SecuritySettings localSettings={localSettings} setLocalSettings={setLocalSettings} />
         )}
+      </div>
+
+      {/* 결제 테스트 */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">결제 테스트</h3>
+        <p className="text-sm text-gray-500 mb-4">개발키를 사용한 결제 테스트 페이지입니다. 프로덕션 결제에 영향을 주지 않습니다.</p>
+        <div className="flex gap-3">
+          <Link
+            href="/admin/payment-test"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            <CreditCard className="w-4 h-4" />
+            비인증결제 TEST
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 거래 유형 라벨
+const DEAL_TYPE_LABELS: Record<string, string> = {
+  product_purchase: '물품매입',
+  labor_cost: '인건비',
+  service_fee: '용역대금',
+  construction: '공사대금',
+  rent: '임대료',
+  monthly_rent: '월세',
+  maintenance: '관리비',
+  deposit: '보증금',
+  advertising: '광고비',
+  shipping: '운송비',
+  rental: '렌트/렌탈',
+  etc: '기타',
+};
+
+// 수수료 설정
+function FeeSettings({
+  localSettings,
+  setLocalSettings,
+}: {
+  localSettings: typeof defaultSettings;
+  setLocalSettings: (s: typeof defaultSettings) => void;
+}) {
+  const feeSettings = localSettings.feeSettings || defaultSettings.feeSettings;
+
+  const handleDefaultFeeChange = (value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    setLocalSettings({
+      ...localSettings,
+      feeSettings: { ...feeSettings, defaultFeeRate: num },
+    });
+  };
+
+  const handleDealTypeFeeChange = (dealType: string, value: string) => {
+    const num = value === '' ? undefined : parseFloat(value);
+    const updated = { ...feeSettings.dealTypeFeeRates };
+    if (num === undefined || isNaN(num)) {
+      delete updated[dealType as keyof typeof updated];
+    } else {
+      (updated as Record<string, number>)[dealType] = num;
+    }
+    setLocalSettings({
+      ...localSettings,
+      feeSettings: { ...feeSettings, dealTypeFeeRates: updated },
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">수수료 설정</h3>
+        <p className="text-sm text-gray-500 mb-4">기본 수수료 및 거래 유형별 수수료를 설정합니다. (부가세 별도)</p>
+      </div>
+
+      {/* 기본 수수료 */}
+      <div className="p-4 bg-gray-50 rounded-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-gray-900">기본 수수료</p>
+            <p className="text-sm text-gray-500">신규 가입자 및 별도 설정 없는 거래에 적용</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              value={feeSettings.defaultFeeRate}
+              onChange={(e) => handleDefaultFeeChange(e.target.value)}
+              className="w-24 h-10 px-3 text-right border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400 font-bold text-lg"
+            />
+            <span className="text-gray-500 font-medium">%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 거래 유형별 수수료 */}
+      <div>
+        <h4 className="font-medium text-gray-900 mb-3">거래 유형별 수수료</h4>
+        <p className="text-sm text-gray-500 mb-3">설정하지 않으면 기본 수수료가 적용됩니다. 고객 유리 원칙: 회원 개별 수수료와 유형별 수수료 중 낮은 것이 적용됩니다.</p>
+        <div className="space-y-2">
+          {Object.entries(DEAL_TYPE_LABELS).map(([type, label]) => {
+            const currentRate = feeSettings.dealTypeFeeRates?.[type as keyof typeof feeSettings.dealTypeFeeRates];
+            return (
+              <div key={type} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-700">{label}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={currentRate ?? ''}
+                    placeholder={String(feeSettings.defaultFeeRate)}
+                    onChange={(e) => handleDealTypeFeeChange(type, e.target.value)}
+                    className="w-20 h-9 px-2 text-right border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-400/20 focus:border-primary-400"
+                  />
+                  <span className="text-sm text-gray-400">%</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 안내 */}
+      <div className="p-3 bg-blue-50 rounded-lg">
+        <p className="text-sm text-blue-700">
+          수수료 적용 우선순위: 쿠폰 &gt; 거래유형별 &gt; 회원개별 &gt; 기본 수수료 (최저 적용)
+        </p>
       </div>
     </div>
   );
@@ -354,7 +512,8 @@ function GradeSettings({
 
   return (
     <div className="space-y-8">
-      {/* 등급별 수수료/한도 */}
+      {/* 등급별 수수료/한도 - 미구현 */}
+      <LockedSection>
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">등급별 수수료 및 한도</h3>
         <div className="overflow-x-auto">
@@ -446,8 +605,10 @@ function GradeSettings({
           </div>
         </div>
       </div>
+      </LockedSection>
 
-      {/* 자동 등급 기준 */}
+      {/* 자동 등급 기준 - 미구현 */}
+      <LockedSection>
       <div className="border-t border-gray-100 pt-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">자동 등급 기준 (베이직 ↔ 플래티넘)</h3>
         <p className="text-sm text-gray-500 mb-4">
@@ -513,83 +674,47 @@ function GradeSettings({
           </div>
         </div>
       </div>
+      </LockedSection>
 
-      {/* 수동 실행 */}
+      {/* 수동 실행 - 미구현 */}
       <div className="border-t border-gray-100 pt-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">수동 실행</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          일반적으로 매월 1일 자동 실행되는 작업을 수동으로 실행할 수 있습니다.
-          테스트 또는 긴급 상황에서만 사용하세요.
-        </p>
+        <LockedSection>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">수동 실행</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            일반적으로 매월 1일 자동 실행되는 작업을 수동으로 실행할 수 있습니다.
+            테스트 또는 긴급 상황에서만 사용하세요.
+          </p>
 
-        {/* 결과 메시지 */}
-        {processResult && (
-          <div className={cn(
-            'mb-4 p-4 rounded-lg flex items-center gap-3',
-            processResult.count > 0 ? 'bg-green-50' : 'bg-gray-50'
-          )}>
-            <Check className={cn(
-              'w-5 h-5',
-              processResult.count > 0 ? 'text-green-600' : 'text-gray-600'
-            )} />
-            <p className={cn(
-              'text-sm font-medium',
-              processResult.count > 0 ? 'text-green-700' : 'text-gray-700'
-            )}>
-              {processResult.message}
-            </p>
-          </div>
-        )}
-
-        <div className="flex gap-4">
-          <button
-            onClick={handleMonthlyReset}
-            disabled={isProcessing}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 border rounded-lg font-medium transition-colors',
-              isProcessing
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-            )}
-          >
-            {isProcessing ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
+          <div className="flex gap-4">
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 border rounded-lg font-medium border-gray-200 text-gray-700 bg-white"
+            >
               <RefreshCw className="w-4 h-4" />
-            )}
-            월간 사용량 리셋
-          </button>
-          <button
-            onClick={handleAutoGradeChange}
-            disabled={isProcessing}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors',
-              isProcessing
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-purple-500 text-white hover:bg-purple-600'
-            )}
-          >
-            {isProcessing ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
+              월간 사용량 리셋
+            </button>
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-purple-500 text-white"
+            >
               <TrendingUp className="w-4 h-4" />
-            )}
-            자동 등급 변경 실행
-          </button>
-        </div>
+              자동 등급 변경 실행
+            </button>
+          </div>
 
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-800">실행 순서 안내</p>
-              <p className="text-sm text-blue-700 mt-1">
-                1. <strong>월간 사용량 리셋</strong>: 현재 월 사용량 → 전월 결제금액으로 이동, 월 사용량 0으로 초기화<br />
-                2. <strong>자동 등급 변경</strong>: 전월 결제금액 기준으로 베이직 ↔ 플래티넘 등급 자동 조정
-              </p>
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-blue-800">실행 순서 안내</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  1. <strong>월간 사용량 리셋</strong>: 현재 월 사용량 → 전월 결제금액으로 이동, 월 사용량 0으로 초기화<br />
+                  2. <strong>자동 등급 변경</strong>: 전월 결제금액 기준으로 베이직 ↔ 플래티넘 등급 자동 조정
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        </LockedSection>
       </div>
     </div>
   );
@@ -604,6 +729,7 @@ function OperationSettings({
   setLocalSettings: (s: typeof defaultSettings) => void;
 }) {
   return (
+    <LockedSection>
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">점검 모드</h3>
@@ -679,6 +805,7 @@ function OperationSettings({
         </div>
       </div>
     </div>
+    </LockedSection>
   );
 }
 
@@ -692,38 +819,38 @@ function NotificationSettings({
 }) {
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 채널</h3>
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={localSettings.emailNotificationEnabled}
-              onChange={(e) =>
-                setLocalSettings({ ...localSettings, emailNotificationEnabled: e.target.checked })
-              }
-              className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
-            />
-            <div>
-              <p className="font-medium text-gray-900">이메일 알림</p>
-              <p className="text-sm text-gray-500">중요 이벤트 발생 시 이메일로 알림을 받습니다.</p>
-            </div>
-          </label>
+      <LockedSection>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">알림 채널</h3>
+          <div className="space-y-4">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={false}
+                disabled
+                className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
+              />
+              <div>
+                <p className="font-medium text-gray-900">이메일 알림</p>
+                <p className="text-sm text-gray-500">중요 이벤트 발생 시 이메일로 알림을 받습니다.</p>
+              </div>
+            </label>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={localSettings.smsNotificationEnabled}
-              onChange={(e) => setLocalSettings({ ...localSettings, smsNotificationEnabled: e.target.checked })}
-              className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
-            />
-            <div>
-              <p className="font-medium text-gray-900">SMS 알림</p>
-              <p className="text-sm text-gray-500">긴급 알림 시 SMS로 알림을 받습니다.</p>
-            </div>
-          </label>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={false}
+                disabled
+                className="w-5 h-5 rounded border-gray-300 text-primary-400 focus:ring-primary-400"
+              />
+              <div>
+                <p className="font-medium text-gray-900">SMS 알림</p>
+                <p className="text-sm text-gray-500">긴급 알림 시 SMS로 알림을 받습니다.</p>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
+      </LockedSection>
 
       <div className="border-t border-gray-100 pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Slack 연동</h3>
@@ -754,6 +881,7 @@ function SecuritySettings({
   setLocalSettings: (s: typeof defaultSettings) => void;
 }) {
   return (
+    <LockedSection>
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">세션 설정</h3>
@@ -844,5 +972,6 @@ function SecuritySettings({
         </div>
       </div>
     </div>
+    </LockedSection>
   );
 }

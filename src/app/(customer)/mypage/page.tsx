@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -8,38 +8,53 @@ import {
   User,
   CreditCard,
   Building2,
+  Ticket,
   Bell,
   HelpCircle,
   FileText,
   Settings,
   LogOut,
+  AlertCircle,
+  UserX,
 } from 'lucide-react';
-import { Header } from '@/components/common';
+import { Header, ModalPortal } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
-import { usersAPI, tokenManager } from '@/lib/api';
-import { UserHelper } from '@/classes';
-import { cn } from '@/lib/utils';
+import { usersAPI } from '@/lib/api';
+import { secureAuth } from '@/lib/auth';
+// UserHelper 제거 - 단일 등급 시스템으로 직접 계산
+import { cn, getErrorMessage } from '@/lib/utils';
 
 export default function MyPage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn, logout, registeredCards, setUser } = useUserStore();
+  const { currentUser, isLoggedIn, logout, registeredCards, setUser, _hasHydrated } = useUserStore();
   const { deals, clearDeals } = useDealStore();
 
   const [mounted, setMounted] = useState(false);
-  const [gradeInfo, setGradeInfo] = useState<any>(null);
+  const [gradeInfo, setGradeInfo] = useState<{
+    grade: { code: string; name: string; isManual: boolean };
+    fee: { rate: number; rateText: string };
+    limit: { monthly: number; used: number; remaining: number; usagePercent: number };
+    stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    // hydration 완료 후에만 로그인 상태 체크
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchData = async () => {
       if (!isLoggedIn) return;
       try {
@@ -47,52 +62,91 @@ export default function MyPage() {
           usersAPI.getMe(),
           usersAPI.getGrade(),
         ]);
-        if (meData) {
-          setUser(meData);
+        if (isMounted) {
+          if (meData) {
+            setUser(meData);
+          }
+          setGradeInfo(gradeData);
         }
-        setGradeInfo(gradeData);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('사용자 정보 로드 실패:', error);
         // 401 에러 시 로그아웃 처리
-        if (error.message?.includes('401') || error.message?.includes('인증')) {
-          tokenManager.clearTokens();
-          logout();
-          router.replace('/auth/login');
+        if (getErrorMessage(error)?.includes('401') || getErrorMessage(error)?.includes('인증')) {
+          await secureAuth.logout().catch(() => {});
+          if (isMounted) {
+            logout();
+            router.replace('/auth/login');
+          }
           return;
         }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     if (mounted && isLoggedIn) {
       fetchData();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [mounted, isLoggedIn, setUser, logout, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser || loading) {
+  // useMemo로 필터링 및 계산 최적화 - hooks는 반드시 조건부 return 전에 호출
+  // 거래 통계: completed만 집계 (cancelled 제외)
+  const { completedDeals, totalAmount, computedUsedAmount } = useMemo(() => {
+    if (!currentUser) return { completedDeals: [], totalAmount: 0, computedUsedAmount: 0 };
+    const userDeals = deals.filter((d) => d.uid === currentUser.uid);
+    const completedDeals = userDeals.filter((d) => d.status && d.status === 'completed');
+    const totalAmount = completedDeals.reduce((sum, d) => sum + d.amount, 0);
+    // 이번 달 사용 금액: completed 거래 중 이번 달 것만
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const computedUsedAmount = completedDeals
+      .filter(d => d.createdAt?.startsWith(thisMonth))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+    return { completedDeals, totalAmount, computedUsedAmount };
+  }, [deals, currentUser?.uid]);
+
+  // 실제 거래 데이터에서 계산 (DB 값은 취소 건 미반영 가능성)
+  const monthlyLimit = currentUser?.monthlyLimit || 20000000;
+  const feeRate = currentUser?.feeRate || 3.3;
+  const usedAmount = computedUsedAmount;
+  const remainingLimit = Math.max(monthlyLimit - usedAmount, 0);
+  const usageRate = Math.round((usedAmount / monthlyLimit) * 100);
+
+  // useCallback으로 핸들러 최적화
+  const handleLogout = useCallback(async () => {
+    if (confirm('로그아웃 하시겠습니까?')) {
+      await secureAuth.logout().catch(() => {});
+      logout();
+      clearDeals();
+      router.replace('/');
+    }
+  }, [logout, clearDeals, router]);
+
+  const handleWithdraw = useCallback(async () => {
+    setIsWithdrawing(true);
+    setWithdrawError(null);
+    try {
+      await usersAPI.withdraw();
+      await useUserStore.getState().logoutWithAPI();
+      router.replace('/auth/login');
+    } catch (error: any) {
+      setWithdrawError(error?.message || '회원 탈퇴 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsWithdrawing(false);
+    }
+  }, [router]);
+
+  // 조건부 early return은 모든 hooks 호출 후에
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser || loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563EB]" />
       </div>
     );
   }
-
-  const userDeals = deals.filter((d) => d.uid === currentUser.uid);
-  const completedDeals = userDeals.filter((d) => d.status && d.status === 'completed');
-  const totalAmount = gradeInfo?.stats?.totalPaymentAmount || completedDeals.reduce((sum, d) => sum + d.amount, 0);
-
-  const gradeConfig = currentUser?.grade ? UserHelper.getGradeConfig(currentUser.grade) : { name: '베이직', feeRate: 4.0, monthlyLimit: 10000000 };
-  const remainingLimit = gradeInfo?.limit?.remaining ?? UserHelper.getRemainingLimit(currentUser);
-  const usageRate = gradeInfo?.limit?.usagePercent ?? UserHelper.getUsageRate(currentUser);
-
-  const handleLogout = () => {
-    if (confirm('로그아웃 하시겠습니까?')) {
-      logout();
-      clearDeals();
-      tokenManager.clearTokens();
-      router.replace('/');
-    }
-  };
 
   const menuItems = [
     {
@@ -102,6 +156,7 @@ export default function MyPage() {
         // 빌링키 API 미지원으로 결제카드 관리 임시 숨김
         // { href: '/mypage/cards', icon: CreditCard, label: '결제카드 관리', badge: registeredCards.length > 0 ? `${registeredCards.length}개` : undefined },
         { href: '/mypage/accounts', icon: Building2, label: '거래 계좌내역' },
+        { href: '/mypage/coupons', icon: Ticket, label: '쿠폰' },
       ],
     },
     {
@@ -136,25 +191,18 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* 등급 정보 - PLIC 디자인 시스템 적용 */}
+        {/* 이용 조건 - 단일 등급 시스템 */}
         <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl p-5 border border-blue-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  'px-3 py-1 rounded-full text-xs font-bold',
-                  gradeConfig.name === "베이직" ? "bg-gray-100 text-gray-700" : gradeConfig.name === "플래티넘" ? "bg-purple-100 text-purple-700" : gradeConfig.name === "B2B" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
-                )}
-              >
-                {gradeConfig.name}
-              </span>
               <span className="text-sm text-gray-500 font-medium">
-                수수료 {gradeInfo?.fee?.rateText || `${currentUser.feeRate}%`}
+                수수료 {feeRate}%
+              </span>
+              <span className="text-sm text-gray-400 mx-1">|</span>
+              <span className="text-sm text-gray-500 font-medium">
+                1회 한도 {((currentUser?.perTransactionLimit ?? 2000000) / 10000).toLocaleString()}만원
               </span>
             </div>
-            <Link href="/mypage/grade" className="text-sm text-[#2563EB] font-semibold hover:text-[#1d4ed8] transition-colors duration-300">
-              등급 안내
-            </Link>
           </div>
 
           {/* 한도 사용률 */}
@@ -162,8 +210,8 @@ export default function MyPage() {
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-500 font-medium">월 한도 사용</span>
               <span className="text-gray-900 font-semibold">
-                {(gradeInfo?.limit?.used || currentUser.usedAmount || 0).toLocaleString()}원 /{' '}
-                {(gradeInfo?.limit?.monthly || currentUser.monthlyLimit).toLocaleString()}원
+                {usedAmount.toLocaleString()}원 /{' '}
+                {monthlyLimit.toLocaleString()}원
               </span>
             </div>
             <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
@@ -185,7 +233,7 @@ export default function MyPage() {
         <div className="flex justify-between">
           <div className="text-center flex-1">
             <p className="text-2xl font-black text-gradient">
-              {gradeInfo?.stats?.totalDealCount || completedDeals.length}
+              {completedDeals.length}
             </p>
             <p className="text-sm text-gray-500 font-medium">총 거래</p>
           </div>
@@ -223,8 +271,8 @@ export default function MyPage() {
         </div>
       ))}
 
-      {/* 로그아웃 - PLIC 디자인 시스템 적용 */}
-      <div className="bg-white">
+      {/* 로그아웃 / 회원탈퇴 */}
+      <div className="bg-white mb-2">
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-5 py-4 w-full hover:bg-red-50 transition-all duration-300 group"
@@ -232,7 +280,78 @@ export default function MyPage() {
           <LogOut className="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors duration-300" strokeWidth={2} />
           <span className="text-gray-500 group-hover:text-red-500 font-medium transition-colors duration-300">로그아웃</span>
         </button>
+        <div className="h-px bg-gray-100 mx-5" />
+        <button
+          onClick={() => { setWithdrawError(null); setShowWithdrawModal(true); }}
+          className="flex items-center gap-3 px-5 py-4 w-full hover:bg-red-50 transition-all duration-300 group"
+        >
+          <UserX className="w-5 h-5 text-gray-300 group-hover:text-red-400 transition-colors duration-300" strokeWidth={2} />
+          <span className="text-gray-400 group-hover:text-red-400 font-medium text-sm transition-colors duration-300">회원 탈퇴</span>
+        </button>
       </div>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      {showWithdrawModal && (
+        <ModalPortal>
+        <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="absolute inset-0" onClick={() => !isWithdrawing && setShowWithdrawModal(false)} />
+          <div className="relative bg-white rounded-3xl w-[calc(100%-2rem)] max-w-sm p-6 shadow-2xl border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900 mb-3">회원 탈퇴</h2>
+
+            <div className="text-sm text-gray-600 space-y-3 mb-4">
+              <div className="flex items-start gap-2 bg-yellow-50 rounded-xl p-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <p className="text-yellow-800 text-xs leading-relaxed">
+                  탈퇴 시 개인정보는 즉시 삭제되며, 전자상거래법 등 관련 법령에 따라 거래 및 결제 기록은 <strong>5년간 분리 보관</strong>됩니다.
+                </p>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="font-medium text-gray-900 text-xs mb-2">보관 항목</p>
+                <ul className="text-xs text-gray-600 space-y-1">
+                  <li>- 거래 내역 (금액, 일시, 상태)</li>
+                  <li>- 결제 기록</li>
+                  <li>- 서비스 이용 기록</li>
+                </ul>
+              </div>
+
+              <p className="text-xs text-gray-500">
+                탈퇴 후 동일 계정으로 재가입이 불가합니다. 보유 중인 쿠폰 및 혜택은 모두 소멸됩니다.
+              </p>
+            </div>
+
+            {withdrawError && (
+              <div className="flex items-start gap-2 bg-red-50 rounded-xl p-3 mb-4">
+                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-600">{withdrawError}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowWithdrawModal(false)}
+                disabled={isWithdrawing}
+                className="flex-1 h-12 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-300 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleWithdraw}
+                disabled={isWithdrawing}
+                className="flex-1 h-12 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50"
+              >
+                {isWithdrawing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    처리 중...
+                  </span>
+                ) : '탈퇴하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+        </ModalPortal>
+      )}
 
     </div>
   );

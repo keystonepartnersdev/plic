@@ -1,7 +1,9 @@
 'use client';
+import { getErrorMessage } from '@/lib/utils';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search, ChevronRight, FileText, Clock, Check, AlertCircle, X, RefreshCw } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
 import { DealHelper } from '@/classes';
@@ -9,6 +11,20 @@ import { IDeal, TDealStatus } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function AdminDealsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
+      </div>
+    }>
+      <AdminDealsContent />
+    </Suspense>
+  );
+}
+
+function AdminDealsContent() {
+  const searchParams = useSearchParams();
+  const uidFilter = searchParams.get('uid');
   const [deals, setDeals] = useState<IDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,17 +34,17 @@ export default function AdminDealsPage() {
 
   const statuses = [
     { value: 'all', label: '전체' },
-    ...Object.entries(DealHelper.STATUS_CONFIG).map(([key, config]) => ({
+    ...Object.entries(DealHelper.STATUS_CONFIG || {}).map(([key, config]) => ({
       value: key,
-      label: config.name,
+      label: config?.name || '알 수 없음',
     })),
   ];
 
   const dealTypes = [
     { value: 'all', label: '전체' },
-    ...Object.entries(DealHelper.DEAL_TYPE_CONFIG).map(([key, config]) => ({
+    ...Object.entries(DealHelper.DEAL_TYPE_CONFIG || {}).map(([key, config]) => ({
       value: key,
-      label: config.name,
+      label: config?.name || '알 수 없음',
     })),
   ];
 
@@ -37,10 +53,12 @@ export default function AdminDealsPage() {
     setError(null);
     try {
       const response = await adminAPI.getDeals();
-      setDeals(response.deals || []);
-    } catch (err: any) {
+      const allDeals = response.deals || [];
+      // uid 필터가 있으면 해당 회원의 거래만 표시
+      setDeals(uidFilter ? allDeals.filter(d => d.uid === uidFilter) : allDeals);
+    } catch (err: unknown) {
       console.error('거래 목록 로드 실패:', err);
-      setError(err.message || '거래 목록을 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '거래 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -48,7 +66,8 @@ export default function AdminDealsPage() {
 
   useEffect(() => {
     fetchDeals();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uidFilter]);
 
   const filteredDeals = deals.filter((deal) => {
     const matchesSearch = (deal.dealName && deal.dealName.includes(searchQuery)) ||
@@ -88,10 +107,10 @@ export default function AdminDealsPage() {
   // 통계 계산
   const stats = {
     total: deals.length,
-    pending: deals.filter(d => d.status && d.status === 'pending').length,
-    reviewing: deals.filter(d => d.status && d.status === 'reviewing').length,
-    completed: deals.filter(d => d.status && d.status === 'completed').length,
-    totalAmount: deals.filter(d => d.status && d.status === 'completed').reduce((sum, d) => sum + (d.totalAmount || 0), 0),
+    reviewing: deals.filter(d => d.isPaid && d.status && ['pending', 'reviewing', 'hold', 'need_revision'].includes(d.status)).length,
+    pending: deals.filter(d => d.status && ['draft', 'awaiting_payment'].includes(d.status)).length,
+    completed: deals.filter(d => d.status === 'completed').length,
+    cancelled: deals.filter(d => d.status === 'cancelled').length,
   };
 
   return (
@@ -99,8 +118,18 @@ export default function AdminDealsPage() {
       {/* 페이지 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">거래정보</h1>
-          <p className="text-gray-500 mt-1">전체 거래 목록을 관리합니다.</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            거래정보
+            {uidFilter && <span className="text-base font-normal text-gray-500 ml-2">(회원 필터)</span>}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            {uidFilter ? (
+              <>
+                선택한 회원의 거래 목록입니다.{' '}
+                <Link href="/admin/deals" className="text-primary-400 hover:text-primary-500 underline">전체 보기</Link>
+              </>
+            ) : '전체 거래 목록을 관리합니다.'}
+          </p>
         </div>
         <button
           onClick={fetchDeals}
@@ -120,22 +149,26 @@ export default function AdminDealsPage() {
       )}
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-4">
           <p className="text-sm text-gray-500">전체 거래</p>
           <p className="text-2xl font-bold text-gray-900">{stats.total}건</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-gray-500">대기중</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.pending + stats.reviewing}건</p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-gray-500">완료</p>
+          <p className="text-sm text-gray-500">완료된 거래</p>
           <p className="text-2xl font-bold text-green-600">{stats.completed}건</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-sm text-gray-500">총 결제액</p>
-          <p className="text-2xl font-bold text-primary-400">{(stats.totalAmount / 10000).toFixed(0)}만원</p>
+          <p className="text-sm text-gray-500">검수중</p>
+          <p className="text-2xl font-bold text-blue-600">{stats.reviewing}건</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">대기중 거래</p>
+          <p className="text-2xl font-bold text-yellow-600">{stats.pending}건</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <p className="text-sm text-gray-500">취소 거래</p>
+          <p className="text-2xl font-bold text-red-600">{stats.cancelled}건</p>
         </div>
       </div>
 
@@ -189,7 +222,14 @@ export default function AdminDealsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">거래정보</th>
+                  <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">
+                    <div className="space-y-0.5">
+                      <p>거래정보</p>
+                      <p className="text-xs font-normal text-gray-400">PLIC거래번호</p>
+                      <p className="text-xs font-normal text-gray-400">소프트먼트거래번호</p>
+                      <p className="text-xs font-normal text-gray-400">승인번호</p>
+                    </div>
+                  </th>
                   <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">유형</th>
                   <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">상태</th>
                   <th className="text-left text-sm font-medium text-gray-500 px-6 py-4">결제금액</th>
@@ -201,7 +241,7 @@ export default function AdminDealsPage() {
               <tbody>
                 {filteredDeals.length > 0 ? (
                   filteredDeals.map((deal) => {
-                    const statusConfig = DealHelper.getStatusConfig(deal.status);
+                    const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid);
                     const typeConfig = DealHelper.getDealTypeConfig(deal.dealType);
                     return (
                       <tr key={deal.did} className="border-b border-gray-50 hover:bg-gray-50">
@@ -209,6 +249,13 @@ export default function AdminDealsPage() {
                           <div>
                             <p className="font-medium text-gray-900">{deal.dealName || '-'}</p>
                             <p className="text-xs text-gray-400 font-mono">{deal.did}</p>
+                            {deal.pgTransactionId && (
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-xs text-blue-500 font-mono">PG: {deal.pgTransactionId}</p>
+                                {deal.pgTrackId && <p className="text-xs text-blue-400 font-mono">주문: {deal.pgTrackId}</p>}
+                                {deal.pgAuthCd && <p className="text-xs text-blue-400 font-mono">승인: {deal.pgAuthCd}</p>}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">

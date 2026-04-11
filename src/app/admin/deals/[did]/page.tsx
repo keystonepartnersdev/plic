@@ -18,14 +18,18 @@ import {
   CheckCircle,
   XCircle,
   Pause,
+  Play,
   RefreshCw,
   File,
   Users,
+  Edit3,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
+import tracking from '@/lib/tracking';
 import { DealHelper } from '@/classes';
 import { IDeal, TDealStatus, IUser } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage, formatEstimatedTransferDate } from '@/lib/utils';
+import { AdminEditDealModal } from './AdminEditDealModal';
 
 const statusColors: Record<string, string> = {
   blue: 'bg-blue-100 text-blue-700',
@@ -53,6 +57,9 @@ export default function AdminDealDetailPage() {
   const [selectedRevisionType, setSelectedRevisionType] = useState<'documents' | 'recipient' | null>(null);
   const [revisionMemo, setRevisionMemo] = useState('');
 
+  // 수정 모달 상태
+  const [editModalType, setEditModalType] = useState<'amount' | 'recipient' | 'attachments' | null>(null);
+
   // API에서 거래 정보 로드
   const fetchDeal = async () => {
     setLoading(true);
@@ -61,9 +68,9 @@ export default function AdminDealDetailPage() {
       const response = await adminAPI.getDeal(did);
       setDeal(response.deal);
       setDealUser(response.user || null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('거래 정보 로드 실패:', err);
-      setError(err.message || '거래 정보를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '거래 정보를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -71,6 +78,7 @@ export default function AdminDealDetailPage() {
 
   useEffect(() => {
     fetchDeal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [did]);
 
   // 로딩 상태
@@ -102,8 +110,12 @@ export default function AdminDealDetailPage() {
     );
   }
 
-  const statusConfig = DealHelper.getStatusConfig(deal.status) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
+  const statusConfig = DealHelper.getStatusConfig(deal.status, deal.isPaid) || { name: '알 수 없음', color: 'gray', tab: 'progress' as const };
   const typeConfig = DealHelper.getDealTypeConfig(deal.dealType) || { name: '기타', icon: 'FileText', requiredDocs: [], optionalDocs: [], description: '' };
+
+  // 수정 가능 여부: 결제 전 & draft/awaiting_payment 상태일 때만
+  const canEdit = !deal.isPaid &&
+    (deal.status === 'draft' || deal.status === 'awaiting_payment');
 
   const handleStatusChange = async (newStatus: TDealStatus) => {
     // 보완 요청일 경우 모달 열기
@@ -148,9 +160,9 @@ export default function AdminDealDetailPage() {
         // PG 취소 성공 후 거래 상태 변경
         await adminAPI.updateDealStatus(deal.did, 'cancelled', 'PG 결제 취소 완료');
         await fetchDeal();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('PG 결제 취소 실패:', err);
-        alert(`PG 결제 취소 실패: ${err.message}\n\n수동으로 PG사에서 취소 처리가 필요합니다.`);
+        alert(`PG 결제 취소 실패: ${getErrorMessage(err)}\n\n수동으로 PG사에서 취소 처리가 필요합니다.`);
       } finally {
         setIsProcessing(false);
       }
@@ -160,10 +172,16 @@ export default function AdminDealDetailPage() {
     setIsProcessing(true);
     try {
       await adminAPI.updateDealStatus(deal.did, newStatus);
+      // 어드민 승인 완료 시 송금완료 트래킹 (admin으로 태깅)
+      if (newStatus === 'completed') {
+        tracking.identify('admin', 'admin');
+        tracking.transferFunnel.complete();
+        tracking.flush();
+      }
       await fetchDeal(); // 데이터 다시 로드
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('거래 상태 변경 실패:', err);
-      alert(err.message || '거래 상태 변경에 실패했습니다.');
+      alert(getErrorMessage(err) || '거래 상태 변경에 실패했습니다.');
     } finally {
       setIsProcessing(false);
     }
@@ -187,14 +205,20 @@ export default function AdminDealDetailPage() {
         ? `서류 보완 요청${revisionMemo ? `: ${revisionMemo}` : ''}`
         : `수취인 정보 보완 요청${revisionMemo ? `: ${revisionMemo}` : ''}`;
 
-      await adminAPI.updateDealStatus(deal.did, 'need_revision', reason);
+      await adminAPI.updateDealStatus(
+        deal.did,
+        'need_revision',
+        reason,
+        selectedRevisionType,
+        revisionMemo || undefined
+      );
       await fetchDeal(); // 데이터 다시 로드
       setShowRevisionConfirmModal(false);
       setSelectedRevisionType(null);
       setRevisionMemo('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('보완 요청 실패:', err);
-      alert(err.message || '보완 요청에 실패했습니다.');
+      alert(getErrorMessage(err) || '보완 요청에 실패했습니다.');
     } finally {
       setIsProcessing(false);
     }
@@ -257,6 +281,86 @@ export default function AdminDealDetailPage() {
         </div>
       </div>
 
+      {/* 신청자 정보 — 거래 정보 상단 전체 폭 */}
+      {dealUser && (
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">신청자 정보</h2>
+            <button
+              onClick={() => router.push(`/admin/users/${dealUser.uid}`)}
+              className="flex items-center gap-1.5 text-sm text-primary-400 hover:text-primary-500 font-medium"
+            >
+              <User className="w-4 h-4" />
+              회원 상세
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            {/* 좌: 기본 정보 */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">기본 정보</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-500">이름</p>
+                  <p className="text-sm font-medium text-gray-900">{dealUser.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">연락처</p>
+                  <p className="text-sm font-medium text-gray-900">{dealUser.phone}</p>
+                </div>
+                {dealUser.email && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">이메일</p>
+                    <p className="text-sm font-medium text-gray-900 break-all">{dealUser.email}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-gray-500">등급</p>
+                  <p className="text-sm font-medium text-gray-900">{dealUser.grade?.toUpperCase()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">수수료율</p>
+                  <p className="text-sm font-medium text-gray-900">{dealUser.feeRate}%</p>
+                </div>
+              </div>
+            </div>
+            {/* 우: 사업자 정보 */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">사업자 정보</p>
+              {dealUser.userType === 'business' && dealUser.businessInfo ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-gray-500">상호</p>
+                    <p className="text-sm font-medium text-gray-900">{dealUser.businessInfo.businessName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">대표자명</p>
+                    <p className="text-sm font-medium text-gray-900">{dealUser.businessInfo.representativeName}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">사업자등록번호</p>
+                    <p className="text-sm font-medium text-gray-900 font-mono">{dealUser.businessInfo.businessNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">인증 상태</p>
+                    <span className={cn(
+                      'inline-block text-xs px-2 py-0.5 rounded-full font-medium',
+                      dealUser.businessInfo.verificationStatus === 'verified' ? 'bg-green-100 text-green-700' :
+                      dealUser.businessInfo.verificationStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    )}>
+                      {dealUser.businessInfo.verificationStatus === 'verified' ? '인증완료' :
+                       dealUser.businessInfo.verificationStatus === 'rejected' ? '반려' : '심사중'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">개인 회원</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 왼쪽: 거래 정보 */}
         <div className="lg:col-span-2 space-y-6">
@@ -283,15 +387,26 @@ export default function AdminDealDetailPage() {
 
           {/* 금액 정보 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">금액 정보</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">금액 정보</h2>
+              {canEdit && (
+                <button
+                  onClick={() => setEditModalType('amount')}
+                  className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  수정
+                </button>
+              )}
+            </div>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-500">결제 금액</span>
                 <span className="font-medium text-gray-900">{deal.amount.toLocaleString()}원</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">수수료 ({deal.feeRate}%)</span>
-                <span className="font-medium text-gray-900">{deal.feeAmount.toLocaleString()}원</span>
+                <span className="text-gray-500">수수료 ({Math.round(deal.feeRate * 1.1 * 10) / 10}%, 부가세 포함)</span>
+                <span className="font-medium text-gray-900">{Math.floor(Math.floor(deal.amount * deal.feeRate / 100) * 1.1).toLocaleString()}원</span>
               </div>
               <div className="flex justify-between font-semibold border-t border-gray-100 pt-3">
                 <span className="text-gray-900">소계</span>
@@ -320,9 +435,102 @@ export default function AdminDealDetailPage() {
             </div>
           </div>
 
+          {/* PG 결제 정보 */}
+          {(
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">PG 결제 정보 (소프트먼트)</h2>
+              {!deal.pgTransactionId ? (
+                <p className="text-gray-400 text-center py-4">PG 결제 정보가 없습니다. (이전 결제 건)</p>
+              ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">소프트먼트 거래번호</span>
+                  <span className="font-mono text-sm text-gray-900">{deal.pgTransactionId}</span>
+                </div>
+                {deal.pgTrackId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">가맹점 주문번호</span>
+                    <span className="font-mono text-sm text-gray-900">{deal.pgTrackId}</span>
+                  </div>
+                )}
+                {deal.pgAuthCd && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">승인번호</span>
+                    <span className="font-mono text-sm text-gray-900">{deal.pgAuthCd}</span>
+                  </div>
+                )}
+                {deal.pgTransactionDate && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">거래일시</span>
+                    <span className="text-sm text-gray-900">{deal.pgTransactionDate}</span>
+                  </div>
+                )}
+                {deal.pgGoodsName && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">상품명</span>
+                    <span className="text-sm text-gray-900">{deal.pgGoodsName}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-100 pt-3 mt-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">카드 정보</p>
+                  <div className="space-y-2">
+                    {deal.pgCardNo && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">카드번호</span>
+                        <span className="font-mono text-sm text-gray-900">{deal.pgCardNo}</span>
+                      </div>
+                    )}
+                    {deal.pgCardIssuer && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">발급사</span>
+                        <span className="text-sm text-gray-900">{deal.pgCardIssuer}{deal.pgCardIssuerCode ? ` (${deal.pgCardIssuerCode})` : ''}</span>
+                      </div>
+                    )}
+                    {deal.pgCardAcquirer && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">매입사</span>
+                        <span className="text-sm text-gray-900">{deal.pgCardAcquirer}{deal.pgCardAcquirerCode ? ` (${deal.pgCardAcquirerCode})` : ''}</span>
+                      </div>
+                    )}
+                    {deal.pgCardType && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">카드타입</span>
+                        <span className="text-sm text-gray-900">{deal.pgCardType}</span>
+                      </div>
+                    )}
+                    {deal.pgInstallment && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">할부</span>
+                        <span className="text-sm text-gray-900">{deal.pgInstallment === '00' ? '일시불' : `${deal.pgInstallment}개월`}</span>
+                      </div>
+                    )}
+                    {deal.pgPayMethodTypeCode && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">결제수단 코드</span>
+                        <span className="font-mono text-sm text-gray-900">{deal.pgPayMethodTypeCode}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              )}
+            </div>
+          )}
+
           {/* 수취인 정보 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">수취인 정보</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">수취인 정보</h2>
+              {canEdit && (
+                <button
+                  onClick={() => setEditModalType('recipient')}
+                  className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  수정
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">은행</p>
@@ -354,16 +562,50 @@ export default function AdminDealDetailPage() {
 
           {/* 첨부 서류 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">첨부 서류</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">첨부 서류</h2>
+              {canEdit && (
+                <button
+                  onClick={() => setEditModalType('attachments')}
+                  className="flex items-center gap-1 text-sm text-primary-400 hover:text-primary-500 font-medium"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  수정
+                </button>
+              )}
+            </div>
             {deal.attachments && deal.attachments.length > 0 ? (
               <div className="space-y-2">
-                {deal.attachments.map((url, index) => (
+                {deal.attachments.map((fileKey, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-700">첨부파일 {index + 1}</span>
                     </div>
-                    <button className="text-primary-400 hover:text-primary-500">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const adminToken = localStorage.getItem('plic_admin_token');
+                          const res = await fetch('/api/uploads/download-url', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${adminToken}`,
+                            },
+                            body: JSON.stringify({ fileKey }),
+                          });
+                          const result = await res.json();
+                          if (result.success) {
+                            window.open(result.data.downloadUrl, '_blank');
+                          } else {
+                            alert(result.error || '파일을 다운로드할 수 없습니다.');
+                          }
+                        } catch {
+                          alert('파일 다운로드 중 오류가 발생했습니다.');
+                        }
+                      }}
+                      className="text-primary-400 hover:text-primary-500"
+                    >
                       <Download className="w-4 h-4" />
                     </button>
                   </div>
@@ -384,6 +626,14 @@ export default function AdminDealDetailPage() {
               {deal.status !== 'completed' && deal.status !== 'cancelled' && (
                 <>
                   <button
+                    onClick={() => handleStatusChange('approved')}
+                    disabled={isProcessing || !deal.isPaid || deal.status === 'approved'}
+                    className="w-full flex items-center justify-center gap-2 h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Check className="w-4 h-4" />
+                    검수 완료
+                  </button>
+                  <button
                     onClick={() => handleStatusChange('completed')}
                     disabled={isProcessing || !deal.isPaid}
                     className="w-full flex items-center justify-center gap-2 h-10 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -391,14 +641,25 @@ export default function AdminDealDetailPage() {
                     <CheckCircle className="w-4 h-4" />
                     거래 완료 처리
                   </button>
-                  <button
-                    onClick={() => handleStatusChange('hold')}
-                    disabled={isProcessing}
-                    className="w-full flex items-center justify-center gap-2 h-10 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Pause className="w-4 h-4" />
-                    보류 처리
-                  </button>
+                  {deal.status === 'hold' ? (
+                    <button
+                      onClick={() => handleStatusChange(deal.isPaid ? 'pending' : 'awaiting_payment')}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Play className="w-4 h-4" />
+                      진행 재개
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStatusChange('hold')}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 h-10 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Pause className="w-4 h-4" />
+                      보류 처리
+                    </button>
+                  )}
                   <button
                     onClick={() => handleStatusChange('need_revision')}
                     disabled={isProcessing}
@@ -417,10 +678,23 @@ export default function AdminDealDetailPage() {
                   </button>
                 </>
               )}
-              {(deal.status === 'completed' || deal.status === 'cancelled') && (
-                <p className="text-center text-gray-500 py-4">
-                  {deal.status === 'completed' ? '완료된 거래입니다.' : '취소된 거래입니다.'}
-                </p>
+              {deal.status === 'completed' && (
+                <div className="space-y-2">
+                  <p className="text-center text-gray-500 py-2">완료된 거래입니다.</p>
+                  {deal.isPaid && (
+                    <button
+                      onClick={() => handleStatusChange('cancelled')}
+                      disabled={isProcessing}
+                      className="w-full flex items-center justify-center gap-2 h-10 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      결제 취소
+                    </button>
+                  )}
+                </div>
+              )}
+              {deal.status === 'cancelled' && (
+                <p className="text-center text-gray-500 py-4">취소된 거래입니다.</p>
               )}
             </div>
           </div>
@@ -457,29 +731,69 @@ export default function AdminDealDetailPage() {
                   송금일시: {new Date(deal.transferredAt).toLocaleString('ko-KR')}
                 </div>
               )}
+              {!deal.isTransferred && deal.status !== 'cancelled' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">송금 예정일</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatEstimatedTransferDate(deal.isPaid && deal.paidAt ? deal.paidAt : undefined)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* 히스토리 */}
+          {/* 상태 변경 이력 */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">처리 이력</h2>
-            {deal.history && deal.history.length > 0 ? (
-              <div className="space-y-4">
-                {deal.history.map((item, index) => (
-                  <div key={index} className="flex gap-3">
-                    <div className="w-2 h-2 mt-2 rounded-full bg-primary-400 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-gray-900">{item.action}</p>
-                      <p className="text-sm text-gray-500">{item.description}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(item.timestamp).toLocaleString('ko-KR')}
-                      </p>
+            {/* statusHistory (상태 변경 추적) */}
+            {deal.statusHistory && deal.statusHistory.length > 0 ? (
+              <div className="space-y-3">
+                {deal.statusHistory.map((item: { prevStatus: string; newStatus: string; changedAt: string; changedBy: string; reason?: string; revisionMemo?: string }, index: number) => {
+                  const statusLabel = (s: string) => {
+                    const labels: Record<string, string> = { draft: '작성중', awaiting_payment: '결제대기', pending: '진행중', reviewing: '검토중', hold: '보류', need_revision: '보완필요', approved: '검수완료', cancelled: '거래취소', completed: '거래완료' };
+                    return labels[s] || s;
+                  };
+                  const byLabel = item.changedBy === 'admin' ? '운영팀' : item.changedBy === 'user' ? '사용자' : '시스템';
+                  return (
+                    <div key={index} className="flex gap-3 items-start">
+                      <div className="w-2 h-2 mt-2 rounded-full bg-primary-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">{statusLabel(item.prevStatus)}</span>
+                          <span className="text-gray-400 text-xs">→</span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">{statusLabel(item.newStatus)}</span>
+                          <span className="text-xs text-gray-400">({byLabel})</span>
+                        </div>
+                        {item.reason && <p className="text-xs text-gray-500 mt-1">{item.reason}</p>}
+                        {item.revisionMemo && <p className="text-xs text-gray-500 mt-0.5">메모: {item.revisionMemo}</p>}
+                        <p className="text-xs text-gray-400 mt-1">{new Date(item.changedAt).toLocaleString('ko-KR')}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-gray-500 text-center py-4">처리 이력이 없습니다.</p>
+            )}
+
+            {/* 기존 history (보완 제출 등) */}
+            {deal.history && deal.history.length > 0 && (
+              <>
+                <hr className="my-4 border-gray-100" />
+                <h3 className="text-sm font-medium text-gray-500 mb-3">사용자 활동</h3>
+                <div className="space-y-3">
+                  {deal.history.map((item, index) => (
+                    <div key={index} className="flex gap-3">
+                      <div className="w-2 h-2 mt-2 rounded-full bg-gray-300 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">{item.action}</p>
+                        <p className="text-xs text-gray-500">{item.description}</p>
+                        <p className="text-xs text-gray-400 mt-1">{new Date(item.timestamp).toLocaleString('ko-KR')}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -590,6 +904,17 @@ export default function AdminDealDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 수정 모달 */}
+      {editModalType && (
+        <AdminEditDealModal
+          isOpen={!!editModalType}
+          onClose={() => setEditModalType(null)}
+          deal={deal}
+          onUpdate={fetchDeal}
+          editType={editModalType}
+        />
       )}
     </div>
   );

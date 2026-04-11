@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
-import { CreditCard, AlertCircle, Clock, Shield, CheckCircle, ChevronRight, Check } from 'lucide-react';
-import { Header } from '@/components/common';
+import { CreditCard, AlertCircle, Clock, Shield, CheckCircle, ChevronRight, Check, XCircle } from 'lucide-react';
+import { Header, ModalPortal } from '@/components/common';
 import { useUserStore } from '@/stores';
 import { dealsAPI } from '@/lib/api';
 import { IDeal, IRegisteredCard } from '@/types';
+import tracking from '@/lib/tracking';
 
 type PaymentMethod = 'new' | 'registered';
 
@@ -16,21 +17,38 @@ export default function PaymentPage() {
   const params = useParams();
   const did = params.did as string;
 
-  const { currentUser, isLoggedIn, fetchCurrentUser, registeredCards } = useUserStore();
+  const { currentUser, isLoggedIn, fetchCurrentUser, registeredCards, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [deal, setDeal] = useState<IDeal | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [bannerHeight, setBannerHeight] = useState(0);
   const [userRefreshed, setUserRefreshed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('new');
   const [selectedCard, setSelectedCard] = useState<IRegisteredCard | null>(null);
   const [showCardSelector, setShowCardSelector] = useState(false);
+  const [showLimitError, setShowLimitError] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setPortalTarget(document.getElementById('mobile-frame'));
   }, []);
+
+  // RevisionBanner 높이 감지
+  useEffect(() => {
+    const updateBannerHeight = () => {
+      const banner = document.getElementById('revision-banner');
+      setBannerHeight(banner ? banner.offsetHeight : 0);
+    };
+    updateBannerHeight();
+    const observer = new MutationObserver(updateBannerHeight);
+    const frame = document.getElementById('mobile-frame');
+    if (frame) {
+      observer.observe(frame, { childList: true, subtree: true });
+    }
+    return () => observer.disconnect();
+  }, [mounted]);
 
   // 등록된 카드가 있으면 기본 결제 방법으로 설정
   useEffect(() => {
@@ -52,16 +70,17 @@ export default function PaymentPage() {
   }, [mounted, isLoggedIn, userRefreshed, fetchCurrentUser]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
       return;
     }
 
-    if (mounted && isLoggedIn && userRefreshed) {
-      // API에서 거래 정보 가져오기
-      dealsAPI.get(did).then(response => {
-        if (response.deal && !response.deal.isPaid) {
-          setDeal(response.deal);
+    if (mounted && _hasHydrated && isLoggedIn && userRefreshed) {
+      // DynamoDB 직접 조회 (Lambda는 finalAmount/discountAmount 미반환)
+      fetch(`/api/deals/${did}/detail`).then(res => res.json()).then(result => {
+        if (result.success && result.data?.deal && !result.data.deal.isPaid) {
+          setDeal(result.data.deal);
+          tracking.paymentFunnel.start(result.data.deal.did);
         } else {
           router.replace('/deals');
         }
@@ -69,9 +88,9 @@ export default function PaymentPage() {
         router.replace('/deals');
       });
     }
-  }, [mounted, isLoggedIn, userRefreshed, did, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, userRefreshed, did, router]);
 
-  if (!mounted || !isLoggedIn || !userRefreshed || !deal || !currentUser) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !userRefreshed || !deal || !currentUser) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -79,45 +98,21 @@ export default function PaymentPage() {
     );
   }
 
-  // 사업자 인증 대기 상태 체크
-  if (currentUser.status === 'pending_verification') {
+  // 결제 차단 백업 체크 (거래 상세에서 이미 차단하지만, 직접 URL 접근 방어)
+  const isBusinessUser = currentUser.userType === 'business';
+  const verificationStatus = currentUser.businessInfo?.verificationStatus;
+  const isPaymentBlocked =
+    currentUser.status === 'suspended' ||
+    currentUser.status === 'withdrawn' ||
+    currentUser.status === 'pending' ||
+    currentUser.status === 'pending_verification' ||
+    (isBusinessUser && verificationStatus !== 'verified');
+
+  if (isPaymentBlocked) {
+    router.replace(`/deals/${did}`);
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header title="결제하기" showBack />
-        <div className="px-5 py-12">
-          <div className="bg-white rounded-2xl p-8 text-center">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-yellow-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              사업자 인증 대기 중
-            </h2>
-            <p className="text-gray-500 mb-6">
-              사업자 정보 검토가 완료되면<br />
-              결제 및 송금이 가능합니다.<br /><br />
-              하단의 [거래내역]에서 등록하신<br />
-              거래 정보를 확인하실 수 있습니다.
-            </p>
-            <div className="bg-yellow-50 rounded-xl p-4 text-left">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium mb-1">검토 진행 중</p>
-                  <p className="text-yellow-700">
-                    영업일 기준 당일 내에 검토가 완료됩니다.
-                    승인 완료 시 알림을 보내드립니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => router.back()}
-              className="mt-6 w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
-            >
-              돌아가기
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
       </div>
     );
   }
@@ -144,11 +139,11 @@ export default function PaymentPage() {
       // Softpayment API를 통해 결제창 URL 받기
       const requestBody = {
         amount: deal.finalAmount,
-        goodsName: `송금 ${(deal.amount || 0).toLocaleString()}원 + 수수료`,
+        goodsName: `[후납] 임직원 전용 모바일 식권 ${Math.ceil(deal.finalAmount / 10000)}매 (기업복지)`,
         payerName: currentUser.name || '',
         payerEmail: currentUser.email || '',
         payerTel: currentUser.phone || '',
-        device: 'mobile',
+        device: /mobile|iphone|android/i.test(navigator.userAgent) ? 'mobile' : 'pc',
         dealId: deal.did,
         userId: currentUser.uid,
       };
@@ -167,15 +162,23 @@ export default function PaymentPage() {
       console.log('[Payment] API response:', data);
 
       if (!response.ok || !data.success) {
-        alert(data.error || '결제 생성에 실패했습니다.');
+        const resCode = typeof data.error === 'object' ? data.error?.details?.resCode : null;
+        if (resCode === 'S002' || resCode === 'S003' || resCode === 'S004') {
+          setShowLimitError(true);
+        } else {
+          const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
+          alert(errorMsg || '결제 생성에 실패했습니다.');
+        }
         setIsLoading(false);
         return;
       }
 
       // 결제창으로 이동
-      if (data.authPageUrl) {
-        window.location.href = data.authPageUrl;
+      const authPageUrl = data.data?.authPageUrl || data.authPageUrl;
+      if (authPageUrl) {
+        window.location.href = authPageUrl;
       } else {
+        console.error('[Payment] Missing authPageUrl in response:', data);
         alert('결제창 URL을 받지 못했습니다.');
         setIsLoading(false);
       }
@@ -207,7 +210,7 @@ export default function PaymentPage() {
       const requestBody = {
         billingKey: selectedCard.billingKey,
         amount: deal.finalAmount,
-        goodsName: `송금 ${(deal.amount || 0).toLocaleString()}원 + 수수료`,
+        goodsName: `[후납] 임직원 전용 모바일 식권 ${Math.ceil(deal.finalAmount / 10000)}매 (기업복지)`,
         payerName: currentUser.name || '',
         payerEmail: currentUser.email || '',
         payerTel: currentUser.phone || '',
@@ -229,8 +232,13 @@ export default function PaymentPage() {
       console.log('[BillingKey Payment] API response:', data);
 
       if (!response.ok || !data.success) {
-        const errorMsg = data.error || '결제에 실패했습니다.';
-        alert(errorMsg);
+        const resCode = typeof data.error === 'object' ? data.error?.details?.resCode : null;
+        if (resCode === 'S002' || resCode === 'S003' || resCode === 'S004') {
+          setShowLimitError(true);
+        } else {
+          const errorMsg = typeof data.error === 'object' ? data.error?.message : data.error;
+          alert(errorMsg || '결제에 실패했습니다.');
+        }
         setIsLoading(false);
         return;
       }
@@ -267,9 +275,14 @@ export default function PaymentPage() {
     }
   };
 
-  // 결제 핸들러 - 일반 카드결제만 지원 (빌링키 API 미지원)
+  // 결제 핸들러 - 결제 수단에 따라 분기
   const handlePayment = async () => {
-    await handleNewCardPayment();
+    tracking.paymentFunnel.attempt(deal?.did);
+    if (paymentMethod === 'registered' && selectedCard) {
+      await handleBillingKeyPayment();
+    } else {
+      await handleNewCardPayment();
+    }
   };
 
   return (
@@ -280,11 +293,14 @@ export default function PaymentPage() {
       <div className="bg-white px-5 py-6 mb-2">
         <p className="text-sm text-gray-500 mb-1">결제 금액</p>
         <p className="text-3xl font-bold text-gray-900">
-          {deal.finalAmount.toLocaleString()}
+          {(deal.finalAmount ?? 0).toLocaleString()}
           <span className="text-lg font-normal text-gray-500">원</span>
         </p>
         <p className="text-sm text-gray-500 mt-2">
-          송금 {deal.amount.toLocaleString()}원 + 수수료 {deal.feeAmount.toLocaleString()}원
+          송금 {(deal.amount ?? 0).toLocaleString()}원 + 수수료 {(deal.feeAmount ?? 0).toLocaleString()}원
+          {(deal.discountAmount ?? 0) > 0 && (
+            <span className="text-primary-500"> (할인 {(deal.discountAmount ?? 0).toLocaleString()}원 적용)</span>
+          )}
         </p>
       </div>
 
@@ -294,17 +310,17 @@ export default function PaymentPage() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-500">받는 분</span>
-            <span className="font-medium text-gray-900">{deal.recipient.accountHolder}</span>
+            <span className="font-medium text-gray-900">{deal.recipient?.accountHolder ?? '-'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">입금 계좌</span>
             <span className="font-medium text-gray-900">
-              {deal.recipient.bank} {deal.recipient.accountNumber}
+              {deal.recipient?.bank ?? '-'} {deal.recipient?.accountNumber ?? '-'}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">송금 금액</span>
-            <span className="font-medium text-gray-900">{deal.amount.toLocaleString()}원</span>
+            <span className="font-medium text-gray-900">{(deal.amount ?? 0).toLocaleString()}원</span>
           </div>
         </div>
       </div>
@@ -354,13 +370,13 @@ export default function PaymentPage() {
 
       {/* 결제 버튼 - Portal로 mobile-frame에 고정 */}
       {portalTarget && createPortal(
-        <div className="absolute bottom-[71px] left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="absolute left-0 right-0 px-5 z-20 pointer-events-none" style={{ bottom: 71 + bannerHeight }}>
           <button
             onClick={handlePayment}
             disabled={isLoading}
             className="
               w-full h-14
-              bg-primary-400 hover:bg-primary-500
+              bg-primary-600 hover:bg-primary-700
               disabled:bg-gray-300 disabled:text-gray-500
               text-white font-semibold text-lg
               rounded-xl transition-colors
@@ -369,11 +385,42 @@ export default function PaymentPage() {
           >
             {isLoading
               ? '결제창 이동 중...'
-              : `${deal.finalAmount.toLocaleString()}원 결제하기`
+              : `${(deal.finalAmount ?? 0).toLocaleString()}원 결제하기`
             }
           </button>
         </div>,
         portalTarget
+      )}
+      {/* 결제 한도 초과 모달 */}
+      {showLimitError && (
+        <ModalPortal>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-3xl w-full max-w-sm mx-4 p-6 text-center shadow-2xl border border-gray-100">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-7 h-7 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">결제 한도 초과</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              1회당 결제 가능 금액을 초과하였습니다.<br />
+              운영팀에 문의해주세요.
+            </p>
+            <a
+              href="http://pf.kakao.com/_xnQKhX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full h-12 bg-[#FEE500] text-[#3C1E1E] font-semibold rounded-xl flex items-center justify-center gap-2 mb-3"
+            >
+              카카오톡 상담하기
+            </a>
+            <button
+              onClick={() => setShowLimitError(false)}
+              className="w-full h-12 bg-gray-100 text-gray-700 font-medium rounded-xl"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+        </ModalPortal>
       )}
     </div>
   );

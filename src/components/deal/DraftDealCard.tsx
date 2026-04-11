@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useCallback, useMemo } from 'react';
 import { Trash2, ChevronRight } from 'lucide-react';
 import { IDealDraft, TDealStep } from '@/types';
 
@@ -22,7 +23,19 @@ const getProgress = (step: TDealStep): number => {
   return ((steps.indexOf(step) + 1) / steps.length) * 100;
 };
 
-export function DraftDealCard({ draft, onClick, onDelete }: DraftDealCardProps) {
+// React.memo로 불필요한 리렌더링 방지
+export const DraftDealCard = memo(function DraftDealCard({ draft, onClick, onDelete }: DraftDealCardProps) {
+  // useMemo로 진행률 계산 최적화
+  const progress = useMemo(() => getProgress(draft.currentStep), [draft.currentStep]);
+
+  // useCallback으로 삭제 핸들러 최적화
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('작성중인 송금을 삭제하시겠습니까?')) {
+      onDelete();
+    }
+  }, [onDelete]);
+
   return (
     <div
       className="p-5 bg-blue-50/50 border border-blue-100 rounded-2xl cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all duration-300 group"
@@ -44,12 +57,7 @@ export function DraftDealCard({ draft, onClick, onDelete }: DraftDealCardProps) 
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm('작성중인 송금을 삭제하시겠습니까?')) {
-                onDelete();
-              }
-            }}
+            onClick={handleDelete}
             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all duration-300"
           >
             <Trash2 className="w-4 h-4" strokeWidth={2} />
@@ -62,12 +70,12 @@ export function DraftDealCard({ draft, onClick, onDelete }: DraftDealCardProps) 
       <div className="mt-4">
         <div className="flex justify-between text-xs text-gray-500 mb-2">
           <span className="font-medium">{stepLabels[draft.currentStep]}</span>
-          <span className="font-semibold text-[#2563EB]">{Math.round(getProgress(draft.currentStep))}%</span>
+          <span className="font-semibold text-[#2563EB]">{Math.round(progress)}%</span>
         </div>
         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-[#2563EB] to-[#3B82F6] transition-all duration-300"
-            style={{ width: `${getProgress(draft.currentStep)}%` }}
+            style={{ width: `${progress}%` }}
           />
         </div>
       </div>
@@ -77,4 +85,4 @@ export function DraftDealCard({ draft, onClick, onDelete }: DraftDealCardProps) 
       </p>
     </div>
   );
-}
+});

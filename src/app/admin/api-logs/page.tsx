@@ -23,7 +23,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { adminAPI } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 
 interface ApiLog {
   logId: string;
@@ -31,8 +31,8 @@ interface ApiLog {
   endpoint: string;
   method: string;
   statusCode: number;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: Record<string, unknown>;
+  responseBody?: Record<string, unknown>;
   errorMessage?: string;
   executionTime: number;
   timestamp: string;
@@ -107,18 +107,43 @@ export default function AdminApiLogsPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: any = { limit: 200 };
-      if (statusFilter !== 'all') {
+      const params: { limit: number; status?: 'error' | 'slow'; correlationId?: string } = { limit: 200 };
+      if (statusFilter === 'error' || statusFilter === 'slow') {
         params.status = statusFilter;
       }
       if (searchCorrelationId) {
         params.correlationId = searchCorrelationId;
       }
-      const response = await adminAPI.getApiLogs(params) as any;
-      setData(response);
-    } catch (err: any) {
+      const response = await adminAPI.getApiLogs(params) as ApiLogsData;
+
+      // 기본값 설정 - stats가 없는 경우 대비
+      const defaultStats = {
+        total: 0,
+        success: 0,
+        clientError: 0,
+        serverError: 0,
+        networkError: 0,
+        avgExecutionTime: 0,
+        successRate: 0,
+      };
+
+      setData({
+        ...response,
+        stats: response.stats || defaultStats,
+        categoryStats: response.categoryStats || {},
+        topErrors: response.topErrors || [],
+        recentErrors: response.recentErrors || [],
+        slowRequests: response.slowRequests || [],
+        hourlyStats: response.hourlyStats || [],
+        usersWithMostErrors: response.usersWithMostErrors || [],
+        methodDistribution: response.methodDistribution || {},
+        topEndpoints: response.topEndpoints || [],
+        logs: response.logs || [],
+        hasMore: response.hasMore || false,
+      });
+    } catch (err: unknown) {
       console.error('API Logs 데이터 로드 실패:', err);
-      setError(err.message || '데이터를 불러오는데 실패했습니다.');
+      setError(getErrorMessage(err) || '데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -126,6 +151,7 @@ export default function AdminApiLogsPage() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -226,7 +252,7 @@ export default function AdminApiLogsPage() {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
         </div>
-      ) : !data ? (
+      ) : !data || !data.stats ? (
         <div className="text-center py-16 text-gray-400">데이터를 불러올 수 없습니다</div>
       ) : (
         <>
@@ -298,11 +324,15 @@ export default function AdminApiLogsPage() {
                 {data.categoryStats && Object.keys(data.categoryStats).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {Object.entries(data.categoryStats).map(([category, stats]) => {
+                      if (!stats) return null;
                       const config = CATEGORY_CONFIG[category] || {
                         name: category,
                         icon: <Activity className="w-4 h-4" />,
                         color: 'text-gray-600 bg-gray-100'
                       };
+                      const successRate = stats.successRate ?? 0;
+                      const avgTime = stats.avgTime ?? 0;
+                      const errorCount = stats.error ?? 0;
                       return (
                         <div
                           key={category}
@@ -317,27 +347,27 @@ export default function AdminApiLogsPage() {
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-500">성공률</span>
-                              <span className={cn('font-medium', getHealthColor(stats.successRate))}>
-                                {stats.successRate}%
+                              <span className={cn('font-medium', getHealthColor(successRate))}>
+                                {successRate}%
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-500">평균응답</span>
                               <span className={cn(
                                 'font-medium',
-                                stats.avgTime > 2000 ? 'text-red-600' :
-                                stats.avgTime > 1000 ? 'text-yellow-600' : 'text-gray-900'
+                                avgTime > 2000 ? 'text-red-600' :
+                                avgTime > 1000 ? 'text-yellow-600' : 'text-gray-900'
                               )}>
-                                {stats.avgTime}ms
+                                {avgTime}ms
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-500">에러</span>
                               <span className={cn(
                                 'font-medium',
-                                stats.error > 0 ? 'text-red-600' : 'text-green-600'
+                                errorCount > 0 ? 'text-red-600' : 'text-green-600'
                               )}>
-                                {stats.error}건
+                                {errorCount}건
                               </span>
                             </div>
                           </div>

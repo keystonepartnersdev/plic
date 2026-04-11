@@ -7,3 +7,8 @@ export { default as BottomNav } from './BottomNav';
 export { default as Footer } from './Footer';
 export { BannerSlider } from './BannerSlider';
 export { Modal } from './Modal';
+export { ModalPortal } from './ModalPortal';
+export { ErrorBoundary } from './ErrorBoundary';
+export { RevisionBanner } from './RevisionBanner';
+export { TrackingProvider } from './TrackingProvider';
+export { CouponCard } from './CouponCard';

@@ -9,11 +9,12 @@ interface IGradeConfig {
 }
 
 export class UserHelper {
-  // 등급별 설정값
+  // 단일 등급 설정 (2026-02-06)
+  // 등급별 수수료/한도 (기본 3.3%, 부가세 별도)
   static GRADE_CONFIG: Record<TUserGrade, IGradeConfig> = {
-    basic: { feeRate: 4.0, monthlyLimit: 10000000, name: '베이직' },
-    platinum: { feeRate: 3.5, monthlyLimit: 30000000, name: '플래티넘' },
-    b2b: { feeRate: 3.0, monthlyLimit: 100000000, name: 'B2B' },
+    basic: { feeRate: 3.3, monthlyLimit: 20000000, name: '베이직' },
+    platinum: { feeRate: 3.0, monthlyLimit: 30000000, name: '플래티넘' },
+    b2b: { feeRate: 2.5, monthlyLimit: 100000000, name: 'B2B' },
     employee: { feeRate: 1.0, monthlyLimit: 100000000, name: '임직원' },
   };
 

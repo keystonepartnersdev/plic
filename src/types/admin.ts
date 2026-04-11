@@ -11,7 +11,6 @@ export interface IAdmin {
   role: TAdminRole;
   status: TAdminStatus;
   isMaster: boolean;  // 마스터 계정 여부 (삭제 불가)
-  password?: string;  // Mock용
   loginFailCount: number;
   isLocked: boolean;
   createdAt: string;
@@ -25,7 +24,8 @@ export interface IAdminSession {
   email: string;
   name: string;
   role: TAdminRole;
-  permissions: string[];
+  token: string;       // JWT 토큰
+  permissions?: string[];
   loginAt: string;
-  expiresAt: string;
+  expiresAt?: string;
 }

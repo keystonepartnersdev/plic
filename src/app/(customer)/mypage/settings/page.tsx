@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Mail, MessageSquare, Smartphone, Moon, Volume2, Check, Loader2 } from 'lucide-react';
+import { Mail, Check } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore } from '@/stores';
-import { tokenManager } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+// Next.js 프록시 사용으로 CORS 우회
 
 interface NotificationSettings {
   pushEnabled: boolean;
@@ -32,7 +31,7 @@ const defaultSettings: NotificationSettings = {
 
 export default function NotificationSettingsPage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
 
   const [mounted, setMounted] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -40,18 +39,15 @@ export default function NotificationSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<NotificationSettings>(defaultSettings);
 
-  // Fetch settings from API
+  // Fetch settings from API (프록시 사용)
   const fetchSettings = useCallback(async () => {
-    const token = tokenManager.getAccessToken();
-    if (!token) return;
-
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+      const response = await fetch('/api/users/me/settings', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.success && data.data?.settings) {
@@ -73,19 +69,16 @@ export default function NotificationSettingsPage() {
     }
   }, []);
 
-  // Save settings to API
+  // Save settings to API (프록시 사용)
   const saveSettings = useCallback(async (newSettings: NotificationSettings) => {
-    const token = tokenManager.getAccessToken();
-    if (!token) return;
-
     setIsSaving(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+      const response = await fetch('/api/users/me/settings', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ settings: newSettings }),
       });
       const data = await response.json();
@@ -108,12 +101,12 @@ export default function NotificationSettingsPage() {
   }, [fetchSettings]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
-  if (!mounted || !isLoggedIn || !currentUser || isLoading) {
+  if (!mounted || !_hasHydrated || !isLoggedIn || !currentUser || isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400" />
@@ -151,77 +144,20 @@ export default function NotificationSettingsPage() {
 
       {/* 스크롤 가능한 콘텐츠 영역 */}
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4">
-        {/* 알림 수신 방법 */}
+        {/* 마케팅 정보 수신 동의 */}
         <div className="bg-white rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">알림 수신 방법</h3>
+            <h3 className="font-semibold text-gray-900">마케팅 정보 수신</h3>
           </div>
           <div className="divide-y divide-gray-100">
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                  <Smartphone className="w-5 h-5 text-primary-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">푸시 알림</p>
-                  <p className="text-sm text-gray-500">앱 푸시 알림을 받습니다</p>
-                </div>
-              </div>
-              <ToggleSwitch enabled={settings.pushEnabled} onChange={() => handleToggle('pushEnabled')} />
-            </div>
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">이메일 알림</p>
-                  <p className="text-sm text-gray-500">이메일로 알림을 받습니다</p>
-                </div>
-              </div>
-              <ToggleSwitch enabled={settings.emailEnabled} onChange={() => handleToggle('emailEnabled')} />
-            </div>
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">SMS 알림</p>
-                  <p className="text-sm text-gray-500">문자 메시지로 알림을 받습니다</p>
-                </div>
-              </div>
-              <ToggleSwitch enabled={settings.smsEnabled} onChange={() => handleToggle('smsEnabled')} />
-            </div>
-          </div>
-        </div>
-
-        {/* 알림 종류 */}
-        <div className="bg-white rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">알림 종류</h3>
-          </div>
-          <div className="divide-y divide-gray-100">
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">거래 알림</p>
-                  <p className="text-sm text-gray-500">거래 상태 변경 시 알림</p>
-                </div>
-              </div>
-              <ToggleSwitch enabled={settings.dealUpdates} onChange={() => handleToggle('dealUpdates')} />
-            </div>
             <div className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
                   <Mail className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">마케팅 알림</p>
-                  <p className="text-sm text-gray-500">이벤트, 프로모션 정보 수신</p>
+                  <p className="font-medium text-gray-900">마케팅 정보 수신 동의</p>
+                  <p className="text-sm text-gray-500">이벤트, 프로모션 정보를 받습니다</p>
                 </div>
               </div>
               <ToggleSwitch enabled={settings.marketingEnabled} onChange={() => handleToggle('marketingEnabled')} />
@@ -229,44 +165,9 @@ export default function NotificationSettingsPage() {
           </div>
         </div>
 
-        {/* 기타 설정 */}
-        <div className="bg-white rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">기타 설정</h3>
-          </div>
-          <div className="divide-y divide-gray-100">
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                  <Moon className="w-5 h-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">야간 알림 차단</p>
-                  <p className="text-sm text-gray-500">21시 ~ 08시 알림 차단</p>
-                </div>
-              </div>
-              <ToggleSwitch enabled={settings.nightModeEnabled} onChange={() => handleToggle('nightModeEnabled')} />
-            </div>
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <Volume2 className="w-5 h-5 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">알림 소리</p>
-                  <p className="text-sm text-gray-500">알림 수신 시 소리 재생</p>
-                </div>
-              </div>
-              <ToggleSwitch enabled={settings.soundEnabled} onChange={() => handleToggle('soundEnabled')} />
-            </div>
-          </div>
-        </div>
-
         {/* 안내 */}
         <p className="text-center text-sm text-gray-500 px-4">
-          알림 설정은 즉시 저장됩니다.
-          <br />
-          기기의 알림 권한이 필요할 수 있습니다.
+          마케팅 정보 수신 동의는 즉시 저장됩니다.
         </p>
       </div>
 

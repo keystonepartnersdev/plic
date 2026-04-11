@@ -1,8 +1,13 @@
 // src/lib/api.ts
+// Phase 2.1: 환경 설정 중앙화 - API_BASE_URL을 config에서 가져옴
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+import { API_CONFIG } from './config';
+import { IUser, IDeal, IHomeBanner, INotice, IFAQ, IDiscount, IDiscountCreateInput, IAdmin } from '@/types';
 
-// 토큰 저장소
+const API_BASE_URL = API_CONFIG.BASE_URL;
+
+// 토큰 저장소 (레거시 호환용 - httpOnly 쿠키로 전환됨)
+// 어드민 토큰만 localStorage 사용 (별도 인증 체계)
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 
@@ -16,8 +21,8 @@ interface ApiLogEntry {
   endpoint: string;
   method: string;
   statusCode: number;
-  requestBody?: any;
-  responseBody?: any;
+  requestBody?: unknown;
+  responseBody?: unknown;
   errorMessage?: string;
   executionTime: number;
   timestamp: string;
@@ -36,6 +41,7 @@ const getActionDescription = (endpoint: string, method: string): string => {
     '/auth/refresh': { POST: '토큰 갱신' },
     '/auth/logout': { POST: '로그아웃' },
     '/users/me': { GET: '내 정보 조회', PUT: '내 정보 수정', DELETE: '회원 탈퇴' },
+    '/users/me/business': { PUT: '사업자등록증 재제출' },
     '/users/me/grade': { GET: '등급/수수료 조회' },
     '/deals': { GET: '거래 목록 조회', POST: '거래 생성' },
     '/discounts/validate': { POST: '할인코드 검증' },
@@ -81,6 +87,9 @@ const getActionDescription = (endpoint: string, method: string): string => {
   if (endpoint.match(/^\/admin\/users\/[^/]+\/grade$/)) {
     return '회원 등급 변경';
   }
+  if (endpoint.match(/^\/admin\/users\/[^/]+\/settings$/)) {
+    return '회원 수수료/한도 설정';
+  }
   if (endpoint.match(/^\/admin\/users\/[^/]+\/business$/)) {
     return '사업자 인증 처리';
   }
@@ -121,26 +130,19 @@ const getActionDescription = (endpoint: string, method: string): string => {
 const sendLog = (log: ApiLogEntry) => {
   if (typeof window === 'undefined') return;
 
-  console.log('[API Log] 전송 시도:', log.endpoint, log.method, log.statusCode);
-
-  // fetch 사용 (fire-and-forget)
-  fetch(`${API_BASE_URL}/tracking/api-log`, {
+  // fetch 사용 (fire-and-forget) - Next.js 프록시 경유 (CORS 우회)
+  fetch('/api/tracking/api-log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ logs: [log] }),
     keepalive: true,
-  }).then(res => {
-    if (!res.ok) {
-      console.error('[API Log] 전송 실패:', res.status, res.statusText);
-    }
-  }).catch((err) => {
-    console.error('[API Log] 전송 에러:', err);
+  }).catch(() => {
+    // 에러 무시 (fire-and-forget)
   });
 };
 
 // 로그 전송 (action 설명 추가)
 const queueLog = (log: ApiLogEntry) => {
-  console.log('[API queueLog]', log.endpoint, log.method);
   const action = getActionDescription(log.endpoint, log.method);
   sendLog({ ...log, action });
 };
@@ -160,36 +162,43 @@ const getCurrentUserId = (): string | undefined => {
   return undefined;
 };
 
-// 토큰 관리
+// 토큰 관리 (레거시 호환용 - 사용자 토큰은 httpOnly 쿠키로 전환됨)
+// 참고: 사용자 인증은 secureAuth (/lib/auth.ts) 사용 권장
 export const tokenManager = {
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   setTokens: (access: string, refresh: string) => {
     accessToken = access;
     refreshToken = refresh;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plic_access_token', access);
-      localStorage.setItem('plic_refresh_token', refresh);
-    }
+    // localStorage 저장 제거 - httpOnly 쿠키 사용
+    console.warn('[tokenManager] setTokens is deprecated. Use secureAuth instead.');
   },
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   getAccessToken: () => {
-    if (!accessToken && typeof window !== 'undefined') {
-      accessToken = localStorage.getItem('plic_access_token');
-    }
     return accessToken;
   },
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   getRefreshToken: () => {
-    if (!refreshToken && typeof window !== 'undefined') {
-      refreshToken = localStorage.getItem('plic_refresh_token');
-    }
     return refreshToken;
   },
+  // @deprecated httpOnly 쿠키 사용으로 더 이상 필요하지 않음
   clearTokens: () => {
     accessToken = null;
     refreshToken = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('plic_access_token');
-      localStorage.removeItem('plic_refresh_token');
-    }
   },
+};
+
+// 공개 API 엔드포인트 (인증 불필요, credentials 제외)
+const PUBLIC_ENDPOINTS = [
+  '/content/banners',
+  '/content/notices',
+  '/content/faqs',
+  '/content/terms',
+  '/tracking/',
+];
+
+// 엔드포인트가 공개 API인지 확인
+const isPublicEndpoint = (endpoint: string): boolean => {
+  return PUBLIC_ENDPOINTS.some(pub => endpoint.startsWith(pub));
 };
 
 // API 요청 함수
@@ -198,8 +207,9 @@ async function request<T>(
   options: RequestInit = {},
   skipLogging = false
 ): Promise<T> {
-  console.log('[API Request]', options.method || 'GET', endpoint);
-  const url = `${API_BASE_URL}${endpoint}`;
+  // /content/* 엔드포인트는 /api/content/* 프록시 라우트로 리다이렉트
+  const apiEndpoint = endpoint.startsWith('/content/') ? `/api${endpoint}` : endpoint;
+  const url = `${API_BASE_URL}${apiEndpoint}`;
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
   const method = options.method || 'GET';
@@ -209,13 +219,14 @@ async function request<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  // 인증 토큰 추가
+  // 인증 토큰 추가 (공개 API가 아닌 경우에만)
+  const isPublic = isPublicEndpoint(endpoint);
   const token = tokenManager.getAccessToken();
-  if (token) {
+  if (token && !isPublic) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  let requestBody: any;
+  let requestBody: unknown;
   try {
     requestBody = options.body ? JSON.parse(options.body as string) : undefined;
   } catch {
@@ -223,48 +234,63 @@ async function request<T>(
   }
 
   let response: Response;
-  let data: any;
+  let data: { success: boolean; data?: T; error?: string; message?: string };
 
   try {
+    // 공개 API는 credentials 제외 (CORS 정책 호환)
+    // 인증 필요 API는 credentials: 'include'로 httpOnly 쿠키 전송
     response = await fetch(url, {
       ...options,
       headers,
+      ...(isPublic ? {} : { credentials: 'include' as RequestCredentials }),
     });
 
     data = await response.json();
 
-    // 토큰 만료 시 갱신 시도
-    if (response.status === 401 && tokenManager.getRefreshToken()) {
-      const refreshed = await authAPI.refresh();
-      if (refreshed) {
-        headers['Authorization'] = `Bearer ${tokenManager.getAccessToken()}`;
-        const retryResponse = await fetch(url, { ...options, headers });
-        const retryData = await retryResponse.json();
+    // 토큰 만료 시 갱신 시도 (httpOnly 쿠키 기반, 인증 필요 API만)
+    if (response.status === 401 && !isPublic) {
+      try {
+        // httpOnly 쿠키 기반 토큰 갱신
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        });
 
-        // 로그 기록 (재시도)
-        if (!skipLogging && !endpoint.includes('/tracking/')) {
-          queueLog({
-            correlationId,
-            endpoint,
-            method,
-            statusCode: retryResponse.status,
-            requestBody,
-            responseBody: retryResponse.status >= 400 ? retryData : undefined,
-            errorMessage: !retryResponse.ok ? retryData?.error : undefined,
-            executionTime: Date.now() - startTime,
-            timestamp: new Date().toISOString(),
-            userId: getCurrentUserId(),
-            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        if (refreshResponse.ok) {
+          // 쿠키가 자동으로 갱신되므로 재요청만 수행
+          const retryResponse = await fetch(url, {
+            ...options,
+            headers,
+            credentials: 'include' as RequestCredentials,
           });
-        }
+          const retryData = await retryResponse.json();
 
-        if (!retryResponse.ok || !retryData.success) {
-          throw new Error(retryData.error || '요청 처리 중 오류가 발생했습니다.');
+          // 로그 기록 (재시도)
+          if (!skipLogging && !endpoint.includes('/tracking/')) {
+            queueLog({
+              correlationId,
+              endpoint,
+              method,
+              statusCode: retryResponse.status,
+              requestBody,
+              responseBody: retryResponse.status >= 400 ? retryData : undefined,
+              errorMessage: !retryResponse.ok ? retryData?.error : undefined,
+              executionTime: Date.now() - startTime,
+              timestamp: new Date().toISOString(),
+              userId: getCurrentUserId(),
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+            });
+          }
+
+          if (!retryResponse.ok || !retryData.success) {
+            throw new Error(retryData.error || '요청 처리 중 오류가 발생했습니다.');
+          }
+          return retryData.data as T;
+        } else {
+          // 토큰 갱신 실패
+          throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
         }
-        return retryData.data;
-      } else {
-        // 토큰 갱신 실패 시 토큰 삭제
-        tokenManager.clearTokens();
+      } catch {
         throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
       }
     }
@@ -304,8 +330,9 @@ async function request<T>(
       throw new Error(data.error || '요청 처리 중 오류가 발생했습니다.');
     }
 
-    return data.data;
-  } catch (error: any) {
+    return data.data as T;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     // 네트워크 에러 등 로깅
     if (!skipLogging && !endpoint.includes('/tracking/')) {
       queueLog({
@@ -314,7 +341,7 @@ async function request<T>(
         method,
         statusCode: 0,
         requestBody,
-        errorMessage: error.message,
+        errorMessage,
         executionTime: Date.now() - startTime,
         timestamp: new Date().toISOString(),
         userId: getCurrentUserId(),
@@ -326,12 +353,12 @@ async function request<T>(
 }
 
 // ============================================
-// Auth API
+// Auth API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const authAPI = {
-  signup: (data: {
+  signup: async (data: {
     email: string;
-    password: string;
+    password?: string;
     name: string;
     phone: string;
     userType: 'personal' | 'business';
@@ -352,57 +379,70 @@ export const authAPI = {
     kakaoId?: number;
     // 카카오 인증 키 (백엔드에서 직접 DynamoDB 조회)
     kakaoVerificationKey?: string;
-  }) => request<{ message: string; uid: string }>('/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-
-  confirm: (data: { email: string; code: string }) =>
-    request<{ message: string }>('/auth/confirm', {
+    // 이메일 사전인증 완료 플래그
+    emailPreVerified?: boolean;
+    // 소셜 로그인 가입
+    authType?: 'direct' | 'kakao';
+    socialProvider?: 'kakao' | null;
+  }) => {
+    const response = await fetch('/api/auth/signup', {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  login: async (data: { email: string; password: string }) => {
-    const result = await request<{
-      user: any;
-      tokens: {
-        accessToken: string;
-        refreshToken: string;
-        idToken: string;
-        expiresIn: number;
-      };
-    }>('/auth/login', {
-      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    
-    tokenManager.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-    return result;
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '회원가입에 실패했습니다.');
+    }
+    return result.data as { message: string; uid: string };
+  },
+
+  confirm: async (data: { email: string; code: string }) => {
+    const response = await fetch('/api/auth/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '이메일 인증에 실패했습니다.');
+    }
+    return result.data as { message: string };
+  },
+
+  login: async (data: { email: string; password: string }) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '로그인에 실패했습니다.');
+    }
+    // 토큰은 httpOnly 쿠키로 자동 저장됨
+    return result.data as { user: IUser };
   },
 
   refresh: async () => {
     try {
-      const result = await request<{
-        tokens: { accessToken: string; idToken: string };
-      }>('/auth/refresh', {
+      const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        body: JSON.stringify({ refreshToken: tokenManager.getRefreshToken() }),
+        credentials: 'include',
       });
-      
-      if (result.tokens.accessToken) {
-        tokenManager.setTokens(result.tokens.accessToken, tokenManager.getRefreshToken()!);
-        return true;
-      }
+      return response.ok;
     } catch {
-      tokenManager.clearTokens();
+      return false;
     }
-    return false;
   },
 
   logout: async () => {
     try {
-      await request('/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
     } finally {
       tokenManager.clearTokens();
     }
@@ -410,116 +450,265 @@ export const authAPI = {
 };
 
 // ============================================
-// Users API
+// 인증 프록시 요청 헬퍼 (401 시 자동 토큰 갱신)
+// ============================================
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const response = await fetch(url, { ...options, credentials: 'include' });
+
+  if (response.status === 401) {
+    // 토큰 갱신 시도
+    const refreshResponse = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (refreshResponse.ok) {
+      // 갱신 성공 → 원래 요청 재시도
+      return fetch(url, { ...options, credentials: 'include' });
+    }
+    // 갱신 실패 → 원래 401 응답 반환
+  }
+
+  return response;
+}
+
+// ============================================
+// Users API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const usersAPI = {
-  getMe: () => request<any>('/users/me'),
+  getMe: async () => {
+    const response = await fetchWithAuth('/api/users/me');
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as IUser;
+  },
 
-  updateMe: (data: { name?: string; phone?: string; agreements?: { marketing?: boolean } }) =>
-    request<{ message: string; user: any }>('/users/me', {
+  updateMe: async (data: { name?: string; phone?: string; agreements?: { marketing?: boolean } }) => {
+    const response = await fetchWithAuth('/api/users/me', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; user: IUser };
+  },
 
-  withdraw: () => request<{ message: string }>('/users/me', { method: 'DELETE' }),
+  withdraw: async () => {
+    const response = await fetchWithAuth('/api/users/me', {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { message: string };
+  },
 
-  getGrade: () => request<{
-    grade: { code: string; name: string; isManual: boolean };
-    fee: { rate: number; rateText: string };
-    limit: { monthly: number; used: number; remaining: number; usagePercent: number };
-    stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
-  }>('/users/me/grade'),
+  getGrade: async () => {
+    const response = await fetchWithAuth('/api/users/me/grade');
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as {
+      grade: { code: string; name: string; isManual: boolean };
+      fee: { rate: number; rateText: string };
+      limit: { monthly: number; used: number; remaining: number; usagePercent: number };
+      stats: { totalPaymentAmount: number; totalDealCount: number; lastMonthPaymentAmount: number };
+    };
+  },
+
+  resubmitBusinessVerification: async (businessLicenseKey: string) => {
+    const response = await fetchWithAuth('/api/users/me/business', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessLicenseKey }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { message: string; uid: string; verificationStatus: string };
+  },
 };
 
 // ============================================
-// Deals API
+// Deals API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const dealsAPI = {
-  list: (params?: { status?: string; limit?: number }) => {
+  list: async (params?: { status?: string; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    return request<{ deals: any[]; total: number }>(`/deals${queryString ? `?${queryString}` : ''}`);
+    const response = await fetchWithAuth(`/api/deals${queryString ? `?${queryString}` : ''}`);
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { deals: IDeal[]; total: number };
   },
 
-  get: (did: string) => request<{ deal: any }>(`/deals/${did}`),
+  get: async (did: string) => {
+    const response = await fetchWithAuth(`/api/deals/${did}`);
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { deal: IDeal };
+  },
 
-  create: (data: {
+  create: async (data: {
     dealName: string;
     dealType: string;
     amount: number;
-    recipient: { bank: string; accountNumber: string; accountHolder: string };
+    recipient: { bank: string; accountNumber: string; accountHolder: string; isVerified?: boolean };
     senderName: string;
     attachments?: string[];
-  }) => request<{ message: string; deal: any }>('/deals', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-
-  update: (did: string, data: any) =>
-    request<{ message: string; deal: any }>(`/deals/${did}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
-
-  cancel: (did: string) => request<{ message: string; did: string }>(`/deals/${did}`, { method: 'DELETE' }),
-
-  applyDiscount: (did: string, discountId: string) =>
-    request<{ message: string; deal: any }>(`/deals/${did}/discount`, {
+  }) => {
+    const response = await fetchWithAuth('/api/deals', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; deal: IDeal };
+  },
+
+  update: async (did: string, data: Partial<IDeal>) => {
+    const response = await fetchWithAuth(`/api/deals/${did}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; deal: IDeal };
+  },
+
+  cancel: async (did: string) => {
+    const response = await fetchWithAuth(`/api/deals/${did}`, {
+      method: 'DELETE',
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { message: string; did: string };
+  },
+
+  applyDiscount: async (did: string, discountId: string) => {
+    const response = await fetchWithAuth(`/api/deals/${did}/discount`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ discountId }),
-    }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { message: string; deal: IDeal };
+  },
 };
 
 // ============================================
-// Discounts API
+// Discounts API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export const discountsAPI = {
-  validate: (data: { code: string; amount: number }) =>
-    request<{ valid: boolean; discount: any }>('/discounts/validate', {
+  validate: async (data: { code: string; amount: number }) => {
+    const response = await fetchWithAuth('/api/discounts/validate', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { valid: boolean; discount: IDiscount };
+  },
 
-  getCoupons: () => request<{ coupons: any[]; total: number }>('/discounts/coupons'),
+  getCoupons: async () => {
+    const response = await fetchWithAuth('/api/discounts/coupons');
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || data.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return data.data as { coupons: IDiscount[]; total: number };
+  },
 };
 
 // ============================================
 // Content API
 // ============================================
 export const contentAPI = {
-  getBanners: () => request<{ banners: any[] }>('/content/banners'),
+  getBanners: () => request<{ banners: IHomeBanner[] }>('/content/banners'),
 
   getNotices: (limit?: number) => {
     const query = limit ? `?limit=${limit}` : '';
-    return request<{ notices: any[]; total: number }>(`/content/notices${query}`);
+    return request<{ notices: INotice[]; total: number }>(`/content/notices${query}`);
   },
 
-  getNoticeDetail: (id: string) => request<{ notice: any }>(`/content/notices/${id}`),
+  getNoticeDetail: (id: string) => request<{ notice: INotice }>(`/content/notices/${id}`),
 
   getFaqs: (category?: string) => {
     const query = category ? `?category=${category}` : '';
-    return request<{ faqs: any[]; grouped: Record<string, any[]>; total: number }>(`/content/faqs${query}`);
+    return request<{ faqs: IFAQ[]; grouped: Record<string, IFAQ[]>; total: number }>(`/content/faqs${query}`);
   },
+
+  // 약관 조회
+  getTerms: () => request<{ terms: Array<{
+    type: string;
+    title: string;
+    content: string;
+    version: string;
+    effectiveDate: string;
+  }> }>('/content/terms'),
+
+  getTermsDetail: (type: 'service' | 'privacy' | 'electronic' | 'marketing') =>
+    request<{ terms: {
+      type: string;
+      title: string;
+      content: string;
+      version: string;
+      effectiveDate: string;
+    } }>(`/content/terms/${type}`),
 };
 
 // ============================================
-// Uploads API
+// Uploads API (Next.js 프록시 사용 - CORS 우회)
 // ============================================
 export type UploadType = 'business-license' | 'contract' | 'bank-statement' | 'attachment' | 'temp';
 
 export const uploadsAPI = {
-  getPresignedUrl: (data: {
+  getPresignedUrl: async (data: {
     fileName: string;
     fileType: string;
     fileSize: number;
     uploadType: UploadType;
     entityId?: string;
-  }) => request<{ uploadUrl: string; fileKey: string; expiresIn: number }>('/uploads/presigned-url', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  }) => {
+    const response = await fetchWithAuth('/api/uploads/presigned-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.error?.message || result.error || '요청 처리 중 오류가 발생했습니다.');
+    }
+    return result.data as { uploadUrl: string; fileKey: string; expiresIn: number };
+  },
 };
 
 // ============================================
@@ -527,14 +716,22 @@ export const uploadsAPI = {
 // ============================================
 export const adminAPI = {
   login: async (data: { email: string; password: string }) => {
-    const result = await request<{ admin: any; token: string }>('/admin/auth/login', {
+    // Next.js API 프록시를 통해 로그인 (CORS 우회)
+    const response = await fetch('/api/admin/auth/login', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plic_admin_token', result.token);
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || '로그인에 실패했습니다.');
     }
-    return result;
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('plic_admin_token', result.data.token);
+    }
+    return result.data as { admin: IAdmin; token: string };
   },
 
   // 회원 관리
@@ -545,11 +742,11 @@ export const adminAPI = {
     if (params?.search) query.append('search', params.search);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    
-    return requestWithAdminToken<{ users: any[]; total: number }>(`/admin/users${queryString ? `?${queryString}` : ''}`);
+
+    return requestWithAdminToken<{ users: IUser[]; total: number }>(`/admin/users${queryString ? `?${queryString}` : ''}`);
   },
 
-  getUser: (uid: string) => requestWithAdminToken<{ user: any; recentDeals: any[] }>(`/admin/users/${uid}`),
+  getUser: (uid: string) => requestWithAdminToken<{ user: IUser; recentDeals: IDeal[] }>(`/admin/users/${uid}`),
 
   updateUserStatus: (uid: string, status: string, reason?: string) =>
     requestWithAdminToken<{ message: string }>(`/admin/users/${uid}/status`, {
@@ -570,16 +767,29 @@ export const adminAPI = {
     if (params?.uid) query.append('uid', params.uid);
     if (params?.limit) query.append('limit', String(params.limit));
     const queryString = query.toString();
-    
-    return requestWithAdminToken<{ deals: any[]; total: number }>(`/admin/deals${queryString ? `?${queryString}` : ''}`);
+
+    return requestWithAdminToken<{ deals: IDeal[]; total: number }>(`/admin/deals${queryString ? `?${queryString}` : ''}`);
   },
 
-  getDeal: (did: string) => requestWithAdminToken<{ deal: any; user: any }>(`/admin/deals/${did}`),
+  getDeal: (did: string) => requestWithAdminToken<{ deal: IDeal; user: IUser }>(`/admin/deals/${did}`),
 
-  updateDealStatus: (did: string, status: string, reason?: string) =>
+  updateDealStatus: (did: string, status: string, reason?: string, revisionType?: 'documents' | 'recipient', revisionMemo?: string) =>
     requestWithAdminToken<{ message: string }>(`/admin/deals/${did}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ status, reason }),
+      body: JSON.stringify({ status, reason, revisionType, revisionMemo }),
+    }),
+
+  updateDeal: (did: string, data: Partial<IDeal>) =>
+    requestWithAdminToken<{ message: string; deal: IDeal }>(`/admin/deals/${did}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // 개별 사용자 수수료/한도 설정
+  updateUserSettings: (uid: string, settings: { feeRate?: number; monthlyLimit?: number; perTransactionLimit?: number }) =>
+    requestWithAdminToken<{ message: string; uid: string; feeRate: number; monthlyLimit: number; perTransactionLimit: number }>(`/admin/users/${uid}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify(settings),
     }),
 
   // 사업자 인증 관리
@@ -590,13 +800,16 @@ export const adminAPI = {
     }),
 
   // 배너 관리
+  getBanners: () =>
+    requestWithAdminToken<{ banners: IHomeBanner[]; count: number }>('/admin/banners'),
+
   createBanner: (data: {
     title: string;
     imageUrl: string;
     linkUrl?: string;
     priority: number;
     isVisible: boolean;
-  }) => requestWithAdminToken<{ message: string; banner: any }>('/admin/banners', {
+  }) => requestWithAdminToken<{ message: string; banner: IHomeBanner }>('/admin/banners', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -607,7 +820,7 @@ export const adminAPI = {
     linkUrl: string;
     priority: number;
     isVisible: boolean;
-  }>) => requestWithAdminToken<{ message: string; banner: any }>(`/admin/banners/${id}`, {
+  }>) => requestWithAdminToken<{ message: string; banner: IHomeBanner }>(`/admin/banners/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -618,13 +831,16 @@ export const adminAPI = {
     }),
 
   // 공지사항 관리
+  getNotices: () =>
+    requestWithAdminToken<{ notices: INotice[]; count: number }>('/admin/notices'),
+
   createNotice: (data: {
     title: string;
     content: string;
     category: string;
     isPinned?: boolean;
     isVisible?: boolean;
-  }) => requestWithAdminToken<{ message: string; notice: any }>('/admin/notices', {
+  }) => requestWithAdminToken<{ message: string; notice: INotice }>('/admin/notices', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -635,7 +851,7 @@ export const adminAPI = {
     category: string;
     isPinned: boolean;
     isVisible: boolean;
-  }>) => requestWithAdminToken<{ message: string; notice: any }>(`/admin/notices/${id}`, {
+  }>) => requestWithAdminToken<{ message: string; notice: INotice }>(`/admin/notices/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -646,6 +862,9 @@ export const adminAPI = {
     }),
 
   // FAQ 관리
+  getFaqs: () =>
+    requestWithAdminToken<{ faqs: IFAQ[]; count: number }>('/admin/faqs'),
+
   createFaq: (data: {
     question: string;
     answer: string;
@@ -653,7 +872,7 @@ export const adminAPI = {
     priority?: number;
     isVisible?: boolean;
     isHomeFeatured?: boolean;
-  }) => requestWithAdminToken<{ message: string; faq: any }>('/admin/faqs', {
+  }) => requestWithAdminToken<{ message: string; faq: IFAQ }>('/admin/faqs', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -665,7 +884,7 @@ export const adminAPI = {
     priority: number;
     isVisible: boolean;
     isHomeFeatured: boolean;
-  }>) => requestWithAdminToken<{ message: string; faq: any }>(`/admin/faqs/${id}`, {
+  }>) => requestWithAdminToken<{ message: string; faq: IFAQ }>(`/admin/faqs/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -676,9 +895,9 @@ export const adminAPI = {
     }),
 
   // 관리자 계정 관리
-  getAdmins: () => requestWithAdminToken<{ admins: any[]; count: number }>('/admin/admins'),
+  getAdmins: () => requestWithAdminToken<{ admins: IAdmin[]; count: number }>('/admin/admins'),
 
-  getAdmin: (adminId: string) => requestWithAdminToken<{ admin: any }>(`/admin/admins/${adminId}`),
+  getAdmin: (adminId: string) => requestWithAdminToken<{ admin: IAdmin }>(`/admin/admins/${adminId}`),
 
   createAdmin: (data: {
     email: string;
@@ -686,7 +905,7 @@ export const adminAPI = {
     phone?: string;
     role: 'super' | 'operator' | 'cs';
     password: string;
-  }) => requestWithAdminToken<{ message: string; admin: any }>('/admin/admins', {
+  }) => requestWithAdminToken<{ message: string; admin: IAdmin }>('/admin/admins', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -698,7 +917,7 @@ export const adminAPI = {
     status: 'active' | 'inactive' | 'suspended';
     password: string;
     isLocked: boolean;
-  }>) => requestWithAdminToken<{ message: string; admin: any }>(`/admin/admins/${adminId}`, {
+  }>) => requestWithAdminToken<{ message: string; admin: IAdmin }>(`/admin/admins/${adminId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -711,48 +930,19 @@ export const adminAPI = {
   // 할인코드/쿠폰 관리
   getDiscounts: (type?: 'code' | 'coupon') => {
     const query = type ? `?type=${type}` : '';
-    return requestWithAdminToken<{ discounts: any[]; count: number }>(`/admin/discounts${query}`);
+    return requestWithAdminToken<{ discounts: IDiscount[]; count: number }>(`/admin/discounts${query}`);
   },
 
   getDiscount: (discountId: string) =>
-    requestWithAdminToken<{ discount: any }>(`/admin/discounts/${discountId}`),
+    requestWithAdminToken<{ discount: IDiscount }>(`/admin/discounts/${discountId}`),
 
-  createDiscount: (data: {
-    name: string;
-    code?: string;
-    type: 'code' | 'coupon';
-    discountType: 'amount' | 'feePercent';
-    discountValue: number;
-    minAmount?: number;
-    startDate?: string;
-    expiry?: string;
-    canStack?: boolean;
-    isReusable?: boolean;
-    description?: string;
-    allowedGrades?: string[];
-    targetGrades?: string[];
-    targetUserIds?: string[];
-  }) => requestWithAdminToken<{ message: string; discount: any }>('/admin/discounts', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  createDiscount: (data: IDiscountCreateInput) =>
+    requestWithAdminToken<{ message: string; discount: IDiscount }>('/admin/discounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
-  updateDiscount: (discountId: string, data: Partial<{
-    name: string;
-    code: string;
-    discountType: 'amount' | 'feePercent';
-    discountValue: number;
-    minAmount: number;
-    startDate: string;
-    expiry: string;
-    canStack: boolean;
-    isReusable: boolean;
-    isActive: boolean;
-    description: string;
-    allowedGrades: string[];
-    targetGrades: string[];
-    targetUserIds: string[];
-  }>) => requestWithAdminToken<{ message: string; discount: any }>(`/admin/discounts/${discountId}`, {
+  updateDiscount: (discountId: string, data: Partial<IDiscountCreateInput & { isActive: boolean }>) => requestWithAdminToken<{ message: string; discount: IDiscount }>(`/admin/discounts/${discountId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
@@ -800,15 +990,15 @@ export const adminAPI = {
         endpoint: string;
         method: string;
         statusCode: number;
-        requestBody?: any;
-        responseBody?: any;
+        requestBody?: unknown;
+        responseBody?: unknown;
         errorMessage?: string;
         executionTime: number;
         timestamp: string;
         userId?: string;
         level: 'INFO' | 'WARN' | 'ERROR';
       }>;
-      log?: any;
+      log?: ApiLogEntry;
       stats: {
         total: number;
         success: number;
@@ -820,11 +1010,44 @@ export const adminAPI = {
       hasMore: boolean;
     }>(`/admin/api-logs${queryString ? `?${queryString}` : ''}`);
   },
+
+  // 약관 관리
+  getTerms: () => requestWithAdminToken<{ terms: Array<{
+    type: string;
+    title: string;
+    content: string;
+    version: string;
+    effectiveDate: string;
+    updatedAt?: string;
+    createdAt?: string;
+  }>; count: number }>('/admin/terms'),
+
+  getTermsDetail: (type: 'service' | 'privacy' | 'electronic' | 'marketing') =>
+    requestWithAdminToken<{ terms: {
+      type: string;
+      title: string;
+      content: string;
+      version: string;
+      effectiveDate: string;
+      updatedAt?: string;
+      createdAt?: string;
+    } }>(`/admin/terms/${type}`),
+
+  updateTerms: (type: 'service' | 'privacy' | 'electronic' | 'marketing', data: {
+    content: string;
+    version?: string;
+    effectiveDate?: string;
+  }) => requestWithAdminToken<{ message: string; terms: { type: string; title: string; content: string; version: string; effectiveDate: string; updatedAt?: string; createdAt?: string; } }>(`/admin/terms/${type}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
 };
 
 // 관리자 토큰으로 요청
 async function requestWithAdminToken<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // /admin/* 엔드포인트는 /api/admin/* 프록시 라우트로 리다이렉트
+  const apiEndpoint = endpoint.startsWith('/admin/') ? `/api${endpoint}` : endpoint;
+  const url = `${API_BASE_URL}${apiEndpoint}`;
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
   const method = options.method || 'GET';
@@ -840,7 +1063,7 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
     headers['Authorization'] = `Bearer ${adminToken}`;
   }
 
-  let requestBody: any;
+  let requestBody: unknown;
   try {
     requestBody = options.body ? JSON.parse(options.body as string) : undefined;
   } catch {
@@ -849,7 +1072,7 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
 
   try {
     const response = await fetch(url, { ...options, headers });
-    const data = await response.json();
+    const data: { success: boolean; data?: T; error?: string } = await response.json();
 
     // 관리자 API 로그 기록 (tracking 엔드포인트 제외)
     if (!endpoint.includes('/tracking/') && !endpoint.includes('/api-logs')) {
@@ -868,12 +1091,23 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
       });
     }
 
+    // 401 에러 시 토큰 클리어 및 로그인 페이지로 리다이렉트
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('plic_admin_token');
+        localStorage.removeItem('plic-admin-storage');
+        window.location.href = '/admin/login';
+      }
+      throw new Error(data.error || '관리자 인증이 필요합니다.');
+    }
+
     if (!response.ok || !data.success) {
       throw new Error(data.error || '요청 처리 중 오류가 발생했습니다.');
     }
 
-    return data.data;
-  } catch (error: any) {
+    return data.data as T;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     // 에러 로깅
     if (!endpoint.includes('/tracking/') && !endpoint.includes('/api-logs')) {
       queueLog({
@@ -882,7 +1116,7 @@ async function requestWithAdminToken<T>(endpoint: string, options: RequestInit =
         method,
         statusCode: 0,
         requestBody,
-        errorMessage: error.message,
+        errorMessage,
         executionTime: Date.now() - startTime,
         timestamp: new Date().toISOString(),
         userId: 'admin',

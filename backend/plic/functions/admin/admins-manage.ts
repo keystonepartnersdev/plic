@@ -139,7 +139,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // PUT /admin/admins/{adminId} - 수정
     if (method === 'PUT' && adminId) {
       const body = JSON.parse(event.body || '{}');
-      const { name, phone, role, status, password, isLocked } = body;
+      const { name, phone, role, status, password, isLocked, loginFailCount } = body;
 
       // 기존 관리자 확인
       const existingResult = await docClient.send(new GetCommand({
@@ -193,6 +193,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       if (isLocked !== undefined) {
         updateExpressions.push('isLocked = :isLocked');
         expressionValues[':isLocked'] = isLocked;
+      }
+      if (loginFailCount !== undefined) {
+        updateExpressions.push('loginFailCount = :loginFailCount');
+        expressionValues[':loginFailCount'] = loginFailCount;
       }
 
       const result = await docClient.send(new UpdateCommand({

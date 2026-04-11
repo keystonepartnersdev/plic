@@ -10,7 +10,7 @@ import { LINKHUB_AUTH_URL, POPBILL_SERVICE_ID } from './constants';
 const LINK_ID = (process.env.POPBILL_LINK_ID || '').trim();
 const SECRET_KEY = (process.env.POPBILL_SECRET_KEY || '').trim();
 const CORP_NUM = (process.env.POPBILL_CORP_NUM || '').trim(); // 회원 사업자번호
-const IS_TEST = process.env.POPBILL_IS_TEST === 'true';
+const IS_TEST = (process.env.POPBILL_IS_TEST || '').trim() === 'true';
 const LINKHUB_API_VERSION = '2.0';
 
 // 토큰 캐시 (메모리)
@@ -42,8 +42,8 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
   sha256.update(tokenRequest);
   const bodyDigest = sha256.digest('base64');
 
-  // Signature target
-  const digestTarget = `POST\n${bodyDigest}\n${xDate}\n${LINKHUB_API_VERSION}\n${uri}`;
+  // Signature target (X-LH-Forwarded 값 '*' 포함 - 서버리스 환경 필수)
+  const digestTarget = `POST\n${bodyDigest}\n${xDate}\n*\n${LINKHUB_API_VERSION}\n${uri}`;
 
   // HMAC-SHA256 signature
   const hmac = crypto.createHmac('sha256', Buffer.from(SECRET_KEY, 'base64'));
@@ -67,6 +67,7 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
       'Content-Type': 'Application/json',
       'x-lh-date': xDate,
       'x-lh-version': LINKHUB_API_VERSION,
+      'x-lh-forwarded': '*',
       'Authorization': `LINKHUB ${LINK_ID} ${signature}`,
     },
     body: tokenRequest,
@@ -97,11 +98,18 @@ async function requestToken(scopes: readonly string[]): Promise<{ session_token:
  */
 // 서비스별 scope 매핑
 const SERVICE_SCOPES = {
-  CLOSEDOWN: ['170'],           // 휴폐업조회
-  ACCOUNTCHECK: ['182', '183'], // 예금주조회
+  CLOSEDOWN: ['member', '170'],           // 휴폐업조회
+  ACCOUNTCHECK: ['member', '182', '183'], // 예금주조회
 } as const;
 
 export async function getToken(serviceType: 'CLOSEDOWN' | 'ACCOUNTCHECK'): Promise<string> {
+  if (!LINK_ID || !SECRET_KEY) {
+    throw new Error('Popbill 환경변수가 설정되지 않았습니다. POPBILL_LINK_ID, POPBILL_SECRET_KEY를 확인해주세요.');
+  }
+  if (!CORP_NUM) {
+    throw new Error('POPBILL_CORP_NUM 환경변수가 설정되지 않았습니다.');
+  }
+
   const serviceId = IS_TEST ? POPBILL_SERVICE_ID.TEST : POPBILL_SERVICE_ID.PROD;
   const scopes = SERVICE_SCOPES[serviceType];
   const cacheKey = `${LINK_ID}_${serviceId}_${serviceType}`;

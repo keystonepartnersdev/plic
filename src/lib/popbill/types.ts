@@ -87,9 +87,11 @@ export interface AccountVerifyResponse {
 // 세금계산서 발행 요청 (추후 구현용)
 export interface TaxInvoiceIssueRequest {
   // TODO: 추후 정의
+  _placeholder?: never; // Empty interface placeholder
 }
 
 // 세금계산서 발행 응답 (추후 구현용)
 export interface TaxInvoiceIssueResponse {
   // TODO: 추후 정의
+  _placeholder?: never; // Empty interface placeholder
 }

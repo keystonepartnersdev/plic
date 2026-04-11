@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { Building2, ChevronRight, Search, Copy, Check, Star } from 'lucide-react';
 import { Header } from '@/components/common';
 import { useUserStore, useDealStore } from '@/stores';
-import { tokenManager } from '@/lib/api';
+// httpOnly 쿠키 사용으로 tokenManager 대신 credentials: 'include' 사용
 import { cn } from '@/lib/utils';
 
-const API_BASE_URL = 'https://szxmlb6qla.execute-api.ap-northeast-2.amazonaws.com/Prod';
+// Next.js 프록시 사용으로 CORS 우회
 
 // 은행 정보
 const BANK_INFO: Record<string, { name: string; color: string }> = {
@@ -51,7 +51,7 @@ interface UniqueAccount {
 
 export default function AccountsPage() {
   const router = useRouter();
-  const { currentUser, isLoggedIn } = useUserStore();
+  const { currentUser, isLoggedIn, _hasHydrated } = useUserStore();
   const { deals } = useDealStore();
 
   const [mounted, setMounted] = useState(false);
@@ -60,20 +60,14 @@ export default function AccountsPage() {
   const [favoriteAccounts, setFavoriteAccounts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch favorite accounts from API
+  // Fetch favorite accounts from API (프록시 사용)
   const fetchFavoriteAccounts = useCallback(async () => {
-    const token = tokenManager.getAccessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_BASE_URL}/users/me/settings`, {
+      const response = await fetch('/api/users/me/settings', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.success && data.data?.favoriteAccounts) {
@@ -95,18 +89,15 @@ export default function AccountsPage() {
     }
   }, []);
 
-  // Save favorite accounts to API
+  // Save favorite accounts to API (프록시 사용)
   const saveFavoriteAccounts = useCallback(async (newFavorites: string[]) => {
-    const token = tokenManager.getAccessToken();
-    if (!token) return;
-
     try {
-      await fetch(`${API_BASE_URL}/users/me/settings`, {
+      await fetch('/api/users/me/settings', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ favoriteAccounts: newFavorites }),
       });
     } catch (error) {
@@ -122,10 +113,10 @@ export default function AccountsPage() {
   }, [fetchFavoriteAccounts]);
 
   useEffect(() => {
-    if (mounted && !isLoggedIn) {
+    if (mounted && _hasHydrated && !isLoggedIn) {
       router.replace('/auth/login');
     }
-  }, [mounted, isLoggedIn, router]);
+  }, [mounted, _hasHydrated, isLoggedIn, router]);
 
   // 사용자의 거래 내역에서 고유 계좌 추출
   const uniqueAccounts = useMemo(() => {
