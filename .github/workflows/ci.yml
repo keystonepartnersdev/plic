@@ -26,7 +26,7 @@ jobs:
         run: npm install lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu
 
       - name: Cache Next.js build
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c6158d  # v4.2.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf  # v4.2.2
         with:
           path: .next/cache
           key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}
