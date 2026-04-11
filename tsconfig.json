@@ -38,6 +38,8 @@
   "exclude": [
     "node_modules",
     "backend",
-    "plic_landing"
+    "plic_landing",
+    ".sst",
+    "sst.config.ts"
   ]
 }
