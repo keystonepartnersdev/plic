@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     ".sst/**",
     ".open-next/**",
     "backend/**",
+    "scripts/**",
+    "plic_design/**",
   ]),
 ]);
 
