@@ -21,15 +21,15 @@ export default $config({
         ? {
             name: "plic.kr",
             aliases: ["www.plic.kr"],
-            dns: sst.aws.dns({ zone: "Z09068573RFHOTHCYKX20" }),
+            dns: sst.aws.dns({ zone: process.env.ROUTE53_ZONE_ID! }),
           }
         : undefined,
       environment: {
         NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || "",
         NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY: process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY || "",
-        NEXT_PUBLIC_S3_BUCKET_NAME: process.env.NEXT_PUBLIC_S3_BUCKET_NAME || "plic-attachments-804887692492",
+        NEXT_PUBLIC_S3_BUCKET_NAME: process.env.NEXT_PUBLIC_S3_BUCKET_NAME || "",
         NEXT_PUBLIC_AWS_REGION: "ap-northeast-2",
-        AWS_LAMBDA_URL: process.env.AWS_LAMBDA_URL || "https://rz3vseyzbe.execute-api.ap-northeast-2.amazonaws.com/Prod",
+        AWS_LAMBDA_URL: process.env.AWS_LAMBDA_URL || "",
         COGNITO_USER_POOL_ID: process.env.COGNITO_USER_POOL_ID || "",
         KAKAO_REST_API_KEY: process.env.KAKAO_REST_API_KEY || "",
         KAKAO_CLIENT_SECRET: process.env.KAKAO_CLIENT_SECRET || "",

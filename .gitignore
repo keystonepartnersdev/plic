@@ -53,3 +53,16 @@ plic_landing/
 # sst build artifacts
 .open-next/
 sst-env.d.ts
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/tests/.auth/
+
+# Credentials
+.aws/credentials
+*.key
+serviceAccountKey.json
