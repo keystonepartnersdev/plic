@@ -20,6 +20,9 @@ jobs:
 
       - run: npm install
 
+      - name: Install platform-specific binaries
+        run: npm install lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu || true
+
       - run: npm run lint --if-present || true
 
       - run: npm run build
