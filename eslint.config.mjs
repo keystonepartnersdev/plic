@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // SST + Backend build artifacts
+    ".sst/**",
+    ".open-next/**",
+    "backend/**",
+    "scripts/**",
+    "plic_design/**",
   ]),
 ]);
 

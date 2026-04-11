@@ -39,6 +39,8 @@
     "node_modules",
     "backend",
     "plic_landing",
+    ".sst",
+    "sst.config.ts",
     "plic_design"
   ]
 }

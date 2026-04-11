@@ -41,30 +41,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# sst
+.sst/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
 plic_landing/
 
-# Playwright
-node_modules/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/
-/tests/.auth/
-
-# SAM build artifacts
-.aws-sam/
-**/build 2/
-
-# bkit temp
-docs/docs/
-
-# plugin state files
-.omc/
-docs/.bkit-memory.json
-docs/.pdca-snapshots/
-.claude/
+# sst build artifacts
+.open-next/
+sst-env.d.ts
