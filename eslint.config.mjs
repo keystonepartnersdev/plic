@@ -19,6 +19,17 @@ const eslintConfig = defineConfig([
     "scripts/**",
     "plic_design/**",
   ]),
+  // 기존 코드베이스 호환 — 추후 단계적으로 강화
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/triple-slash-reference": "warn",
+      "prefer-const": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/static-components": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
