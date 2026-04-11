@@ -66,3 +66,6 @@ sst-env.d.ts
 .aws/credentials
 *.key
 serviceAccountKey.json
+
+# Claude Code
+.claude/
