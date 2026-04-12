@@ -49,6 +49,7 @@ export default $config({
         CONTENTS_TABLE: process.env.CONTENTS_TABLE || "plic-contents",
         USERS_TABLE: process.env.USERS_TABLE || "plic-users",
         DEALS_TABLE: process.env.DEALS_TABLE || "plic-deals",
+        TEDOS_SERVICE_TOKEN: process.env.TEDOS_SERVICE_TOKEN || "",
       },
     });
 
