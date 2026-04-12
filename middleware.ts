@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
 
   // /admin/* 프론트 페이지 — 로그인/TEDOS 인증 페이지 외 전부 TEDOS Cloud로 리다이렉트
   if (pathname.startsWith('/admin')) {
-    if (pathname === '/admin/login' || pathname.startsWith('/admin/auth/tedos')) {
+    if (pathname.startsWith('/admin/auth/tedos')) {
       return NextResponse.next();
     }
     // localStorage 기반 인증이라 서버에서 토큰 검증 불가 → TEDOS Cloud로 이동
