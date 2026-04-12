@@ -6,6 +6,15 @@ const TEDOS_CLOUD_ORIGIN = 'https://tedos.keystonepartners.co.kr';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // /admin/* 프론트 페이지 — 로그인/TEDOS 인증 페이지 외 전부 TEDOS Cloud로 리다이렉트
+  if (pathname.startsWith('/admin')) {
+    if (pathname === '/admin/login' || pathname.startsWith('/admin/auth/tedos')) {
+      return NextResponse.next();
+    }
+    // localStorage 기반 인증이라 서버에서 토큰 검증 불가 → TEDOS Cloud로 이동
+    return NextResponse.redirect(new URL('/admin', TEDOS_CLOUD_ORIGIN));
+  }
+
   // /api/admin/* — 서비스 토큰 또는 기존 인증 필요
   if (pathname.startsWith('/api/admin')) {
     const serviceToken = request.headers.get('x-service-token');
@@ -38,15 +47,6 @@ export function middleware(request: NextRequest) {
       { status: 401 }
     );
   }
-
-  // /admin/* 프론트엔드 페이지 — TEDOS Cloud 또는 직접 로그인만 허용
-  // 현재는 기존 방식 유지 (추후 완전 차단 시 아래 주석 해제)
-  // if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
-  //   const origin = request.headers.get('origin') || request.headers.get('referer') || '';
-  //   if (!origin.includes('tedos.keystonepartners.co.kr') && !origin.includes('plic.kr')) {
-  //     return NextResponse.redirect(new URL('/admin/login', request.url));
-  //   }
-  // }
 
   return NextResponse.next();
 }
