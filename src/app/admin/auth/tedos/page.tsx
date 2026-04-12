@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdminStore } from '@/stores';
 
 type VerifyStatus = 'loading' | 'success' | 'error';
 
-export default function TedosAuthPage() {
+function TedosAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAdminFromResponse } = useAdminStore();
@@ -109,5 +109,13 @@ export default function TedosAuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TedosAuthPage() {
+  return (
+    <Suspense>
+      <TedosAuthContent />
+    </Suspense>
   );
 }
