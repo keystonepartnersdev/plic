@@ -27,11 +27,6 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // TEDOS Cloud 토큰 검증 프록시 — 토큰 없이 접근 가능
-    if (pathname === '/api/admin/auth/tedos-verify') {
-      return NextResponse.next();
-    }
-
     // 둘 다 없으면 차단
     return NextResponse.json(
       { success: false, error: '인증이 필요합니다. TEDOS Cloud를 통해 접근하세요.' },

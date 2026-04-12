@@ -60,7 +60,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   useEffect(() => {
     // 마운트 후 토큰 체크
-    if (mounted && pathname !== '/admin/login' && pathname !== '/admin/auth/tedos') {
+    if (mounted && pathname !== '/admin/login') {
       const hasToken = checkToken();
       if (!hasToken) {
         router.replace('/admin/login');
@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   // 로그인 페이지일 경우 레이아웃 없이 렌더링
-  if (pathname === '/admin/login' || pathname === '/admin/auth/tedos') {
+  if (pathname === '/admin/login') {
     return <>{children}</>;
   }
 
