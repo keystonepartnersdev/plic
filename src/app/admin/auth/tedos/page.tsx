@@ -39,8 +39,9 @@ function TedosAuthContent() {
           return;
         }
 
-        // 인증 성공 - localStorage 및 스토어 설정
+        // 인증 성공 - localStorage + 세션 쿠키 설정
         localStorage.setItem('plic_admin_token', data.token);
+        document.cookie = 'plic_admin_session=true; path=/; max-age=86400; SameSite=Lax';
         setAdminFromResponse(data.admin, data.token);
 
         setStatus('success');

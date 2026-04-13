@@ -11,7 +11,11 @@ export function middleware(request: NextRequest) {
     if (pathname.startsWith('/admin/auth/tedos')) {
       return NextResponse.next();
     }
-    // localStorage 기반 인증이라 서버에서 토큰 검증 불가 → TEDOS Cloud로 이동
+    // TEDOS 세션 쿠키가 있으면 통과
+    const adminSession = request.cookies.get('plic_admin_session');
+    if (adminSession) {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(new URL('/admin', TEDOS_CLOUD_ORIGIN));
   }
 
